@@ -1,4 +1,4 @@
-if game.PlaceId == 2753915549 then
+if game.PlaceId == 85211729168715 then
     World1 = true
 elseif game.PlaceId == 4442272183 then
     World2 = true
