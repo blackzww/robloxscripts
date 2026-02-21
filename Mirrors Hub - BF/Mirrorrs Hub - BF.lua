@@ -271,22 +271,20 @@ Tabs.Shop:AddDropdown("BuyFruits", {
     Default = 6
 })
 
--- ================= TELEPORTS TAB =================
--- Variável para guardar ilha selecionada
-local SelectedIsland = "Starter Island"
+-- ================= CONFIG FARM TAB (CORRIGIDO) =================
 
--- DROPDOWN
--- Variável para armazenar o alcance selecionado (padrão 50)
+-- Variáveis globais
+_G.AutoClick = false
 local BringRange = 50
 
--- 1. O Toggle do Bring Mobs
+-- 1. Toggle Bring Mobs (APENAS UM)
 local BringMobsToggle = Tabs.ConfigFarm:AddToggle("BringMobs", {
     Title = "Bring Mobs BETA",
     Description = "You can use this, but this is in beta!",
     Default = false
 })
 
--- 2. O Dropdown para selecionar o Alcance (Range)
+-- 2. Dropdown para Range (APENAS UM)
 Tabs.ConfigFarm:AddDropdown("BringRangeSelect", {
     Title = "Bring Mobs Range",
     Description = "Selecione a distância máxima para puxar",
@@ -294,34 +292,59 @@ Tabs.ConfigFarm:AddDropdown("BringRangeSelect", {
     Multi = false,
     Default = "50"
 }):OnChanged(function(Value)
-    BringRange = tonumber(Value) -- Atualiza a variável sempre que mudar o dropdown
+    BringRange = tonumber(Value)
 end)
 
--- 3. O Loop Principal (Atualizado com a variável BringRange)
+-- 3. Toggle Auto Click M1 (APENAS UM - corrigido)
+local AutoClickToggle = Tabs.ConfigFarm:AddToggle("AutoClickM1", {
+    Title = "Auto Click M1",
+    Description = "Clique automático para frutas",
+    Default = false
+})
+
+AutoClickToggle:OnChanged(function()
+    _G.AutoClick = AutoClickToggle.Value
+    Fluent:Notify({
+        Title = "Auto Click",
+        Content = _G.AutoClick and "Ativado!" or "Desativado!",
+        Duration = 2
+    })
+end)
+
+-- 4. Loop do Auto Click (corrigido)
+spawn(function()
+    while true do
+        if _G.AutoClick then
+            pcall(function()
+                game:GetService("VirtualUser"):CaptureController()
+                game:GetService("VirtualUser"):Button1Down(Vector2.new(0,0,0,0))
+            end)
+        end
+        task.wait(0.1) -- Delay para não travar
+    end
+end)
+
+-- 5. Loop do Bring Mobs (corrigido)
 task.spawn(function()
-    while task.wait() do
+    while task.wait(0.1) do
         if BringMobsToggle.Value then
             pcall(function()
                 local character = game.Players.LocalPlayer.Character
                 local myRoot = character and character:FindFirstChild("HumanoidRootPart")
-
+                
                 if myRoot then
-                    for _, obj in pairs(workspace.Enemies:GetDescendants()) do
-                        if obj.Name == "HumanoidRootPart" and obj.Parent:IsA("Model") then
-                            local hum = obj.Parent:FindFirstChildOfClass("Humanoid")
+                    for _, obj in pairs(workspace:FindFirstChild("Enemies") or {}) do
+                        if obj:IsA("Model") then
+                            local hum = obj:FindFirstChildOfClass("Humanoid")
+                            local root = obj:FindFirstChild("HumanoidRootPart")
                             
-                            if hum and hum.Health > 0 then
-                                local distance = (obj.Position - myRoot.Position).Magnitude
-
-                                -- AGORA USA O VALOR DO DROPDOWN (BringRange)
+                            if hum and hum.Health > 0 and root then
+                                local distance = (root.Position - myRoot.Position).Magnitude
+                                
                                 if distance <= BringRange then
-                                    -- Traz o mob para a sua frente
-                                    obj.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
-                                    obj.Velocity = Vector3.new(0, 0, 0)
-                                    
-                                    if obj.CanCollide then 
-                                        obj.CanCollide = false 
-                                    end
+                                    root.CFrame = myRoot.CFrame * CFrame.new(0, 0, -5)
+                                    root.Velocity = Vector3.new(0, 0, 0)
+                                    root.CanCollide = false
                                 end
                             end
                         end
@@ -332,18 +355,15 @@ task.spawn(function()
     end
 end)
 
--- ================= CONFIGURAÇÃO E DADOS =================
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local player = game.Players.LocalPlayer
+-- ================= TELEPORTS TAB (CORRIGIDO) =================
 
-local TRAVEL_SPEED = 350
-local FLY_HEIGHT = 100
+-- Variáveis para teleporte
 local SelectedIsland = "Starter Island"
-local TeleportEnabled = false 
+local TeleportEnabled = false
 local CurrentTween = nil
 local noclipConnection
 
+-- Dados das ilhas
 local IslandData = {
     ["Starter Island"]   = {coords = Vector3.new(1120, 16, 1437),    method = "tp"},
     ["Marine Starter"]   = {coords = Vector3.new(-2520, 6, 2041),    method = "tp"},
@@ -364,110 +384,128 @@ local IslandData = {
     ["Magma Village"]    = {coords = Vector3.new(-5200, 9, 8437),    method = "tween"}
 }
 
--- ================= FUNÇÕES DE SUPORTE =================
-
+-- Funções de suporte
 local function setNoclip(state)
     if state then
-        noclipConnection = RunService.Stepped:Connect(function()
-            if player.Character then
-                for _, v in pairs(player.Character:GetDescendants()) do
-                    if v:IsA("BasePart") then v.CanCollide = false end
+        noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+            local character = game.Players.LocalPlayer.Character
+            if character then
+                for _, v in pairs(character:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        v.CanCollide = false
+                    end
                 end
             end
         end)
     else
-        if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
-    end
-end
-
-local function getBestHop(targetPos)
-    local best, minD = nil, math.huge
-    for _, data in pairs(IslandData) do
-        if data.method == "tp" then
-            local d = (data.coords - targetPos).Magnitude
-            if d < minD then minD = d; best = data end
+        if noclipConnection then
+            noclipConnection:Disconnect()
+            noclipConnection = nil
         end
     end
-    return best
 end
 
-local function startTravel(name)
+local function startTravel(islandName)
     if not TeleportEnabled then return end
-    local data = IslandData[name]
-    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    
+    local data = IslandData[islandName]
+    local character = game.Players.LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    
     if not data or not root then return end
-
-    if CurrentTween then CurrentTween:Cancel() end
-
-    -- 1. SALTO INICIAL (Corta caminho para TODAS as ilhas via o TP mais próximo)
-    local hop = getBestHop(data.coords)
-    if hop and (hop.coords - data.coords).Magnitude < (root.Position - data.coords).Magnitude then
-        root.CFrame = CFrame.new(hop.coords + Vector3.new(0, FLY_HEIGHT, 0))
-        task.wait(0.5) -- Delay essencial para carregar o mapa
+    
+    -- Cancela tween anterior
+    if CurrentTween then
+        CurrentTween:Cancel()
+        CurrentTween = nil
     end
-
+    
+    -- Ativa noclip
+    setNoclip(true)
+    
+    -- Teleport direto ou tween
     if data.method == "tp" then
         root.CFrame = CFrame.new(data.coords)
-        return
-    end
-
-    -- 2. TWEEN DE VOO
-    setNoclip(true)
-    root.Velocity = Vector3.new(0,0,0)
-    
-    local targetPos = data.coords + Vector3.new(0, FLY_HEIGHT, 0)
-    local duration = (root.Position - targetPos).Magnitude / TRAVEL_SPEED
-    
-    CurrentTween = TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
-    CurrentTween:Play()
-    
-    CurrentTween.Completed:Connect(function()
-        if TeleportEnabled then
-            TweenService:Create(root, TweenInfo.new(1), {CFrame = CFrame.new(data.coords)}):Play()
-        end
+        task.wait(0.5)
         setNoclip(false)
-    end)
+    else
+        -- Voo com tween
+        local targetPos = data.coords + Vector3.new(0, 100, 0) -- Voa a 100 studs de altura
+        local distance = (root.Position - targetPos).Magnitude
+        local duration = distance / 350 -- Velocidade 350
+        
+        CurrentTween = game:GetService("TweenService"):Create(
+            root,
+            TweenInfo.new(duration, Enum.EasingStyle.Linear),
+            {CFrame = CFrame.new(targetPos)}
+        )
+        
+        CurrentTween:Play()
+        
+        CurrentTween.Completed:Connect(function()
+            if TeleportEnabled and root then
+                root.CFrame = CFrame.new(data.coords)
+            end
+            setNoclip(false)
+            CurrentTween = nil
+        end)
+    end
 end
 
--- ================= ELEMENTOS DA UI (TABS) =================
-
+-- Elementos UI da aba Teleports
 Tabs.Teleports:AddToggle("TPToggle", {
-    Title = "Habilitar Sistema de Teleporte",
-    Description = "Ative para usar a viagem",
-    Default = false,
-    Callback = function(Value)
-        TeleportEnabled = Value
-        if not Value and CurrentTween then 
-            CurrentTween:Cancel() 
-            setNoclip(false)
-        end
+    Title = "Habilitar Teleporte",
+    Description = "Ative para usar o sistema de viagem",
+    Default = false
+}):OnChanged(function(Value)
+    TeleportEnabled = Value
+    if not Value and CurrentTween then
+        CurrentTween:Cancel()
+        CurrentTween = nil
+        setNoclip(false)
     end
-})
+end)
 
-local list = {}
-for n, _ in pairs(IslandData) do table.insert(list, n) end
-table.sort(list)
+-- Criar lista de ilhas para o dropdown
+local islandList = {}
+for name, _ in pairs(IslandData) do
+    table.insert(islandList, name)
+end
+table.sort(islandList)
 
+-- Dropdown de seleção de ilha
 Tabs.Teleports:AddDropdown("IslandSelect", {
     Title = "Selecionar Ilha",
-    Values = list,
-    Default = "Starter Island",
-    Callback = function(Value)
-        SelectedIsland = Value
-    end
-})
+    Description = "Escolha a ilha para viajar",
+    Values = islandList,
+    Multi = false,
+    Default = "Starter Island"
+}):OnChanged(function(Value)
+    SelectedIsland = Value
+end)
 
+-- Botão para iniciar viagem
 Tabs.Teleports:AddButton({
-    Title = "Executar Viagem",
-    Description = "Corta caminho e voa baixo (100 studs)",
+    Title = "Iniciar Viagem",
+    Description = "Teleportar para a ilha selecionada",
     Callback = function()
         if TeleportEnabled then
             startTravel(SelectedIsland)
+            Fluent:Notify({
+                Title = "Teleporte",
+                Content = "Viajando para " .. SelectedIsland,
+                Duration = 3
+            })
         else
-            Fluent:Notify({Title = "Aviso", Content = "Ative o Toggle primeiro!", Duration = 2})
+            Fluent:Notify({
+                Title = "Aviso",
+                Content = "Ative o toggle de teleporte primeiro!",
+                Duration = 2
+            })
         end
     end
 })
+
 -- ================= MISC BUTTONS =================
 Tabs.Settings:AddButton({
     Title = "Rejoin Server",
