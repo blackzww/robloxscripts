@@ -37,6 +37,7 @@ local Tabs = {
     ConfigFarm = Window:AddTab({ Title = "Config Farm", Icon = "cog" }),
     Fruit = Window:AddTab({ Title = "Fruit/Esp", Icon = "apple" }),
     Raid = Window:AddTab({ Title = "Raid/Dungeon", Icon = "skull" }),
+    Teleports = Window:AddTab({ Title = "Teleports", Icon = "map-pin" }),
     Shop = Window:AddTab({ Title = "Buy/Shop", Icon = "shopping-cart" }),
     Settings = Window:AddTab({ Title = "Config", Icon = "settings" })
 }
