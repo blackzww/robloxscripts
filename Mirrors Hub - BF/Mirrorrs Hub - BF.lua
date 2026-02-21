@@ -1,125 +1,565 @@
---[[
-    Mirrors Hub - Blox Fruits
-    Author: blackzw (Enhanced Version)
-    Description: A feature-rich Blox Fruits script hub with improved UI and functionality
-]]
+-- Proteção contra execução dupla
+if game.CoreGui:FindFirstChild("MirrorsHubFloat") then
+    game.CoreGui:FindFirstChild("MirrorsHubFloat"):Destroy()
+end
 
--- Services
+-- Serviços
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
-local MarketplaceService = game:GetService("MarketplaceService")
+local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Workspace = game:GetService("Workspace")
 
--- Player Variables
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
-local mouse = player:GetMouse()
 
--- Load Fluent Library
+
+-- Carregando Fluent (mantido para aparência)
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Version and Info
-local VERSION = "2.0.0"
-local GAME_ID = 2753915549  -- Blox Fruits Game ID
-
--- Main Window Creation
+-- Criando janela
 local Window = Fluent:CreateWindow({
-    Title = "Mirrors Hub - Blox Fruits " .. VERSION,
-    SubTitle = "by blackzw | Enhanced Edition",
+    Title = "Mirrors Hub - BF Sea 1",
+    SubTitle = "by blackzw",
     TabWidth = 160,
-    Size = UDim2.fromOffset(600, 500),
+    Size = UDim2.fromOffset(580, 460),
     Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightControl
 })
 
--- Tabs
+-- Criar tabs completas de Blox Fruits
 local Tabs = {
     Info = Window:AddTab({ Title = "Info", Icon = "info" }),
-    Main = Window:AddTab({ Title = "Main", Icon = "home" }),
-    Player = Window:AddTab({ Title = "Player", Icon = "user" }),
-    Combat = Window:AddTab({ Title = "Combat", Icon = "swords" }),
-    Farm = Window:AddTab({ Title = "Farm", Icon = "gantt-chart" }),
-    Teleports = Window:AddTab({ Title = "Teleports", Icon = "map-pin" }),
-    Misc = Window:AddTab({ Title = "Misc", Icon = "settings" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+    MainFarm = Window:AddTab({ Title = "Main Farm", Icon = "leaf" }),
+    ConfigFarm = Window:AddTab({ Title = "Config Farm", Icon = "cog" }),
+    Fruit = Window:AddTab({ Title = "Fruit/Esp", Icon = "apple" }),
+    Raid = Window:AddTab({ Title = "Raid/Dungeon", Icon = "skull" }),
+    Shop = Window:AddTab({ Title = "Buy/Shop", Icon = "shopping-cart" }),
+    Settings = Window:AddTab({ Title = "Config", Icon = "settings" })
 }
 
--- Options reference
 local Options = Fluent.Options
 
--- State Management
-local State = {
-    AutoFarm = false,
-    AutoQuest = false,
-    AutoBuy = false,
-    BringMobs = false,
-    AntiIdle = false,
-    AutoHaki = false,
-    Invisible = false,
-    Walkspeed = 16,
-    JumpPower = 50,
-    CurrentIsland = "Starting Island",
-    SelectedFruit = nil,
-    SelectedWeapon = nil,
-    TargetNPC = nil
+Fluent:Notify({
+    Title = "Mirrors Hub",
+    Content = " Script loading succesfully!",
+    Duration = 5
+})
+
+-- ================= INFO TAB =================
+Tabs.Info:AddParagraph({
+    Title = "Information",
+    Content = "Welcome to Mirrors Hub\nVersion: 1.0\nBlox Fruits - Sea 1\n\n⚠️ Some features can be in beta! ⚠️"
+})
+
+Tabs.Info:AddButton({
+    Title = "Copy Discord",
+    Description = "Click to copy the discord link.",
+    Callback = function()
+        setclipboard("https://discord.gg/YZEg6FyRSF")
+        Fluent:Notify({
+            Title = "Discord",
+            Content = "Link copied succesfully!",
+            Duration = 3
+        })
+    end
+})
+
+-- ================= MAIN FARM TAB =================
+Tabs.MainFarm:AddToggle("AutoFarm", {
+    Title = "Auto Farm Level",
+    Description = "Enable the auto farm level",
+    Default = false
+})
+
+Tabs.MainFarm:AddToggle("AutoFarmNeae", {
+    Title = "Auto Farm Near",
+    Description = "Enable auto farm nearest mob/boss.",
+    Default = false
+})
+
+Tabs.MainFarm:AddToggle("AutoFarmBoss", {
+    Title = "Auto Farm Boss (BETA)",
+    Description = "🔒 Sorry, this feature is in beta\nuse auto farm near.",
+    Default = false
+})
+
+-- ================= ConfigFarm TAB =================
+local BringMobsToggle = Tabs.ConfigFarm:AddToggle("BringMobs", {
+    Title = "Bring Mobs BETA",
+    Description = "You can use this, but this is in beta!",
+    Default = false
+})
+
+task.spawn(function()
+    while task.wait() do
+        if BringMobsToggle.Value then
+            pcall(function()
+                local character = game.Players.LocalPlayer.Character
+                local myRoot = character and character:FindFirstChild("HumanoidRootPart")
+
+                if myRoot then
+                    for _, obj in pairs(workspace.Enemies:GetDescendants()) do
+                        if obj.Name == "HumanoidRootPart" and obj.Parent:IsA("Model") then
+                            local hum = obj.Parent:FindFirstChildOfClass("Humanoid")
+                            if hum and hum.Health > 0 then
+                                local distance = (obj.Position - myRoot.Position).Magnitude
+
+                                if distance <= 50 then
+                                    -- Em vez de CFrame, usamos Velocity e Position
+                                    -- Isso tenta "arrastar" o mob para sua frente
+                                    obj.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
+                                    obj.Velocity = Vector3.new(0, 0, 0) -- Para ele não sair voando
+                                    
+                                    -- Tenta resetar a rede de posse do objeto (Network Owner)
+                                    -- Nota: Nem sempre funciona em todos os exploits
+                                    if obj.CanCollide then obj.CanCollide = false end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- 1. Variável global para controle
+_G.AutoClick = false
+
+-- 2. Criar o Toggle (O primeiro argumento "AutoClickToggle" é o ID que o Fluent usa)
+local MyAutoClickToggle = Tabs.ConfigFarm:AddToggle("AutoClickToggle", {
+    Title = "Auto M1 Fruit",
+    Description = "Ativa o clique automático (executa remote)",
+    Default = false
+})
+
+-- 3. Callback do toggle (Usando o ID que definimos acima)
+MyAutoClickToggle:OnChanged(function()
+    _G.AutoClick = MyAutoClickToggle.Value
+    
+    if MyAutoClickToggle.Value then
+        Fluent:Notify({
+            Title = "Auto M1 Fruit",
+            Content = "Auto Click ativado!",
+            Duration = 2
+        })
+    else
+        print("Auto Click desativado")
+    end
+end)
+
+-- 4. Loop do Auto Click (Com os fechamentos corretos)
+spawn(function()
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if _G.AutoClick then
+            pcall(function()
+                -- Simula o clique do mouse
+                game:GetService('VirtualUser'):CaptureController()
+                game:GetService('VirtualUser'):Button1Down(Vector2.new(1280, 672, 0, 0))
+            end)
+        end
+    end)
+end) -- FECHAMENTO DO SPAWN (O que estava faltando antes)
+
+-- 1. Variável global para controle
+_G.AutoClick = false
+local VIM = game:GetService("VirtualInputManager")
+
+-- 2. Criar o Toggle na aba ConfigFarm
+local MyAutoClickToggle = Tabs.ConfigFarm:AddToggle("AutoClickM1", {
+    Title = "Auto Clixl",
+    Description = "Clique de Hardware Ultra Rápido",
+    Default = false
+})
+
+-- 3. Callback do toggle
+MyAutoClickToggle:OnChanged(function()
+    _G.AutoClick = MyAutoClickToggle.Value
+    
+    Fluent:Notify({
+        Title = "Auto Click",
+        Content = _G.AutoClick and "Ativado com Sucesso!" or "Desativado!",
+        Duration = 2
+    })
+end)
+
+-- 4. Loop de Alta Velocidade usando VIM
+spawn(function()
+    while true do
+        if _G.AutoClick then
+            -- Simula o pressionar do botão esquerdo (0) na posição 0,0 do jogo
+            VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+            task.wait() -- Menor intervalo possível do Roblox
+            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        end
+        task.wait() -- Evita que o script trave o seu Studio/Roblox
+    end
+end)
+
+Tabs.ConfigFarm:AddToggle("AutoHaki", {
+    Title = "Auto Haki",
+    Description = "🔒 FUNÇÃO DESATIVADA - Apenas visual",
+    Default = true
+})
+
+Tabs.ConfigFarm:AddToggle("AutoKen", {
+    Title = "Auto Ken",
+    Description = "🔒 FUNÇÃO DESATIVADA - Apenas visual",
+    Default = false
+})
+-- ================= FRUIT TAB =================
+Tabs.Fruit:AddToggle("AutoFruit", {
+    Title = "Auto Farm Fruit",
+    Description = "🔒 FUNÇÃO DESATIVADA - Apenas visual",
+    Default = false
+})
+
+Tabs.Fruit:AddToggle("AutoStoreFruit", {
+    Title = "Auto Store Fruit",
+    Description = "🔒 FUNÇÃO DESATIVADA - Apenas visual",
+    Default = false
+})
+
+-- ================= RAID/BOSS TAB =================
+Tabs.Raid:AddToggle("AutoRaid", {
+    Title = "Auto Raid",
+    Description = "🔒 FUNÇÃO DESATIVADA - Apenas visual",
+    Default = false
+})
+
+Tabs.Raid:AddToggle("KillAura", {
+    Title = "Kill Aura",
+    Description = "🔒 FUNÇÃO DESATIVADA - Apenas visual",
+    Default = false
+})
+
+Tabs.Raid:AddButton({
+    Title = "Auto Convert Fruit To Raid.",
+    Description = "🔒 FUNÇÃO DESATIVADA",
+    Callback = function()
+        Fluent:Notify({
+            Title = "Modo Falso",
+            Content = "Teleport para boss está desativado",
+            Duration = 2
+        })
+    end
+})
+
+-- ================= SHOP/ITENS TAB =================
+Tabs.Shop:AddToggle("AutoBuyItem", {
+    Title = "Auto Buy All Swords",
+    Description = "🔒 FUNÇÃO DESATIVADA - Apenas visual",
+    Default = false
+})
+
+Tabs.Shop:AddToggle("AutoBuyFruit", {
+    Title = "Auto Buy Fruit",
+    Description = "🔒 FUNÇÃO DESATIVADA - Apenas visual",
+    Default = false
+})
+
+Tabs.Shop:AddDropdown("BuyFruits", {
+    Title = "Select Fruit to Buy",
+    Description = "🔒 Apenas visual - não funciona",
+    Values = {"as", "frutas", "Sword", "Gun", "Fruit", "Equilibrado"},
+    Multi = false,
+    Default = 6
+})
+
+-- ================= TELEPORTS TAB =================
+-- Variável para guardar ilha selecionada
+local SelectedIsland = "Starter Island"
+
+-- DROPDOWN
+-- Variável para armazenar o alcance selecionado (padrão 50)
+local BringRange = 50
+
+-- 1. O Toggle do Bring Mobs
+local BringMobsToggle = Tabs.ConfigFarm:AddToggle("BringMobs", {
+    Title = "Bring Mobs BETA",
+    Description = "You can use this, but this is in beta!",
+    Default = false
+})
+
+-- 2. O Dropdown para selecionar o Alcance (Range)
+Tabs.ConfigFarm:AddDropdown("BringRangeSelect", {
+    Title = "Bring Mobs Range",
+    Description = "Selecione a distância máxima para puxar",
+    Values = {"50", "100", "150", "200", "300", "400"},
+    Multi = false,
+    Default = "50"
+}):OnChanged(function(Value)
+    BringRange = tonumber(Value) -- Atualiza a variável sempre que mudar o dropdown
+end)
+
+-- 3. O Loop Principal (Atualizado com a variável BringRange)
+task.spawn(function()
+    while task.wait() do
+        if BringMobsToggle.Value then
+            pcall(function()
+                local character = game.Players.LocalPlayer.Character
+                local myRoot = character and character:FindFirstChild("HumanoidRootPart")
+
+                if myRoot then
+                    for _, obj in pairs(workspace.Enemies:GetDescendants()) do
+                        if obj.Name == "HumanoidRootPart" and obj.Parent:IsA("Model") then
+                            local hum = obj.Parent:FindFirstChildOfClass("Humanoid")
+                            
+                            if hum and hum.Health > 0 then
+                                local distance = (obj.Position - myRoot.Position).Magnitude
+
+                                -- AGORA USA O VALOR DO DROPDOWN (BringRange)
+                                if distance <= BringRange then
+                                    -- Traz o mob para a sua frente
+                                    obj.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
+                                    obj.Velocity = Vector3.new(0, 0, 0)
+                                    
+                                    if obj.CanCollide then 
+                                        obj.CanCollide = false 
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local player = game.Players.LocalPlayer
+
+-- Configurações de Viagem
+local TRAVEL_SPEED = 350
+local FLY_HEIGHT = 500
+
+-- Tabela de Dados com suas Coordenadas
+local IslandData = {
+    ["Starter Island"]   = {coords = Vector3.new(1120, 16, 1437),    method = "tp"},
+    ["Marine Starter"]   = {coords = Vector3.new(-2520, 6, 2041),    method = "tp"},
+    ["Middle Town"]      = {coords = Vector3.new(-688, 16, 1583),    method = "tween"},
+    ["Jungle"]           = {coords = Vector3.new(-1614, 36, 147),    method = "tween"},
+    ["Pirate Village"]   = {coords = Vector3.new(-1160, 4, 3821),    method = "tween"},
+    ["Desert"]           = {coords = Vector3.new(910, 3, 4100),      method = "tween"},
+    ["Frozen Village"]   = {coords = Vector3.new(1300, 90, -1300),   method = "tween"},
+    ["Marine Fortress"]  = {coords = Vector3.new(-5000, 23, 4320),   method = "tween"},
+    ["Sky 1"]            = {coords = Vector3.new(-5000, 720, -2611), method = "tween"},
+    ["Sky 2"]            = {coords = Vector3.new(-7885, 5543, -406), method = "tp"},
+    ["Sky 3"]            = {coords = Vector3.new(-7790, 5637, -1534),method = "tween"},
+    ["Mafia Island"]     = {coords = Vector3.new(-2878, 6, 5400),    method = "tween"},
+    ["Colosseum"]        = {coords = Vector3.new(-1500, 10, -3000),  method = "tween"},
+    ["Underwater City"]  = {coords = Vector3.new(61163, 10, 1809),   method = "tp"},
+    ["Prison"]           = {coords = Vector3.new(4851, 9, 34),       method = "tween"},
+    ["Fountain City"]    = {coords = Vector3.new(5100, 9, 4100),     method = "tween"},
+    ["Magma Village"]    = {coords = Vector3.new(-5200, 9, 8437),    method = "tween"}
 }
 
--- Floating Button System
-local function CreateFloatingButton()
-    local FloatGui = Instance.new("ScreenGui")
-    FloatGui.Name = "MirrorsHubFloat"
-    FloatGui.Parent = player:WaitForChild("PlayerGui")
-    FloatGui.ResetOnSpawn = false
-    FloatGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local noclipConnection
+local SelectedIsland = "Starter Island"
 
-    local FloatButton = Instance.new("ImageButton")
-    FloatButton.Parent = FloatGui
-    FloatButton.Size = UDim2.fromOffset(65, 65)
-    FloatButton.Position = UDim2.new(0.05, 0, 0.5, 0)
-    FloatButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    FloatButton.BackgroundTransparency = 0.2
-    FloatButton.BorderSizePixel = 0
-    FloatButton.Image = "rbxassetid://77513496492572"
-    FloatButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    FloatButton.ScaleType = Enum.ScaleType.Fit
-    FloatButton.Active = true
-    FloatButton.AutoButtonColor = true
-    
-    -- Rounded corners
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 12)
-    UICorner.Parent = FloatButton
-    
-    -- Shadow effect
-    local Shadow = Instance.new("ImageLabel")
-    Shadow.Name = "Shadow"
-    Shadow.Parent = FloatButton
-    Shadow.BackgroundTransparency = 1
-    Shadow.Position = UDim2.fromOffset(5, 5)
-    Shadow.Size = UDim2.fromScale(1, 1)
-    Shadow.Image = "rbxassetid://6015897843"
-    Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    Shadow.ImageTransparency = 0.8
-    Shadow.ScaleType = Enum.ScaleType.Slice
-    Shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-    
-    -- Drag system for mobile
-    local dragging = false
-    local dragInput, dragStart, startPos
+-- Módulo de Noclip (Atravessa Tudo)
+local function setNoclip(state)
+    if state then
+        noclipConnection = RunService.Stepped:Connect(function()
+            if player.Character then
+                for _, v in pairs(player.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then v.CanCollide = false end
+                end
+            end
+        end)
+    else
+        if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
+    end
+end
 
-    local function update(input)
+-- Busca a ilha de TP mais próxima do destino final
+local function getBestHop(targetPos)
+    local bestIsland = nil
+    local minDistance = math.huge
+    
+    for _, data in pairs(IslandData) do
+        if data.method == "tp" then
+            local dist = (data.coords - targetPos).Magnitude
+            if dist < minDistance then
+                minDistance = dist
+                bestIsland = data
+            end
+        end
+    end
+    return bestIsland
+end
+
+-- Função Mestra de Viagem
+local function executeTravel(islandName)
+    local data = IslandData[islandName]
+    local character = player.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    
+    if not data or not root then return end
+
+    -- 1. Se for TP direto, executa e encerra
+    if data.method == "tp" then
+        root.CFrame = CFrame.new(data.coords)
+        return
+    end
+
+    -- 2. Lógica de Salto (Aproximação via TP)
+    local hop = getBestHop(data.coords)
+    local currentDist = (root.Position - data.coords).Magnitude
+    local hopDist = (hop.coords - data.coords).Magnitude
+
+    -- Só pula se a ilha de TP for realmente mais perto do que onde estou
+    if hop and hopDist < currentDist then
+        root.CFrame = CFrame.new(hop.coords + Vector3.new(0, FLY_HEIGHT, 0))
+        task.wait(0.3)
+    end
+
+    -- 3. Início do Tween de Voo
+    setNoclip(true)
+    local targetFlyPos = data.coords + Vector3.new(0, FLY_HEIGHT, 0)
+    local travelDist = (root.Position - targetFlyPos).Magnitude
+    local duration = travelDist / TRAVEL_SPEED
+
+    local flyTween = TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetFlyPos)})
+    
+    flyTween:Play()
+    flyTween.Completed:Connect(function()
+        -- 4. Descida Final (Pouso)
+        local landTween = TweenService:Create(root, TweenInfo.new(1.5), {CFrame = CFrame.new(data.coords)})
+        landTween:Play()
+        landTween.Completed:Connect(function()
+            setNoclip(false)
+            Fluent:Notify({Title = "Chegamos!", Content = "Você chegou em " .. islandName, Duration = 2})
+        end)
+    end)
+end
+
+--- INTERFACE FLUENT ---
+
+-- Dropdown para Seleção
+local IslandList = {}
+for name, _ in pairs(IslandData) do table.insert(IslandList, name) end
+table.sort(IslandList)
+
+Tabs.Teleports:AddDropdown("IslandSelect", {
+    Title = "Selecionar Ilha",
+    Description = "O script escolherá a rota mais rápida",
+    Values = IslandList,
+    Multi = false,
+    Default = "Starter Island",
+    Callback = function(Value)
+        SelectedIsland = Value
+    end
+})
+
+-- Botão de Execução
+Tabs.Teleports:AddButton({
+    Title = "Iniciar Viagem",
+    Description = "Usa TP em escalas e Tween com Noclip",
+    Callback = function()
+        Fluent:Notify({
+            Title = "Viagem Iniciada",
+            Content = "Calculando melhor rota para " .. SelectedIsland,
+            Duration = 3
+        })
+        executeTravel(SelectedIsland)
+    end
+})
+
+-- ================= MISC BUTTONS =================
+Tabs.Settings:AddButton({
+    Title = "Rejoin Server",
+    Description = "🔒 FUNÇÃO DESATIVADA",
+    Callback = function()
+        Fluent:Notify({
+            Title = "Modo Falso",
+            Content = "Rejoin está desativado - apenas visual",
+            Duration = 2
+        })
+    end
+})
+
+Tabs.Settings:AddButton({
+    Title = "Hop Server",
+    Description = "🔒 FUNÇÃO DESATIVADA",
+    Callback = function()
+        Fluent:Notify({
+            Title = "Modo Falso",
+            Content = "Hop Server está desativado - apenas visual",
+            Duration = 2
+        })
+    end
+})
+
+-- ================= SAVE MANAGER =================
+
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+
+InterfaceManager:SetFolder("MirrorsHub")
+SaveManager:SetFolder("MirrorsHub/BloxFruits")
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+SaveManager:LoadAutoloadConfig()
+
+Window:SelectTab(2) -- Começa na Main Farm
+
+-- ================= FLOAT BUTTON =================
+
+local FloatGui = Instance.new("ScreenGui")
+FloatGui.Name = "MirrorsHubFloat"
+FloatGui.Parent = game.CoreGui
+FloatGui.ResetOnSpawn = false
+
+local FloatButton = Instance.new("TextButton")
+FloatButton.Size = UDim2.fromOffset(60,60)
+FloatButton.Position = UDim2.new(0.05,0,0.5,0)
+FloatButton.Text = "MH"
+FloatButton.Font = Enum.Font.GothamBold
+FloatButton.TextSize = 20
+FloatButton.BackgroundColor3 = Color3.fromRGB(25,25,25)
+FloatButton.TextColor3 = Color3.new(1,1,1)
+FloatButton.Parent = FloatGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1,0)
+corner.Parent = FloatButton
+
+-- Drag system melhorado
+local dragging = false
+local dragStart, startPos
+
+FloatButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = FloatButton.Position
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement 
+    or input.UserInputType == Enum.UserInputType.Touch) then
+
         local delta = input.Position - dragStart
         FloatButton.Position = UDim2.new(
             startPos.X.Scale,
@@ -128,424 +568,11 @@ local function CreateFloatingButton()
             startPos.Y.Offset + delta.Y
         )
     end
-
-    FloatButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = FloatButton.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    FloatButton.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
-        end
-    end)
-
-    -- Click animation and functionality
-    FloatButton.MouseButton1Click:Connect(function()
-        -- Click animation
-        local tweenInfo = TweenInfo.new(
-            0.2,
-            Enum.EasingStyle.Quad,
-            Enum.EasingDirection.Out
-        )
-        
-        local scaleUp = TweenService:Create(FloatButton, tweenInfo, {Size = UDim2.fromOffset(75, 75)})
-        local scaleDown = TweenService:Create(FloatButton, tweenInfo, {Size = UDim2.fromOffset(65, 65)})
-        
-        scaleUp:Play()
-        scaleUp.Completed:Connect(function()
-            scaleDown:Play()
-        end)
-        
-        -- Simulate Right Control key press
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
-    end)
-    
-    return FloatGui
-end
-
--- Notification System
-local function SendNotification(title, content, duration)
-    Fluent:Notify({
-        Title = title,
-        Content = content,
-        SubContent = "Mirrors Hub",
-        Duration = duration or 5
-    })
-end
-
--- Player Info Functions
-local function GetPlayerStats()
-    local stats = {
-        Level = player.Data.Level.Value,
-        Fruit = player.Data.Fruit.Value or "None",
-        Race = player.Data.Race.Value,
-        Beli = player.Data.Beli.Value,
-        Fragments = player.Data.Fragments.Value,
-        Deaths = player.Data.Deaths.Value,
-        PlayTime = player.Data.PlayTime.Value
-    }
-    return stats
-end
-
--- Auto Farm Function
-local function StartAutoFarm(target)
-    while State.AutoFarm do
-        local closestEnemy = nil
-        local shortestDistance = math.huge
-        
-        -- Find nearest enemy
-        for _, enemy in pairs(Workspace.Enemies:GetChildren()) do
-            if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                local distance = (rootPart.Position - enemy.HumanoidRootPart.Position).Magnitude
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    closestEnemy = enemy
-                end
-            end
-        end
-        
-        if closestEnemy then
-            -- Move to enemy
-            rootPart.CFrame = closestEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
-            
-            -- Attack if close enough
-            if shortestDistance < 20 then
-                local args = {
-                    [1] = closestEnemy.HumanoidRootPart.Position,
-                    [2] = closestEnemy.HumanoidRootPart
-                }
-                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Combat"):FireServer(unpack(args))
-            end
-        end
-        
-        task.wait(0.1)
-    end
-end
-
--- UI Elements
-do
-    -- Info Tab
-    Tabs.Info:AddParagraph({
-        Title = "Welcome to Mirrors Hub",
-        Content = string.format([[
-            Version: %s
-            Game: Blox Fruits
-            Features: Auto Farm, Auto Quest, Auto Buy, etc.
-            
-            How to use:
-            1. Navigate through tabs
-            2. Enable desired features
-            3. Enjoy!
-            
-            Made with ❤️ by blackzw
-        ]], VERSION)
-    })
-    
-    Tabs.Info:AddButton({
-        Title = "Copy Discord Link",
-        Description = "Join our community for updates",
-        Callback = function()
-            setclipboard("https://discord.gg/mirrorshub")
-            SendNotification("Discord", "Link copied to clipboard!", 3)
-        end
-    })
-    
-    Tabs.Info:AddButton({
-        Title = "Check for Updates",
-        Description = "Verify if you have the latest version",
-        Callback = function()
-            -- Simulate update check
-            SendNotification("Update Check", "You have the latest version: " .. VERSION, 4)
-        end
-    })
-    
-    -- Player Tab
-    local StatsParagraph = Tabs.Player:AddParagraph({
-        Title = "Player Statistics",
-        Content = "Loading stats..."
-    })
-    
-    -- Auto-update stats
-    spawn(function()
-        while task.wait(2) do
-            local stats = GetPlayerStats()
-            StatsParagraph:SetContent(string.format([[
-                Level: %d
-                Fruit: %s
-                Race: %s
-                Beli: %s
-                Fragments: %s
-                Deaths: %d
-                PlayTime: %ds
-            ]], stats.Level, stats.Fruit, stats.Race, 
-               string.format("%.1fM", stats.Beli/1000000),
-               stats.Fragments, stats.Deaths, stats.PlayTime))
-        end
-    end)
-    
-    -- Speed Slider
-    Tabs.Player:AddSlider("SpeedSlider", {
-        Title = "Walk Speed",
-        Description = "Adjust your movement speed",
-        Default = 16,
-        Min = 16,
-        Max = 120,
-        Rounding = 1,
-        Callback = function(value)
-            State.Walkspeed = value
-            if character and character.Humanoid then
-                character.Humanoid.WalkSpeed = value
-            end
-        end
-    })
-    
-    -- Jump Power Slider
-    Tabs.Player:AddSlider("JumpSlider", {
-        Title = "Jump Power",
-        Description = "Adjust your jump height",
-        Default = 50,
-        Min = 50,
-        Max = 200,
-        Rounding = 1,
-        Callback = function(value)
-            State.JumpPower = value
-            if character and character.Humanoid then
-                character.Humanoid.JumpPower = value
-            end
-        end
-    })
-    
-    -- Farm Tab
-    local AutoFarmToggle = Tabs.Farm:AddToggle("AutoFarmToggle", {
-        Title = "Auto Farm",
-        Description = "Automatically farm enemies",
-        Default = false
-    })
-    
-    AutoFarmToggle:OnChanged(function()
-        State.AutoFarm = Options.AutoFarmToggle.Value
-        if State.AutoFarm then
-            SendNotification("Auto Farm", "Auto Farm Enabled", 3)
-            spawn(function() StartAutoFarm() end)
-        else
-            SendNotification("Auto Farm", "Auto Farm Disabled", 3)
-        end
-    end)
-    
-    local BringMobsToggle = Tabs.Farm:AddToggle("BringMobsToggle", {
-        Title = "Bring Mobs",
-        Description = "Bring enemies to you",
-        Default = false
-    })
-    
-    BringMobsToggle:OnChanged(function()
-        State.BringMobs = Options.BringMobsToggle.Value
-    end)
-    
-    -- Dropdown for farm mode
-    Tabs.Farm:AddDropdown("FarmModeDropdown", {
-        Title = "Farm Mode",
-        Description = "Select what to farm",
-        Values = {"Levels", "Beli", "Fragments", "Bosses"},
-        Multi = false,
-        Default = 1,
-        Callback = function(value)
-            print("Farm mode changed to:", value)
-        end
-    })
-    
-    -- Teleports Tab
-    local Islands = {"Marine Starter", "Jungle", "Desert", "Frozen Village", "Colosseum", "Sky Island 1", "Sky Island 2"}
-    
-    Tabs.Teleports:AddDropdown("IslandDropdown", {
-        Title = "Select Island",
-        Description = "Choose an island to teleport to",
-        Values = Islands,
-        Multi = false,
-        Default = 1,
-    })
-    
-    Tabs.Teleports:AddButton({
-        Title = "Teleport",
-        Description = "Go to selected island",
-        Callback = function()
-            local selected = Options.IslandDropdown.Value
-            SendNotification("Teleport", "Teleporting to " .. selected .. "...", 2)
-            -- Add teleport logic here
-        end
-    })
-    
-    Tabs.Teleports:AddButton({
-        Title = "Teleport to Random Island",
-        Description = "Feeling lucky?",
-        Callback = function()
-            local randomIsland = Islands[math.random(1, #Islands)]
-            SendNotification("Teleport", "Teleporting to " .. randomIsland .. "...", 2)
-        end
-    })
-    
-    -- Misc Tab
-    local AntiIdleToggle = Tabs.Misc:AddToggle("AntiIdleToggle", {
-        Title = "Anti-Idle",
-        Description = "Prevent being kicked for idling",
-        Default = false
-    })
-    
-    AntiIdleToggle:OnChanged(function()
-        State.AntiIdle = Options.AntiIdleToggle.Value
-    end)
-    
-    -- Anti-Idle loop
-    spawn(function()
-        while true do
-            task.wait(60)
-            if State.AntiIdle then
-                -- Simulate some input
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-            end
-        end
-    end)
-    
-    -- Color picker for UI
-    Tabs.Misc:AddColorpicker("UIColorPicker", {
-        Title = "UI Color",
-        Description = "Change the interface color",
-        Default = Color3.fromRGB(96, 205, 255)
-    })
-    
-    Tabs.Misc:AddColorpicker("UIColorPicker2", {
-        Title = "UI Accent Color",
-        Description = "Change the accent color",
-        Transparency = 0,
-        Default = Color3.fromRGB(255, 100, 100)
-    })
-    
-    -- Input field
-    Tabs.Misc:AddInput("ConsoleInput", {
-        Title = "Console Command",
-        Description = "Execute custom commands",
-        Placeholder = "Type command here...",
-        Callback = function(value)
-            if value == "/clear" then
-                print("Console cleared")
-            end
-        end
-    })
-    
-    -- Keybind
-    Tabs.Misc:AddKeybind("MenuKeybind", {
-        Title = "Menu Keybind",
-        Description = "Key to open/close menu",
-        Mode = "Toggle",
-        Default = "RightControl",
-        Callback = function(value)
-            if value then
-                Window:Toggle()
-            end
-        end
-    })
-    
-    -- Settings Tab
-    Tabs.Settings:AddDropdown("ThemeDropdown", {
-        Title = "Theme",
-        Description = "Choose UI theme",
-        Values = {"Dark", "Light", "Darker", "Midnight", "Ocean", "Forest"},
-        Multi = false,
-        Default = 1,
-        Callback = function(theme)
-            Fluent:SetTheme(theme)
-        end
-    })
-    
-    Tabs.Settings:AddButton({
-        Title = "Reset Settings",
-        Description = "Reset all settings to default",
-        Callback = function()
-            Window:Dialog({
-                Title = "Reset Settings",
-                Content = "Are you sure you want to reset all settings?",
-                Buttons = {
-                    {
-                        Title = "Yes",
-                        Callback = function()
-                            SaveManager:Reset()
-                            SendNotification("Settings", "Settings have been reset", 3)
-                        end
-                    },
-                    {
-                        Title = "No",
-                        Callback = function() end
-                    }
-                }
-            })
-        end
-    })
-end
-
--- Character Added Event
-player.CharacterAdded:Connect(function(newCharacter)
-    character = newCharacter
-    humanoid = newCharacter:WaitForChild("Humanoid")
-    rootPart = newCharacter:WaitForChild("HumanoidRootPart")
-    
-    -- Reapply settings
-    humanoid.WalkSpeed = State.Walkspeed
-    humanoid.JumpPower = State.JumpPower
 end)
 
--- Initialize Managers
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("MirrorsHub")
-SaveManager:SetFolder("MirrorsHub/bloxfruits")
+FloatButton.MouseButton1Click:Connect(function()
+    Window:Minimize()
+end)
 
--- Build Interface and Config sections
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-
--- Create floating button
-local FloatGui = CreateFloatingButton()
-
--- Select first tab
-Window:SelectTab(1)
-
--- Welcome notification
-SendNotification("Mirrors Hub - BF", "Script loaded successfully! Version: " .. VERSION, 8)
-
--- Load autoload config if exists
-SaveManager:LoadAutoloadConfig()
-
--- Cleanup function
-local function OnScriptUnload()
-    if FloatGui then
-        FloatGui:Destroy()
-    end
-    SendNotification("Mirrors Hub", "Script unloaded successfully", 3)
-end
-
--- Unload handler
-Fluent.Unloaded:Connect(OnScriptUnload)
-
-print("Mirrors Hub Enhanced Edition v" .. VERSION .. " loaded successfully!")
+-- ================= LOOP PRINCIPAL (FAKE) =================
+print("✅ Script carregado em MODO FALSO - Interface visual apenas, nenhuma função real")
