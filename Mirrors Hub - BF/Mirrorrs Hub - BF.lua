@@ -336,11 +336,15 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local player = game.Players.LocalPlayer
 
--- Configurações de Viagem
+-- Configurações de Controle
 local TRAVEL_SPEED = 350
-local FLY_HEIGHT = 500
+local FLY_HEIGHT = 100
+local SelectedIsland = "Starter Island"
+local TeleportEnabled = false 
+local CurrentTween = nil
+local noclipConnection
 
--- Tabela de Dados com suas Coordenadas
+-- Tabela de Coordenadas (Baseada nos seus dados)
 local IslandData = {
     ["Starter Island"]   = {coords = Vector3.new(1120, 16, 1437),    method = "tp"},
     ["Marine Starter"]   = {coords = Vector3.new(-2520, 6, 2041),    method = "tp"},
@@ -361,16 +365,13 @@ local IslandData = {
     ["Magma Village"]    = {coords = Vector3.new(-5200, 9, 8437),    method = "tween"}
 }
 
-local noclipConnection
-local SelectedIsland = "Starter Island"
-
--- Módulo de Noclip (Atravessa Tudo)
+-- Gerenciador de Noclip (Para evitar tremedeira e atravessar objetos)
 local function setNoclip(state)
     if state then
         noclipConnection = RunService.Stepped:Connect(function()
             if player.Character then
-                for _, v in pairs(player.Character:GetDescendants()) do
-                    if v:IsA("BasePart") then v.CanCollide = false end
+                for _, part in pairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
                 end
             end
         end)
@@ -379,100 +380,74 @@ local function setNoclip(state)
     end
 end
 
--- Busca a ilha de TP mais próxima do destino final
+-- Acha a ilha de TP mais próxima para "Cortar Caminho"
 local function getBestHop(targetPos)
-    local bestIsland = nil
-    local minDistance = math.huge
-    
+    local best, minD = nil, math.huge
     for _, data in pairs(IslandData) do
         if data.method == "tp" then
-            local dist = (data.coords - targetPos).Magnitude
-            if dist < minDistance then
-                minDistance = dist
-                bestIsland = data
-            end
+            local d = (data.coords - targetPos).Magnitude
+            if d < minD then minD = d; best = data end
         end
     end
-    return bestIsland
+    return best
 end
 
--- Função Mestra de Viagem
-local function executeTravel(islandName)
-    local data = IslandData[islandName]
-    local character = player.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
+-- Função Principal de Movimento
+local function startTravel(name)
+    if not TeleportEnabled then return end
     
+    local data = IslandData[name]
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     if not data or not root then return end
 
-    -- 1. Se for TP direto, executa e encerra
+    if CurrentTween then CurrentTween:Cancel() end
+
+    -- 1. LÓGICA DE SALTO (Sempre tenta cortar caminho via TP antes do voo)
+    local hop = getBestHop(data.coords)
+    if hop and (hop.coords - data.coords).Magnitude < (root.Position - data.coords).Magnitude then
+        root.CFrame = CFrame.new(hop.coords + Vector3.new(0, FLY_HEIGHT, 0))
+        task.wait(0.5) -- Delay de segurança para carregar o mapa
+    end
+
+    -- 2. CHECAGEM DE MÉTODO
     if data.method == "tp" then
         root.CFrame = CFrame.new(data.coords)
         return
     end
 
-    -- 2. Lógica de Salto (Aproximação via TP)
-    local hop = getBestHop(data.coords)
-    local currentDist = (root.Position - data.coords).Magnitude
-    local hopDist = (hop.coords - data.coords).Magnitude
-
-    -- Só pula se a ilha de TP for realmente mais perto do que onde estou
-    if hop and hopDist < currentDist then
-        root.CFrame = CFrame.new(hop.coords + Vector3.new(0, FLY_HEIGHT, 0))
-        task.wait(0.3)
-    end
-
-    -- 3. Início do Tween de Voo
+    -- 3. TWEEN DE VOO (Noclip + Velocidade Estabilizada)
     setNoclip(true)
-    local targetFlyPos = data.coords + Vector3.new(0, FLY_HEIGHT, 0)
-    local travelDist = (root.Position - targetFlyPos).Magnitude
-    local duration = travelDist / TRAVEL_SPEED
-
-    local flyTween = TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetFlyPos)})
+    root.Velocity = Vector3.new(0,0,0) -- Para o personagem não tremer
     
-    flyTween:Play()
-    flyTween.Completed:Connect(function()
-        -- 4. Descida Final (Pouso)
-        local landTween = TweenService:Create(root, TweenInfo.new(1.5), {CFrame = CFrame.new(data.coords)})
-        landTween:Play()
-        landTween.Completed:Connect(function()
-            setNoclip(false)
-            Fluent:Notify({Title = "Chegamos!", Content = "Você chegou em " .. islandName, Duration = 2})
-        end)
+    local targetPos = data.coords + Vector3.new(0, FLY_HEIGHT, 0)
+    local duration = (root.Position - targetPos).Magnitude / TRAVEL_SPEED
+    
+    CurrentTween = TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
+    CurrentTween:Play()
+    
+    CurrentTween.Completed:Connect(function()
+        if TeleportEnabled then
+            -- Pouso final suave
+            local land = TweenService:Create(root, TweenInfo.new(1), {CFrame = CFrame.new(data.coords)})
+            land:Play()
+        end
+        setNoclip(false)
     end)
 end
 
---- INTERFACE FLUENT ---
+--- INTEGRAÇÃO COM OS ELEMENTOS DA SUA UI ---
 
--- Dropdown para Seleção
-local IslandList = {}
-for name, _ in pairs(IslandData) do table.insert(IslandList, name) end
-table.sort(IslandList)
+-- No seu Toggle:
+-- Callback = function(Value) TeleportEnabled = Value end
 
-Tabs.Teleports:AddDropdown("IslandSelect", {
-    Title = "Selecionar Ilha",
-    Description = "O script escolherá a rota mais rápida",
-    Values = IslandList,
-    Multi = false,
-    Default = "Starter Island",
-    Callback = function(Value)
-        SelectedIsland = Value
-    end
-})
+-- No seu Dropdown:
+-- Callback = function(Value) SelectedIsland = Value end
 
--- Botão de Execução
-Tabs.Teleports:AddButton({
-    Title = "Iniciar Viagem",
-    Description = "Usa TP em escalas e Tween com Noclip",
-    Callback = function()
-        Fluent:Notify({
-            Title = "Viagem Iniciada",
-            Content = "Calculando melhor rota para " .. SelectedIsland,
-            Duration = 3
-        })
-        executeTravel(SelectedIsland)
-    end
-})
+-- No seu Botão:
+-- Callback = function() startTravel(SelectedIsland) end
 
+-- Função Mestra de Viage
 -- ================= MISC BUTTONS =================
 Tabs.Settings:AddButton({
     Title = "Rejoin Server",
