@@ -715,7 +715,7 @@ end
 Scripts:Section({
     Title = "Home",
     Box = false,
-    FontWeight = "SemiBold",
+    FontWeight = "Medium",
     TextSize = 17,
 })
 
@@ -744,7 +744,7 @@ Scripts:Button({
 Aimbot:Section({
     Title = "Main",
     Box = false,
-    FontWeight = "SemiBold",
+    FontWeight = "Medium",
     TextSize = 17,
 })
 
@@ -907,7 +907,7 @@ Aimbot:Slider({
 Esp:Section({
     Title = "Main",
     Box = false,
-    FontWeight = "SemiBold",
+    FontWeight = "Medium",
     TextSize = 17,
 })
 
@@ -1088,7 +1088,7 @@ Esp:Button({
 Troll:Section({
     Title = "Coming Soon",
     Box = false,
-    FontWeight = "SemiBold",
+    FontWeight = "Medium",
     TextSize = 17,
 })
 
@@ -1117,7 +1117,7 @@ Troll:Button({
 Misc:Section({
     Title = "Movement",
     Box = false,
-    FontWeight = "SemiBold",
+    FontWeight = "Medium",
     TextSize = 17,
 })
 
@@ -1234,7 +1234,7 @@ Misc:Button({
 Config:Section({
     Title = "Config File",
     Box = false,
-    FontWeight = "SemiBold",
+    FontWeight = "Medium",
     TextSize = 17,
 })
 
@@ -1291,7 +1291,7 @@ Config:Button({
 Config:Section({
     Title = "Startup",
     Box = false,
-    FontWeight = "SemiBold",
+    FontWeight = "Medium",
     TextSize = 17,
 })
 
