@@ -845,23 +845,68 @@ Misc:Button({
     end
 })
 
--- CONFIG
-Config:Toggle({
-    Title = "UI Blur",
-    Desc = "Configuração visual.",
-    Type = "Checkbox",
-    Value = true,
-    Callback = function(state) end
+-- ==========================================================
+-- CONFIG TAB
+-- ==========================================================
+
+Config:Button({
+    Title = "Save Config",
+    Desc = "Salva todas as configurações no arquivo.",
+    Locked = false,
+    Callback = function()
+        SaveConfig()
+    end
 })
 
-Config:Colorpicker({
-    Title = "Theme Color",
-    Desc = "Cor principal da interface.",
-    Default = Color3.fromRGB(134, 0, 212),
-    Transparency = 0,
+Config:Button({
+    Title = "Load Config",
+    Desc = "Carrega as configurações salvas.",
     Locked = false,
-    Callback = function(color) end
+    Callback = function()
+        LoadConfig()
+    end
 })
+
+Config:Button({
+    Title = "Reset Config",
+    Desc = "Reseta tudo para o padrão.",
+    Locked = false,
+    Callback = function()
+        ResetConfig()
+    end
+})
+
+Config:Button({
+    Title = "Set Toggle Keybind",
+    Desc = "Clique e pressione uma tecla em até 10 segundos.",
+    Locked = false,
+    Callback = function()
+        StartKeybindCapture()
+    end
+})
+
+Config:Toggle({
+    Title = "Auto Load Config",
+    Desc = "Carrega a configuração automaticamente ao iniciar.",
+    Type = "Checkbox",
+    Value = ConfigSettings.AutoLoadConfig,
+    Callback = function(state)
+        ConfigSettings.AutoLoadConfig = state
+        SaveConfig()
+    end
+})
+
+Config:Toggle({
+    Title = "Auto Load Script",
+    Desc = "Marca o script para auto execução.",
+    Type = "Checkbox",
+    Value = ConfigSettings.AutoLoadScript,
+    Callback = function(state)
+        ConfigSettings.AutoLoadScript = state
+        SaveConfig()
+    end
+})
+
 
 UserInputService.JumpRequest:Connect(function()
     if MiscConfig.InfiniteJump then
@@ -884,6 +929,212 @@ LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
     ApplyMovement()
 end)
+
+
+
+-- ==========================================================
+-- CONFIG SYSTEM CLEAN
+-- ==========================================================
+
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+
+local ConfigFolder = "MirrorsHub"
+local ConfigFile = ConfigFolder .. "/config.json"
+
+local ConfigSettings = {
+    AutoLoadConfig = false,
+    AutoLoadScript = false,
+    ToggleKey = "H"
+}
+
+local WaitingForKey = false
+
+local DefaultAimConfig = table.clone(AimConfig)
+local DefaultESPConfig = table.clone(ESPConfig)
+local DefaultMiscConfig = table.clone(MiscConfig)
+local DefaultConfigSettings = table.clone(ConfigSettings)
+
+local function EnsureConfigFolder()
+    if makefolder and not isfolder(ConfigFolder) then
+        makefolder(ConfigFolder)
+    end
+end
+
+local function EncodeColor(color)
+    return {
+        R = math.floor(color.R * 255),
+        G = math.floor(color.G * 255),
+        B = math.floor(color.B * 255)
+    }
+end
+
+local function DecodeColor(data)
+    if typeof(data) == "table" and data.R and data.G and data.B then
+        return Color3.fromRGB(data.R, data.G, data.B)
+    end
+end
+
+local function CleanTable(tbl)
+    local result = {}
+
+    for k, v in pairs(tbl) do
+        if typeof(v) == "Color3" then
+            result[k] = EncodeColor(v)
+        elseif typeof(v) == "EnumItem" then
+            result[k] = v.Name
+        elseif typeof(v) == "table" then
+            result[k] = CleanTable(v)
+        elseif typeof(v) ~= "function" then
+            result[k] = v
+        end
+    end
+
+    return result
+end
+
+local function ApplyTable(target, data)
+    if not data then return end
+
+    for k, v in pairs(data) do
+        if target[k] ~= nil then
+            if typeof(target[k]) == "Color3" then
+                local decoded = DecodeColor(v)
+                if decoded then
+                    target[k] = decoded
+                end
+            else
+                target[k] = v
+            end
+        end
+    end
+end
+
+function SaveConfig()
+    EnsureConfigFolder()
+
+    local data = {
+        Hub = {
+            Name = "Mirrors Hub",
+            Version = "1.0",
+            SavedAt = os.date("%d/%m/%Y %H:%M:%S")
+        },
+
+        Settings = CleanTable(ConfigSettings),
+        Aimbot = CleanTable(AimConfig),
+        ESP = CleanTable(ESPConfig),
+        Misc = CleanTable(MiscConfig)
+    }
+
+    if writefile then
+        writefile(ConfigFile, HttpService:JSONEncode(data))
+        print("[Mirrors Hub] Config saved:", ConfigFile)
+    end
+end
+
+function LoadConfig()
+    if not readfile or not isfile or not isfile(ConfigFile) then
+        warn("[Mirrors Hub] Config file not found.")
+        return
+    end
+
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(readfile(ConfigFile))
+    end)
+
+    if not success or not data then
+        warn("[Mirrors Hub] Failed to load config.")
+        return
+    end
+
+    ApplyTable(ConfigSettings, data.Settings)
+    ApplyTable(AimConfig, data.Aimbot)
+    ApplyTable(ESPConfig, data.ESP)
+    ApplyTable(MiscConfig, data.Misc)
+
+    if FOVCircle then
+        FOVCircle.Radius = AimConfig.FOV
+        FOVCircle.Color = AimConfig.FOVColor
+        FOVCircle.Visible = AimConfig.FOVVisible
+    end
+
+    if RefreshESP then
+        RefreshESP()
+    end
+
+    if ApplyMovement then
+        ApplyMovement()
+    end
+
+    print("[Mirrors Hub] Config loaded.")
+end
+
+function ResetConfig()
+    ApplyTable(AimConfig, DefaultAimConfig)
+    ApplyTable(ESPConfig, DefaultESPConfig)
+    ApplyTable(MiscConfig, DefaultMiscConfig)
+    ApplyTable(ConfigSettings, DefaultConfigSettings)
+
+    if FOVCircle then
+        FOVCircle.Radius = AimConfig.FOV
+        FOVCircle.Color = AimConfig.FOVColor
+        FOVCircle.Visible = AimConfig.FOVVisible
+    end
+
+    if ClearESP then
+        ClearESP()
+    end
+
+    print("[Mirrors Hub] Config reset.")
+end
+
+local function SetToggleKey(keyCode)
+    ConfigSettings.ToggleKey = keyCode.Name
+
+    if Window.SetToggleKey then
+        Window:SetToggleKey(keyCode)
+    else
+        Window.ToggleKey = keyCode
+    end
+
+    print("[Mirrors Hub] Toggle key set to:", keyCode.Name)
+end
+
+local function StartKeybindCapture()
+    if WaitingForKey then return end
+
+    WaitingForKey = true
+    print("[Mirrors Hub] Pressione uma tecla em até 10 segundos...")
+
+    local connection
+    local captured = false
+
+    connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+        captured = true
+        WaitingForKey = false
+
+        SetToggleKey(input.KeyCode)
+
+        if connection then
+            connection:Disconnect()
+        end
+    end)
+
+    task.delay(10, function()
+        if not captured then
+            WaitingForKey = false
+
+            if connection then
+                connection:Disconnect()
+            end
+
+            warn("[Mirrors Hub] Tempo esgotado para escolher keybind.")
+        end
+    end)
+end
 
 -- ==========================================================
 -- RUNSERVICE COMPILER LOOP (RenderStepped)
