@@ -1,16 +1,38 @@
+--// ==========================================================
+--// MIRRORS HUB - UNIVERSAL
+--// Reformado / organizado
+--// Pasta: MirrorsHub
+--// Config: universal-config.json
+--// ==========================================================
+
+--// ==========================================================
+--// SERVICES
+--// ==========================================================
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- ==========================================================
--- AIMBOT CONFIGURATION TABLE (Controlada via GUI)
--- ==========================================================
+--// ==========================================================
+--// GLOBAL CONSTANTS
+--// ==========================================================
+
+local HUB_NAME = "Mirrors Hub"
+local HUB_VERSION = "1.1"
+local CONFIG_FOLDER = "MirrorsHub"
+local CONFIG_FILE = CONFIG_FOLDER .. "/universal-config.json"
+
+--// ==========================================================
+--// CONFIG TABLES
+--// ==========================================================
+
 local AimConfig = {
     Enabled = false,
     FOV = 140,
@@ -23,311 +45,6 @@ local AimConfig = {
     FOVColor = Color3.fromRGB(134, 0, 212),
     FOVVisible = true
 }
-
-local CurrentTarget = nil
-local LastSwitch = 0
-
--- DRAWING API FOR FOV
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1
-FOVCircle.NumSides = 64
-FOVCircle.Radius = AimConfig.FOV
-FOVCircle.Filled = false
-FOVCircle.Visible = AimConfig.FOVVisible
-FOVCircle.Color = AimConfig.FOVColor
-
--- ==========================================================
--- MATH & TARGETING FUNCTIONS
--- ==========================================================
-local function GetScreenCenter()
-    return Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-end
-
-local function IsPlayerVisible(targetPart)
-    if not AimConfig.VisibleCheck then return true end
-    
-    local character = targetPart.Parent
-    if not character then return false end
-    
-    local origin = Camera.CFrame.Position
-    local direction = targetPart.Position - origin
-    
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-    raycastParams.IgnoreWater = true
-    
-    local result = workspace:Raycast(origin, direction, raycastParams)
-    
-    if result and result.Instance:IsDescendantOf(character) then
-        return true
-    end
-    return false
-end
-
-local function IsValidTarget(part)
-    if not part or not part.Parent then return false end
-
-    local character = part.Parent
-    local player = Players:GetPlayerFromCharacter(character)
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-
-    if not humanoid or humanoid.Health <= 0 then return false end
-    
-    if AimConfig.TeamCheck and player and player.Team == LocalPlayer.Team then 
-        return false 
-    end
-
-    if not IsPlayerVisible(part) then return false end
-
-    local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-    if not onScreen then return false end
-
-    local distanceFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - GetScreenCenter()).Magnitude
-    if distanceFromCenter > AimConfig.FOV then
-        return false
-    end
-
-    return true
-end
-
-local function GetClosestTarget()
-    local closestTarget = nil
-    local shortestDistance = AimConfig.FOV
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local character = player.Character
-            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-            local targetPart = character and character:FindFirstChild(AimConfig.TargetPart)
-
-            if humanoid and humanoid.Health > 0 and targetPart then
-                if AimConfig.TeamCheck and player.Team == LocalPlayer.Team then continue end
-                if not IsPlayerVisible(targetPart) then continue end
-
-                local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-
-                if onScreen then
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - GetScreenCenter()).Magnitude
-
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        closestTarget = targetPart
-                    end
-                end
-            end
-        end
-    end
-
-    return closestTarget
-end
-
--- ==========================================================
--- WINDUI INITIALIZATION
--- ==========================================================
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-
-local Window = WindUI:CreateWindow({
-    Title = "Mirrors Hub - Universal",
-    Icon = "door-open",
-    Author = "by blackzw.mp3",
-    Folder = "MirrorsHub",
-
-    Size = UDim2.fromOffset(580, 460),
-    MinSize = Vector2.new(560, 350),
-    MaxSize = Vector2.new(850, 560),
-
-    ToggleKey = Enum.KeyCode.H,
-    Transparent = true,
-    Theme = "Dark",
-    Resizable = false,
-    SideBarWidth = 200,
-    BackgroundImageTransparency = 0.42,
-    HideSearchBar = false,
-    ScrollBarEnabled = true,
-
-    User = {
-        Enabled = true,
-        Anonymous = false,
-    },
-})
-
-Window:EditOpenButton({
-    Title = "Open Mirrors Hub",
-    Icon = "monitor",
-    CornerRadius = UDim.new(0,16),
-    StrokeThickness = 2,
-    Color = ColorSequence.new(
-        Color3.fromHex("8600D4"),
-        Color3.fromHex("1C002E")
-    ),
-    OnlyMobile = false,
-    Enabled = true,
-    Draggable = true,
-})
-
--- TABS DEFINITION
-local Scripts = Window:Tab({Title = "Scripts", Icon = "house"})
-local Aimbot = Window:Tab({Title = "Aimbot", Icon = "crosshair"})
-local Esp = Window:Tab({Title = "ESP", Icon = "eye"})
-local Troll = Window:Tab({Title = "Troll", Icon = "laugh"})
-local Misc = Window:Tab({Title = "Misc", Icon = "circle-ellipsis"})
-local Config = Window:Tab({Title = "Config", Icon = "cog"})
-
--- SCRIPTS TAB
-Scripts:Paragraph({
-    Title = "Mirrors Hub",
-    Desc = "Universal script hub interface.",
-    Color = "Blue",
-    ImageSize = 30,
-    ThumbnailSize = 80,
-    Locked = false,
-})
-
-Scripts:Button({
-    Title = "Load Script",
-    Desc = "Placeholder button.",
-    Locked = false,
-    Callback = function()
-        -- colocar código depois
-    end
-})
-
--- ==========================================================
--- INTEGRATED AIMBOT TAB (Original com Toggles/Checkboxes)
--- ==========================================================
-
-Aimbot:Toggle({
-    Title = "Enable Aimbot",
-    Desc = "Turn on/off the aim assist system.",
-    Type = "Checkbox",
-    Value = AimConfig.Enabled,
-    Callback = function(state)
-        AimConfig.Enabled = state
-        if not state then CurrentTarget = nil end
-    end
-})
-
-Aimbot:Toggle({
-    Title = "Team Check",
-    Desc = "Ignore players on your own team.",
-    Type = "Checkbox",
-    Value = AimConfig.TeamCheck,
-    Callback = function(state)
-        AimConfig.TeamCheck = state
-        CurrentTarget = nil
-    end
-})
-
-Aimbot:Toggle({
-    Title = "Visible Check",
-    Desc = "Only lock onto players visible to your camera.",
-    Type = "Checkbox",
-    Value = AimConfig.VisibleCheck,
-    Callback = function(state)
-        AimConfig.VisibleCheck = state
-        CurrentTarget = nil
-    end
-})
-
-Aimbot:Dropdown({
-    Title = "Target Part",
-    Desc = "Select the specific body part to target.",
-    Values = { "Head", "HumanoidRootPart" },
-    Value = "Head",
-    Callback = function(selected)
-        AimConfig.TargetPart = selected
-        CurrentTarget = nil
-    end
-})
-
-Aimbot:Slider({
-    Title = "Aimbot FOV",
-    Desc = "Size of the aiming field radius.",
-    Step = 1,
-    Value = {
-        Min = 10,
-        Max = 500,
-        Default = AimConfig.FOV,
-    },
-    Callback = function(value)
-        AimConfig.FOV = value
-        FOVCircle.Radius = value
-    end
-})
-
-Aimbot:Toggle({
-    Title = "Show FOV Circle",
-    Desc = "Render the visual FOV radius on screen.",
-    Type = "Checkbox",
-    Value = AimConfig.FOVVisible,
-    Callback = function(state)
-        AimConfig.FOVVisible = state
-        FOVCircle.Visible = state
-    end
-})
-
-Aimbot:Colorpicker({
-    Title = "FOV Color",
-    Desc = "Customizable color for the FOV ring line.",
-    Default = AimConfig.FOVColor,
-    Transparency = 0,
-    Locked = false,
-    Callback = function(color)
-        AimConfig.FOVColor = color
-        FOVCircle.Color = color
-    end
-})
-
-Aimbot:Slider({
-    Title = "Smoothness",
-    Desc = "Movement smoothing factor (higher values = slower movement).",
-    Step = 1,
-    Value = {
-        Min = 1,
-        Max = 100,
-        Default = 35,
-    },
-    Callback = function(value)
-        AimConfig.Smoothness = (value / 388)
-    end
-})
-
-Aimbot:Slider({
-    Title = "Aim Strength",
-    Desc = "Power scale applied to camera tracking.",
-    Step = 1,
-    Value = {
-        Min = 1,
-        Max = 100,
-        Default = 100,
-    },
-    Callback = function(value)
-        AimConfig.Strength = value / 100
-    end
-})
-
-Aimbot:Slider({
-    Title = "Target Switch Delay",
-    Desc = "Delay window before switching to the next target.",
-    Step = 0.05,
-    Value = {
-        Min = 0,
-        Max = 2,
-        Default = AimConfig.TargetSwitchDelay,
-    },
-    Callback = function(value)
-        AimConfig.TargetSwitchDelay = value
-    end
-})
-
--- ==========================================================
--- OTHER ORIGINAL TABS (Voltou tudo para Checkbox)
--- ==========================================================
-
--- ==========================================================
--- CUSTOM ESP SYSTEM FIXED + LINES
--- ==========================================================
 
 local ESPConfig = {
     Enabled = false,
@@ -347,20 +64,268 @@ local ESPConfig = {
     MaxDistance = 5000
 }
 
+local MiscConfig = {
+    WalkSpeed = 16,
+    JumpPower = 50,
+    Noclip = false,
+    InfiniteJump = false,
+    AntiAFK = false
+}
+
+local ConfigSettings = {
+    AutoLoadConfig = false,
+    AutoLoadScript = false,
+    ToggleKey = "H"
+}
+
+local DefaultAimConfig = table.clone(AimConfig)
+local DefaultESPConfig = table.clone(ESPConfig)
+local DefaultMiscConfig = table.clone(MiscConfig)
+local DefaultConfigSettings = table.clone(ConfigSettings)
+
+--// ==========================================================
+--// DRAWING SAFE SETUP
+--// ==========================================================
+
+local HasDrawing = Drawing and Drawing.new
+local FOVCircle = nil
+
+if HasDrawing then
+    FOVCircle = Drawing.new("Circle")
+    FOVCircle.Thickness = 1
+    FOVCircle.NumSides = 64
+    FOVCircle.Radius = AimConfig.FOV
+    FOVCircle.Filled = false
+    FOVCircle.Visible = AimConfig.FOVVisible
+    FOVCircle.Color = AimConfig.FOVColor
+end
+
+--// ==========================================================
+--// WINDUI LOAD
+--// ==========================================================
+
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+WindUI:AddTheme({
+    Name = "Mirrors Purple",
+
+    Accent = Color3.fromHex("#1C002E"),
+    Background = Color3.fromHex("#101010"),
+    Outline = Color3.fromHex("#8600D4"),
+    Text = Color3.fromHex("#FFFFFF"),
+    Placeholder = Color3.fromHex("#8a8a8a"),
+    Button = Color3.fromHex("#2A0145"),
+    Icon = Color3.fromHex("#C084FC"),
+})
+
+local function Notify(title, content, icon, duration)
+    pcall(function()
+        WindUI:Notify({
+            Title = title or HUB_NAME,
+            Content = content or "",
+            Duration = duration or 3,
+            Icon = icon or "bell",
+        })
+    end)
+end
+
+--// ==========================================================
+--// WINDOW
+--// ==========================================================
+
+local Window = WindUI:CreateWindow({
+    Title = "Mirrors Hub - Universal",
+    Icon = "door-open",
+    Author = "by blackzw.mp3",
+    Folder = CONFIG_FOLDER,
+
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+
+    ToggleKey = Enum.KeyCode[ConfigSettings.ToggleKey] or Enum.KeyCode.H,
+    Transparent = true,
+    Theme = "Mirrors Purple",
+    Resizable = false,
+    SideBarWidth = 200,
+    BackgroundImageTransparency = 0.42,
+    HideSearchBar = false,
+    ScrollBarEnabled = true,
+
+    User = {
+        Enabled = true,
+        Anonymous = false,
+    },
+})
+
+Window:EditOpenButton({
+    Title = "Open Mirrors Hub",
+    Icon = "monitor",
+    CornerRadius = UDim.new(0, 16),
+    StrokeThickness = 2,
+    Color = ColorSequence.new(
+        Color3.fromHex("8600D4"),
+        Color3.fromHex("1C002E")
+    ),
+    OnlyMobile = false,
+    Enabled = true,
+    Draggable = true,
+})
+
+--// ==========================================================
+--// TABS
+--// ==========================================================
+
+local Scripts = Window:Tab({ Title = "Scripts", Icon = "house" })
+local Aimbot = Window:Tab({ Title = "Aimbot", Icon = "crosshair" })
+local Esp = Window:Tab({ Title = "ESP", Icon = "eye" })
+local Troll = Window:Tab({ Title = "Troll", Icon = "laugh" })
+local Misc = Window:Tab({ Title = "Misc", Icon = "circle-ellipsis" })
+local Config = Window:Tab({ Title = "Config", Icon = "cog" })
+
+--// ==========================================================
+--// AIMBOT VARIABLES
+--// ==========================================================
+
+local CurrentTarget = nil
+local LastSwitch = 0
+
+--// ==========================================================
+--// AIMBOT FUNCTIONS
+--// ==========================================================
+
+local function GetScreenCenter()
+    return Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+end
+
+local function IsPlayerVisible(targetPart)
+    if not AimConfig.VisibleCheck then return true end
+    if not targetPart then return false end
+
+    local character = targetPart.Parent
+    if not character then return false end
+
+    local origin = Camera.CFrame.Position
+    local direction = targetPart.Position - origin
+
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = { LocalPlayer.Character, Camera }
+    raycastParams.IgnoreWater = true
+
+    local result = workspace:Raycast(origin, direction, raycastParams)
+
+    if result and result.Instance and result.Instance:IsDescendantOf(character) then
+        return true
+    end
+
+    return false
+end
+
+local function IsValidTarget(part)
+    if not part or not part.Parent then return false end
+
+    local character = part.Parent
+    local player = Players:GetPlayerFromCharacter(character)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if not humanoid or humanoid.Health <= 0 then return false end
+
+    if AimConfig.TeamCheck and player and player.Team == LocalPlayer.Team then
+        return false
+    end
+
+    if not IsPlayerVisible(part) then return false end
+
+    local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+    if not onScreen then return false end
+
+    local distanceFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - GetScreenCenter()).Magnitude
+
+    return distanceFromCenter <= AimConfig.FOV
+end
+
+local function GetClosestTarget()
+    local closestTarget = nil
+    local shortestDistance = AimConfig.FOV
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local character = player.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            local targetPart = character and character:FindFirstChild(AimConfig.TargetPart)
+
+            if humanoid and humanoid.Health > 0 and targetPart then
+                if AimConfig.TeamCheck and player.Team == LocalPlayer.Team then
+                    continue
+                end
+
+                if not IsPlayerVisible(targetPart) then
+                    continue
+                end
+
+                local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+
+                if onScreen then
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - GetScreenCenter()).Magnitude
+
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closestTarget = targetPart
+                    end
+                end
+            end
+        end
+    end
+
+    return closestTarget
+end
+
+local function UpdateAimbot()
+    if not AimConfig.Enabled then
+        CurrentTarget = nil
+        return
+    end
+
+    if not IsValidTarget(CurrentTarget) then
+        if tick() - LastSwitch >= AimConfig.TargetSwitchDelay then
+            CurrentTarget = GetClosestTarget()
+            LastSwitch = tick()
+        end
+    end
+
+    if CurrentTarget and IsValidTarget(CurrentTarget) then
+        local cameraPos = Camera.CFrame.Position
+        local targetPos = CurrentTarget.Position
+
+        local targetCFrame = CFrame.new(cameraPos, targetPos)
+        local smoothCFrame = Camera.CFrame:Lerp(targetCFrame, AimConfig.Smoothness)
+
+        Camera.CFrame = Camera.CFrame:Lerp(smoothCFrame, AimConfig.Strength)
+    end
+end
+
+--// ==========================================================
+--// ESP SYSTEM
+--// ==========================================================
+
 local ESPObjects = {}
 
 local function RemoveESP(player)
-    if ESPObjects[player] then
-        for _, obj in pairs(ESPObjects[player]) do
-            if obj and obj.Remove then
-                obj:Remove()
-            elseif obj and obj.Destroy then
-                obj:Destroy()
-            end
-        end
+    local data = ESPObjects[player]
+    if not data then return end
 
-        ESPObjects[player] = nil
+    for _, obj in pairs(data) do
+        if typeof(obj) == "Instance" then
+            obj:Destroy()
+        elseif obj and obj.Remove then
+            pcall(function()
+                obj:Remove()
+            end)
+        end
     end
+
+    ESPObjects[player] = nil
 end
 
 local function IsESPValid(player)
@@ -393,7 +358,8 @@ local function CreateESP(player)
     if not IsESPValid(player) then return end
 
     local char = player.Character
-    local root = char:FindFirstChild("HumanoidRootPart")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not char or not root then return end
 
     local highlight = Instance.new("Highlight")
     highlight.Name = "MirrorsESP_Highlight"
@@ -403,7 +369,7 @@ local function CreateESP(player)
     highlight.FillTransparency = ESPConfig.FillEnabled and ESPConfig.FillTransparency or 1
     highlight.OutlineTransparency = ESPConfig.OutlineTransparency
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent = game:GetService("CoreGui")
+    highlight.Parent = char
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "MirrorsESP_Info"
@@ -412,7 +378,7 @@ local function CreateESP(player)
     billboard.StudsOffset = Vector3.new(0, 3.5, 0)
     billboard.AlwaysOnTop = true
     billboard.Enabled = true
-    billboard.Parent = game:GetService("CoreGui")
+    billboard.Parent = root
 
     local text = Instance.new("TextLabel")
     text.Name = "InfoText"
@@ -428,11 +394,15 @@ local function CreateESP(player)
     text.Text = ""
     text.Parent = billboard
 
-    local line = Drawing.new("Line")
-    line.Visible = false
-    line.Color = ESPConfig.Color
-    line.Thickness = 1.5
-    line.Transparency = 1
+    local line = nil
+
+    if HasDrawing then
+        line = Drawing.new("Line")
+        line.Visible = false
+        line.Color = ESPConfig.Color
+        line.Thickness = 1.5
+        line.Transparency = 1
+    end
 
     ESPObjects[player] = {
         Highlight = highlight,
@@ -480,36 +450,34 @@ local function UpdateESP()
                     data.Text.TextSize = ESPConfig.TextSize
 
                     local distance = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-
-                    local lines = {}
+                    local infoLines = {}
 
                     if ESPConfig.ShowNames then
-                        table.insert(lines, player.Name)
+                        table.insert(infoLines, player.Name)
                     end
 
                     if ESPConfig.ShowHealth then
-                        table.insert(lines, "HP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth))
+                        table.insert(infoLines, "HP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth))
                     end
 
                     if ESPConfig.ShowDistance then
-                        table.insert(lines, distance .. " studs")
+                        table.insert(infoLines, distance .. " studs")
                     end
 
-                    data.Text.Text = table.concat(lines, "\n")
-                    data.Billboard.Enabled = (#lines > 0)
+                    data.Text.Text = table.concat(infoLines, "\n")
+                    data.Billboard.Enabled = (#infoLines > 0)
 
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+                    if data.Line then
+                        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
 
-                    if ESPConfig.ShowLines and onScreen then
-                        local fromPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                        local toPos = Vector2.new(screenPos.X, screenPos.Y)
-
-                        data.Line.From = fromPos
-                        data.Line.To = toPos
-                        data.Line.Color = ESPConfig.Color
-                        data.Line.Visible = true
-                    else
-                        data.Line.Visible = false
+                        if ESPConfig.ShowLines and onScreen then
+                            data.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                            data.Line.To = Vector2.new(screenPos.X, screenPos.Y)
+                            data.Line.Color = ESPConfig.Color
+                            data.Line.Visible = true
+                        else
+                            data.Line.Visible = false
+                        end
                     end
                 end
             else
@@ -518,13 +486,434 @@ local function UpdateESP()
         end
     end
 end
--- ==========================================================
--- ESP TAB CUSTOMIZADA
--- ==========================================================
+
+--// ==========================================================
+--// MISC SYSTEM
+--// ==========================================================
+
+local function GetChar()
+    return LocalPlayer.Character
+end
+
+local function GetHumanoid()
+    local char = GetChar()
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+local function ApplyMovement()
+    local hum = GetHumanoid()
+    if hum then
+        hum.WalkSpeed = MiscConfig.WalkSpeed
+        hum.JumpPower = MiscConfig.JumpPower
+        hum.UseJumpPower = true
+    end
+end
+
+local function ApplyNoclip()
+    if not MiscConfig.Noclip then return end
+
+    local char = GetChar()
+    if not char then return end
+
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+end
+
+local function ServerHop()
+    Notify(HUB_NAME, "Tentando trocar de servidor...", "server", 3)
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end
+
+local function SmallServer()
+    Notify(HUB_NAME, "Procurando servidor menor...", "search", 3)
+
+    local success, servers = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(
+            "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        ))
+    end)
+
+    if not success or not servers or not servers.data then
+        Notify(HUB_NAME, "Não consegui buscar servidores.", "triangle-alert", 3)
+        return
+    end
+
+    local bestServer = nil
+
+    for _, server in ipairs(servers.data) do
+        if server.id ~= game.JobId and server.playing < server.maxPlayers then
+            if not bestServer or server.playing < bestServer.playing then
+                bestServer = server
+            end
+        end
+    end
+
+    if bestServer then
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, bestServer.id, LocalPlayer)
+    else
+        Notify(HUB_NAME, "Nenhum servidor menor encontrado.", "x", 3)
+    end
+end
+
+--// ==========================================================
+--// CONFIG SYSTEM
+--// ==========================================================
+
+local function EnsureConfigFolder()
+    if makefolder and not isfolder(CONFIG_FOLDER) then
+        makefolder(CONFIG_FOLDER)
+    end
+end
+
+local function EncodeColor(color)
+    return {
+        R = math.floor(color.R * 255),
+        G = math.floor(color.G * 255),
+        B = math.floor(color.B * 255)
+    }
+end
+
+local function DecodeColor(data)
+    if typeof(data) == "table" and data.R and data.G and data.B then
+        return Color3.fromRGB(data.R, data.G, data.B)
+    end
+
+    return nil
+end
+
+local function CleanTable(tbl)
+    local result = {}
+
+    for k, v in pairs(tbl) do
+        if typeof(v) == "Color3" then
+            result[k] = EncodeColor(v)
+        elseif typeof(v) == "EnumItem" then
+            result[k] = v.Name
+        elseif typeof(v) == "table" then
+            result[k] = CleanTable(v)
+        elseif typeof(v) ~= "function" then
+            result[k] = v
+        end
+    end
+
+    return result
+end
+
+local function ApplyTable(target, data)
+    if not data then return end
+
+    for k, v in pairs(data) do
+        if target[k] ~= nil then
+            if typeof(target[k]) == "Color3" then
+                local decoded = DecodeColor(v)
+                if decoded then
+                    target[k] = decoded
+                end
+            else
+                target[k] = v
+            end
+        end
+    end
+end
+
+local function ApplyLoadedConfig()
+    if FOVCircle then
+        FOVCircle.Radius = AimConfig.FOV
+        FOVCircle.Color = AimConfig.FOVColor
+        FOVCircle.Visible = AimConfig.FOVVisible
+    end
+
+    if ConfigSettings.ToggleKey and Enum.KeyCode[ConfigSettings.ToggleKey] then
+        pcall(function()
+            Window:SetToggleKey(Enum.KeyCode[ConfigSettings.ToggleKey])
+        end)
+    end
+
+    ApplyMovement()
+
+    if ESPConfig.Enabled then
+        RefreshESP()
+    else
+        ClearESP()
+    end
+end
+
+local function SaveConfig()
+    EnsureConfigFolder()
+
+    local data = {
+        Hub = {
+            Name = HUB_NAME,
+            Version = HUB_VERSION,
+            SavedAt = os.date("%d/%m/%Y %H:%M:%S")
+        },
+
+        Settings = CleanTable(ConfigSettings),
+        Aimbot = CleanTable(AimConfig),
+        ESP = CleanTable(ESPConfig),
+        Misc = CleanTable(MiscConfig)
+    }
+
+    if writefile then
+        writefile(CONFIG_FILE, HttpService:JSONEncode(data))
+        Notify(HUB_NAME, "Config salva em " .. CONFIG_FILE, "save", 3)
+    else
+        Notify(HUB_NAME, "writefile não está disponível.", "triangle-alert", 3)
+    end
+end
+
+local function LoadConfig()
+    if not readfile or not isfile then
+        Notify(HUB_NAME, "readfile/isfile não estão disponíveis.", "triangle-alert", 3)
+        return
+    end
+
+    if not isfile(CONFIG_FILE) then
+        Notify(HUB_NAME, "Arquivo de config não encontrado.", "file-x", 3)
+        return
+    end
+
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(readfile(CONFIG_FILE))
+    end)
+
+    if not success or not data then
+        Notify(HUB_NAME, "Falha ao ler config.", "triangle-alert", 3)
+        return
+    end
+
+    ApplyTable(ConfigSettings, data.Settings)
+    ApplyTable(AimConfig, data.Aimbot)
+    ApplyTable(ESPConfig, data.ESP)
+    ApplyTable(MiscConfig, data.Misc)
+
+    ApplyLoadedConfig()
+
+    Notify(HUB_NAME, "Config carregada com sucesso.", "check", 3)
+end
+
+local function ResetConfig()
+    ApplyTable(AimConfig, DefaultAimConfig)
+    ApplyTable(ESPConfig, DefaultESPConfig)
+    ApplyTable(MiscConfig, DefaultMiscConfig)
+    ApplyTable(ConfigSettings, DefaultConfigSettings)
+
+    CurrentTarget = nil
+    ClearESP()
+    ApplyLoadedConfig()
+
+    Notify(HUB_NAME, "Config resetada.", "rotate-ccw", 3)
+end
+
+--// ==========================================================
+--// UI - SCRIPTS TAB
+--// ==========================================================
+
+Scripts:Section({
+    Title = "Home",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
+
+Scripts:Paragraph({
+    Title = "Mirrors Hub",
+    Desc = "Universal script hub interface.\nVersão: " .. HUB_VERSION,
+    Color = "Blue",
+    ImageSize = 30,
+    ThumbnailSize = 80,
+    Locked = false,
+})
+
+Scripts:Button({
+    Title = "Load Script",
+    Desc = "Placeholder para scripts futuros.",
+    Locked = false,
+    Callback = function()
+        Notify(HUB_NAME, "Nenhum script configurado ainda.", "info", 3)
+    end
+})
+
+--// ==========================================================
+--// UI - AIMBOT TAB
+--// ==========================================================
+
+Aimbot:Section({
+    Title = "Main",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
+
+Aimbot:Toggle({
+    Title = "Enable Aimbot",
+    Desc = "Liga/desliga o aim assist.",
+    Type = "Checkbox",
+    Value = AimConfig.Enabled,
+    Callback = function(state)
+        AimConfig.Enabled = state
+
+        if not state then
+            CurrentTarget = nil
+        end
+
+        Notify(HUB_NAME, "Aimbot: " .. tostring(state), "crosshair", 2)
+    end
+})
+
+Aimbot:Toggle({
+    Title = "Team Check",
+    Desc = "Ignora jogadores do mesmo time.",
+    Type = "Checkbox",
+    Value = AimConfig.TeamCheck,
+    Callback = function(state)
+        AimConfig.TeamCheck = state
+        CurrentTarget = nil
+    end
+})
+
+Aimbot:Toggle({
+    Title = "Visible Check",
+    Desc = "Só mira em jogador visível.",
+    Type = "Checkbox",
+    Value = AimConfig.VisibleCheck,
+    Callback = function(state)
+        AimConfig.VisibleCheck = state
+        CurrentTarget = nil
+    end
+})
+
+Aimbot:Dropdown({
+    Title = "Target Part",
+    Desc = "Parte do corpo para mirar.",
+    Values = { "Head", "HumanoidRootPart" },
+    Value = AimConfig.TargetPart,
+    Callback = function(selected)
+        AimConfig.TargetPart = selected
+        CurrentTarget = nil
+    end
+})
+
+Aimbot:Section({
+    Title = "FOV",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
+
+Aimbot:Slider({
+    Title = "Aimbot FOV",
+    Desc = "Tamanho do campo de mira.",
+    Step = 1,
+    Value = {
+        Min = 10,
+        Max = 500,
+        Default = AimConfig.FOV,
+    },
+    Callback = function(value)
+        AimConfig.FOV = value
+
+        if FOVCircle then
+            FOVCircle.Radius = value
+        end
+    end
+})
+
+Aimbot:Toggle({
+    Title = "Show FOV Circle",
+    Desc = "Mostra o círculo do FOV.",
+    Type = "Checkbox",
+    Value = AimConfig.FOVVisible,
+    Callback = function(state)
+        AimConfig.FOVVisible = state
+
+        if FOVCircle then
+            FOVCircle.Visible = state
+        end
+    end
+})
+
+Aimbot:Colorpicker({
+    Title = "FOV Color",
+    Desc = "Cor do círculo do FOV.",
+    Default = AimConfig.FOVColor,
+    Transparency = 0,
+    Locked = false,
+    Callback = function(color)
+        AimConfig.FOVColor = color
+
+        if FOVCircle then
+            FOVCircle.Color = color
+        end
+    end
+})
+
+Aimbot:Section({
+    Title = "Tuning",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
+
+Aimbot:Slider({
+    Title = "Smoothness",
+    Desc = "Suavidade da mira.",
+    Step = 1,
+    Value = {
+        Min = 1,
+        Max = 100,
+        Default = 35,
+    },
+    Callback = function(value)
+        AimConfig.Smoothness = value / 388
+    end
+})
+
+Aimbot:Slider({
+    Title = "Aim Strength",
+    Desc = "Força da puxada da câmera.",
+    Step = 1,
+    Value = {
+        Min = 1,
+        Max = 100,
+        Default = 100,
+    },
+    Callback = function(value)
+        AimConfig.Strength = value / 100
+    end
+})
+
+Aimbot:Slider({
+    Title = "Target Switch Delay",
+    Desc = "Delay antes de trocar alvo.",
+    Step = 0.05,
+    Value = {
+        Min = 0,
+        Max = 2,
+        Default = AimConfig.TargetSwitchDelay,
+    },
+    Callback = function(value)
+        AimConfig.TargetSwitchDelay = value
+    end
+})
+
+--// ==========================================================
+--// UI - ESP TAB
+--// ==========================================================
+
+Esp:Section({
+    Title = "Main",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
 
 Esp:Toggle({
     Title = "Enable ESP",
-    Desc = "Ativar/desativar o ESP completo.",
+    Desc = "Liga/desliga ESP completo.",
     Type = "Checkbox",
     Value = ESPConfig.Enabled,
     Callback = function(state)
@@ -535,6 +924,8 @@ Esp:Toggle({
         else
             ClearESP()
         end
+
+        Notify(HUB_NAME, "ESP: " .. tostring(state), "eye", 2)
     end
 })
 
@@ -550,8 +941,26 @@ Esp:Colorpicker({
 })
 
 Esp:Toggle({
+    Title = "Team Check",
+    Desc = "Ignora jogadores do mesmo time.",
+    Type = "Checkbox",
+    Value = ESPConfig.TeamCheck,
+    Callback = function(state)
+        ESPConfig.TeamCheck = state
+        RefreshESP()
+    end
+})
+
+Esp:Section({
+    Title = "Info",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
+
+Esp:Toggle({
     Title = "Show Names",
-    Desc = "Mostrar nome dos jogadores.",
+    Desc = "Mostra nome dos jogadores.",
     Type = "Checkbox",
     Value = ESPConfig.ShowNames,
     Callback = function(state)
@@ -560,8 +969,18 @@ Esp:Toggle({
 })
 
 Esp:Toggle({
+    Title = "Show Health",
+    Desc = "Mostra vida dos jogadores.",
+    Type = "Checkbox",
+    Value = ESPConfig.ShowHealth,
+    Callback = function(state)
+        ESPConfig.ShowHealth = state
+    end
+})
+
+Esp:Toggle({
     Title = "Show Distance",
-    Desc = "Mostrar distância até o jogador.",
+    Desc = "Mostra distância dos jogadores.",
     Type = "Checkbox",
     Value = ESPConfig.ShowDistance,
     Callback = function(state)
@@ -571,7 +990,7 @@ Esp:Toggle({
 
 Esp:Toggle({
     Title = "Show Lines",
-    Desc = "Mostra linhas do meio inferior da tela até os jogadores.",
+    Desc = "Mostra linhas do meio inferior da tela.",
     Type = "Checkbox",
     Value = ESPConfig.ShowLines,
     Callback = function(state)
@@ -579,30 +998,16 @@ Esp:Toggle({
     end
 })
 
-Esp:Toggle({
-    Title = "Show Health",
-    Desc = "Mostrar vida do jogador.",
-    Type = "Checkbox",
-    Value = ESPConfig.ShowHealth,
-    Callback = function(state)
-        ESPConfig.ShowHealth = state
-    end
-})
-
-Esp:Toggle({
-    Title = "Team Check",
-    Desc = "Ignorar jogadores do mesmo time.",
-    Type = "Checkbox",
-    Value = ESPConfig.TeamCheck,
-    Callback = function(state)
-        ESPConfig.TeamCheck = state
-        RefreshESP()
-    end
+Esp:Section({
+    Title = "Visual",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
 })
 
 Esp:Toggle({
     Title = "Fill Box",
-    Desc = "Preencher o corpo com cor transparente.",
+    Desc = "Preenche o corpo com cor transparente.",
     Type = "Checkbox",
     Value = ESPConfig.FillEnabled,
     Callback = function(state)
@@ -640,7 +1045,7 @@ Esp:Slider({
 
 Esp:Slider({
     Title = "Text Size",
-    Desc = "Tamanho do texto do ESP.",
+    Desc = "Tamanho do texto.",
     Step = 1,
     Value = {
         Min = 8,
@@ -654,7 +1059,7 @@ Esp:Slider({
 
 Esp:Slider({
     Title = "Max Distance",
-    Desc = "Distância máxima para mostrar ESP.",
+    Desc = "Distância máxima do ESP.",
     Step = 50,
     Value = {
         Min = 100,
@@ -668,83 +1073,53 @@ Esp:Slider({
 
 Esp:Button({
     Title = "Refresh ESP",
-    Desc = "Recarrega todos os jogadores.",
+    Desc = "Recria o ESP dos jogadores.",
     Locked = false,
     Callback = function()
         RefreshESP()
+        Notify(HUB_NAME, "ESP atualizado.", "refresh-cw", 2)
     end
 })
 
+--// ==========================================================
+--// UI - TROLL TAB
+--// ==========================================================
 
+Troll:Section({
+    Title = "Coming Soon",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
 
--- abas restantes
-
-
--- TROLL
 Troll:Button({
     Title = "Troll Action 1",
-    Desc = "Botão placeholder.",
+    Desc = "Placeholder.",
     Locked = false,
-    Callback = function() end
+    Callback = function()
+        Notify(HUB_NAME, "Ainda não configurado.", "info", 2)
+    end
 })
 
 Troll:Button({
     Title = "Troll Action 2",
-    Desc = "Botão placeholder.",
+    Desc = "Placeholder.",
     Locked = false,
-    Callback = function() end
+    Callback = function()
+        Notify(HUB_NAME, "Ainda não configurado.", "info", 2)
+    end
 })
 
--- ==========================================================
--- MISC SYSTEM
--- ==========================================================
+--// ==========================================================
+--// UI - MISC TAB
+--// ==========================================================
 
-local MiscConfig = {
-    WalkSpeed = 16,
-    JumpPower = 50,
-    Noclip = false,
-    InfiniteJump = false,
-    AntiAFK = false
-}
-
-local function GetChar()
-    return LocalPlayer.Character
-end
-
-local function GetHumanoid()
-    local char = GetChar()
-    return char and char:FindFirstChildOfClass("Humanoid")
-end
-
-local function ApplyMovement()
-    local hum = GetHumanoid()
-    if hum then
-        hum.WalkSpeed = MiscConfig.WalkSpeed
-        hum.JumpPower = MiscConfig.JumpPower
-        hum.UseJumpPower = true
-    end
-end
-
-local function ServerHop()
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
-end
-
-local function SmallServer()
-    local success, servers = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet(
-            "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-        ))
-    end)
-
-    if success and servers and servers.data then
-        for _, server in ipairs(servers.data) do
-            if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
-                break
-            end
-        end
-    end
-end
+Misc:Section({
+    Title = "Movement",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
 
 Misc:Slider({
     Title = "WalkSpeed",
@@ -753,7 +1128,7 @@ Misc:Slider({
     Value = {
         Min = 16,
         Max = 200,
-        Default = 16,
+        Default = MiscConfig.WalkSpeed,
     },
     Callback = function(value)
         MiscConfig.WalkSpeed = value
@@ -768,7 +1143,7 @@ Misc:Slider({
     Value = {
         Min = 50,
         Max = 300,
-        Default = 50,
+        Default = MiscConfig.JumpPower,
     },
     Callback = function(value)
         MiscConfig.JumpPower = value
@@ -780,7 +1155,7 @@ Misc:Toggle({
     Title = "Noclip",
     Desc = "Atravessar colisões.",
     Type = "Checkbox",
-    Value = false,
+    Value = MiscConfig.Noclip,
     Callback = function(state)
         MiscConfig.Noclip = state
     end
@@ -790,17 +1165,24 @@ Misc:Toggle({
     Title = "Infinite Jump",
     Desc = "Pular infinitamente.",
     Type = "Checkbox",
-    Value = false,
+    Value = MiscConfig.InfiniteJump,
     Callback = function(state)
         MiscConfig.InfiniteJump = state
     end
+})
+
+Misc:Section({
+    Title = "Utility",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
 })
 
 Misc:Toggle({
     Title = "Anti AFK",
     Desc = "Evita ficar inativo.",
     Type = "Checkbox",
-    Value = false,
+    Value = MiscConfig.AntiAFK,
     Callback = function(state)
         MiscConfig.AntiAFK = state
     end
@@ -845,13 +1227,27 @@ Misc:Button({
     end
 })
 
--- ==========================================================
--- CONFIG TAB
--- ==========================================================
+--// ==========================================================
+--// UI - CONFIG TAB
+--// ==========================================================
+
+Config:Section({
+    Title = "Config File",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
+
+Config:Paragraph({
+    Title = "Config Path",
+    Desc = CONFIG_FILE,
+    Color = "Blue",
+    Locked = false,
+})
 
 Config:Button({
     Title = "Save Config",
-    Desc = "Salva todas as configurações no arquivo.",
+    Desc = "Salva todas as configurações.",
     Locked = false,
     Callback = function()
         SaveConfig()
@@ -860,7 +1256,7 @@ Config:Button({
 
 Config:Button({
     Title = "Load Config",
-    Desc = "Carrega as configurações salvas.",
+    Desc = "Carrega universal-config.json.",
     Locked = false,
     Callback = function()
         LoadConfig()
@@ -869,25 +1265,39 @@ Config:Button({
 
 Config:Button({
     Title = "Reset Config",
-    Desc = "Reseta tudo para o padrão.",
+    Desc = "Volta tudo para o padrão.",
     Locked = false,
     Callback = function()
-        ResetConfig()
+        Window:Dialog({
+            Icon = "triangle-alert",
+            Title = "Reset Config?",
+            Content = "Isso vai resetar todas as configurações do hub.",
+            Buttons = {
+                {
+                    Title = "Confirmar",
+                    Callback = function()
+                        ResetConfig()
+                    end,
+                },
+                {
+                    Title = "Cancelar",
+                    Callback = function() end,
+                }
+            }
+        })
     end
 })
 
-Config:Button({
-    Title = "Set Toggle Keybind",
-    Desc = "Clique e pressione uma tecla em até 10 segundos.",
-    Locked = false,
-    Callback = function()
-        StartKeybindCapture()
-    end
+Config:Section({
+    Title = "Startup",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
 })
 
 Config:Toggle({
     Title = "Auto Load Config",
-    Desc = "Carrega a configuração automaticamente ao iniciar.",
+    Desc = "Carrega a config automaticamente ao iniciar.",
     Type = "Checkbox",
     Value = ConfigSettings.AutoLoadConfig,
     Callback = function(state)
@@ -898,7 +1308,7 @@ Config:Toggle({
 
 Config:Toggle({
     Title = "Auto Load Script",
-    Desc = "Marca o script para auto execução.",
+    Desc = "Salva preferência de auto execução.",
     Type = "Checkbox",
     Value = ConfigSettings.AutoLoadScript,
     Callback = function(state)
@@ -907,10 +1317,40 @@ Config:Toggle({
     end
 })
 
+Config:Section({
+    Title = "Interface",
+    Box = false,
+    FontWeight = "SemiBold",
+    TextSize = 17,
+})
+
+Config:Keybind({
+    Title = "Toggle UI Key",
+    Desc = "Tecla para abrir/fechar o hub.",
+    Value = ConfigSettings.ToggleKey,
+    Callback = function(key)
+        if key and Enum.KeyCode[key] then
+            ConfigSettings.ToggleKey = key
+
+            pcall(function()
+                Window:SetToggleKey(Enum.KeyCode[key])
+            end)
+
+            SaveConfig()
+
+            Notify(HUB_NAME, "Toggle key alterada para: " .. key, "keyboard", 3)
+        end
+    end
+})
+
+--// ==========================================================
+--// CONNECTIONS
+--// ==========================================================
 
 UserInputService.JumpRequest:Connect(function()
     if MiscConfig.InfiniteJump then
         local hum = GetHumanoid()
+
         if hum then
             hum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
@@ -928,256 +1368,74 @@ end)
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
     ApplyMovement()
-end)
 
-
-
--- ==========================================================
--- CONFIG SYSTEM CLEAN
--- ==========================================================
-
-local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
-
-local ConfigFolder = "MirrorsHub"
-local ConfigFile = ConfigFolder .. "/config.json"
-
-local ConfigSettings = {
-    AutoLoadConfig = false,
-    AutoLoadScript = false,
-    ToggleKey = "H"
-}
-
-local WaitingForKey = false
-
-local DefaultAimConfig = table.clone(AimConfig)
-local DefaultESPConfig = table.clone(ESPConfig)
-local DefaultMiscConfig = table.clone(MiscConfig)
-local DefaultConfigSettings = table.clone(ConfigSettings)
-
-local function EnsureConfigFolder()
-    if makefolder and not isfolder(ConfigFolder) then
-        makefolder(ConfigFolder)
-    end
-end
-
-local function EncodeColor(color)
-    return {
-        R = math.floor(color.R * 255),
-        G = math.floor(color.G * 255),
-        B = math.floor(color.B * 255)
-    }
-end
-
-local function DecodeColor(data)
-    if typeof(data) == "table" and data.R and data.G and data.B then
-        return Color3.fromRGB(data.R, data.G, data.B)
-    end
-end
-
-local function CleanTable(tbl)
-    local result = {}
-
-    for k, v in pairs(tbl) do
-        if typeof(v) == "Color3" then
-            result[k] = EncodeColor(v)
-        elseif typeof(v) == "EnumItem" then
-            result[k] = v.Name
-        elseif typeof(v) == "table" then
-            result[k] = CleanTable(v)
-        elseif typeof(v) ~= "function" then
-            result[k] = v
-        end
-    end
-
-    return result
-end
-
-local function ApplyTable(target, data)
-    if not data then return end
-
-    for k, v in pairs(data) do
-        if target[k] ~= nil then
-            if typeof(target[k]) == "Color3" then
-                local decoded = DecodeColor(v)
-                if decoded then
-                    target[k] = decoded
-                end
-            else
-                target[k] = v
-            end
-        end
-    end
-end
-
-function SaveConfig()
-    EnsureConfigFolder()
-
-    local data = {
-        Hub = {
-            Name = "Mirrors Hub",
-            Version = "1.0",
-            SavedAt = os.date("%d/%m/%Y %H:%M:%S")
-        },
-
-        Settings = CleanTable(ConfigSettings),
-        Aimbot = CleanTable(AimConfig),
-        ESP = CleanTable(ESPConfig),
-        Misc = CleanTable(MiscConfig)
-    }
-
-    if writefile then
-        writefile(ConfigFile, HttpService:JSONEncode(data))
-        print("[Mirrors Hub] Config saved:", ConfigFile)
-    end
-end
-
-function LoadConfig()
-    if not readfile or not isfile or not isfile(ConfigFile) then
-        warn("[Mirrors Hub] Config file not found.")
-        return
-    end
-
-    local success, data = pcall(function()
-        return HttpService:JSONDecode(readfile(ConfigFile))
-    end)
-
-    if not success or not data then
-        warn("[Mirrors Hub] Failed to load config.")
-        return
-    end
-
-    ApplyTable(ConfigSettings, data.Settings)
-    ApplyTable(AimConfig, data.Aimbot)
-    ApplyTable(ESPConfig, data.ESP)
-    ApplyTable(MiscConfig, data.Misc)
-
-    if FOVCircle then
-        FOVCircle.Radius = AimConfig.FOV
-        FOVCircle.Color = AimConfig.FOVColor
-        FOVCircle.Visible = AimConfig.FOVVisible
-    end
-
-    if RefreshESP then
+    if ESPConfig.Enabled then
         RefreshESP()
     end
+end)
 
-    if ApplyMovement then
-        ApplyMovement()
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.7)
+
+        if ESPConfig.Enabled then
+            CreateESP(player)
+        end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
+end)
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            task.wait(0.7)
+
+            if ESPConfig.Enabled then
+                CreateESP(player)
+            end
+        end)
     end
-
-    print("[Mirrors Hub] Config loaded.")
 end
 
-function ResetConfig()
-    ApplyTable(AimConfig, DefaultAimConfig)
-    ApplyTable(ESPConfig, DefaultESPConfig)
-    ApplyTable(MiscConfig, DefaultMiscConfig)
-    ApplyTable(ConfigSettings, DefaultConfigSettings)
+--// ==========================================================
+--// MAIN LOOP
+--// ==========================================================
+
+RunService.RenderStepped:Connect(function()
+    Camera = workspace.CurrentCamera
 
     if FOVCircle then
+        FOVCircle.Position = GetScreenCenter()
         FOVCircle.Radius = AimConfig.FOV
         FOVCircle.Color = AimConfig.FOVColor
         FOVCircle.Visible = AimConfig.FOVVisible
-    end
-
-    if ClearESP then
-        ClearESP()
-    end
-
-    print("[Mirrors Hub] Config reset.")
-end
-
-local function SetToggleKey(keyCode)
-    ConfigSettings.ToggleKey = keyCode.Name
-
-    if Window.SetToggleKey then
-        Window:SetToggleKey(keyCode)
-    else
-        Window.ToggleKey = keyCode
-    end
-
-    print("[Mirrors Hub] Toggle key set to:", keyCode.Name)
-end
-
-local function StartKeybindCapture()
-    if WaitingForKey then return end
-
-    WaitingForKey = true
-    print("[Mirrors Hub] Pressione uma tecla em até 10 segundos...")
-
-    local connection
-    local captured = false
-
-    connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-
-        captured = true
-        WaitingForKey = false
-
-        SetToggleKey(input.KeyCode)
-
-        if connection then
-            connection:Disconnect()
-        end
-    end)
-
-    task.delay(10, function()
-        if not captured then
-            WaitingForKey = false
-
-            if connection then
-                connection:Disconnect()
-            end
-
-            warn("[Mirrors Hub] Tempo esgotado para escolher keybind.")
-        end
-    end)
-end
-
--- ==========================================================
--- RUNSERVICE COMPILER LOOP (RenderStepped)
--- ==========================================================
-RunService.RenderStepped:Connect(function()
-    if FOVCircle then
-        FOVCircle.Position = GetScreenCenter()
     end
 
     UpdateESP()
+    ApplyMovement()
+    ApplyNoclip()
+    UpdateAimbot()
+end)
 
-ApplyMovement()
+--// ==========================================================
+--// AUTO LOAD CONFIG
+--// ==========================================================
 
-if MiscConfig.Noclip then
-    local char = GetChar()
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
+task.defer(function()
+    task.wait(0.5)
+
+    if isfile and readfile and isfile(CONFIG_FILE) then
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(readfile(CONFIG_FILE))
+        end)
+
+        if success and data and data.Settings and data.Settings.AutoLoadConfig then
+            LoadConfig()
         end
-    end
-end
-
-    if not AimConfig.Enabled then
-        CurrentTarget = nil
-        return
-    end
-
-    if not IsValidTarget(CurrentTarget) then
-        if tick() - LastSwitch >= AimConfig.TargetSwitchDelay then
-            CurrentTarget = GetClosestTarget()
-            LastSwitch = tick()
-        end
-    end
-
-    if CurrentTarget and IsValidTarget(CurrentTarget) then
-        local cameraPos = Camera.CFrame.Position
-        local targetPos = CurrentTarget.Position
-
-        local targetCFrame = CFrame.new(cameraPos, targetPos)
-        local smoothCFrame = Camera.CFrame:Lerp(targetCFrame, AimConfig.Smoothness)
-
-        Camera.CFrame = Camera.CFrame:Lerp(smoothCFrame, AimConfig.Strength)
     end
 end)
+
+Notify(HUB_NAME, "Carregado com sucesso.", "check", 3)
