@@ -1,5 +1,9 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -691,7 +695,57 @@ Troll:Button({
     Callback = function() end
 })
 
--- MISC
+-- ==========================================================
+-- MISC SYSTEM
+-- ==========================================================
+
+local MiscConfig = {
+    WalkSpeed = 16,
+    JumpPower = 50,
+    Noclip = false,
+    InfiniteJump = false,
+    AntiAFK = false
+}
+
+local function GetChar()
+    return LocalPlayer.Character
+end
+
+local function GetHumanoid()
+    local char = GetChar()
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+local function ApplyMovement()
+    local hum = GetHumanoid()
+    if hum then
+        hum.WalkSpeed = MiscConfig.WalkSpeed
+        hum.JumpPower = MiscConfig.JumpPower
+        hum.UseJumpPower = true
+    end
+end
+
+local function ServerHop()
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end
+
+local function SmallServer()
+    local success, servers = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(
+            "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        ))
+    end)
+
+    if success and servers and servers.data then
+        for _, server in ipairs(servers.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
+                break
+            end
+        end
+    end
+end
+
 Misc:Slider({
     Title = "WalkSpeed",
     Desc = "Controle de velocidade.",
@@ -701,7 +755,10 @@ Misc:Slider({
         Max = 200,
         Default = 16,
     },
-    Callback = function(value) end
+    Callback = function(value)
+        MiscConfig.WalkSpeed = value
+        ApplyMovement()
+    end
 })
 
 Misc:Slider({
@@ -713,15 +770,79 @@ Misc:Slider({
         Max = 300,
         Default = 50,
     },
-    Callback = function(value) end
+    Callback = function(value)
+        MiscConfig.JumpPower = value
+        ApplyMovement()
+    end
+})
+
+Misc:Toggle({
+    Title = "Noclip",
+    Desc = "Atravessar colisões.",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        MiscConfig.Noclip = state
+    end
+})
+
+Misc:Toggle({
+    Title = "Infinite Jump",
+    Desc = "Pular infinitamente.",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        MiscConfig.InfiniteJump = state
+    end
 })
 
 Misc:Toggle({
     Title = "Anti AFK",
-    Desc = "Placeholder.",
+    Desc = "Evita ficar inativo.",
     Type = "Checkbox",
     Value = false,
-    Callback = function(state) end
+    Callback = function(state)
+        MiscConfig.AntiAFK = state
+    end
+})
+
+Misc:Button({
+    Title = "Reset Character",
+    Desc = "Reseta seu personagem.",
+    Locked = false,
+    Callback = function()
+        local hum = GetHumanoid()
+        if hum then
+            hum.Health = 0
+        end
+    end
+})
+
+Misc:Button({
+    Title = "Rejoin Server",
+    Desc = "Reconecta no mesmo jogo.",
+    Locked = false,
+    Callback = function()
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    end
+})
+
+Misc:Button({
+    Title = "Server Hop",
+    Desc = "Vai para outro servidor.",
+    Locked = false,
+    Callback = function()
+        ServerHop()
+    end
+})
+
+Misc:Button({
+    Title = "Small Server",
+    Desc = "Procura servidor com menos jogadores.",
+    Locked = false,
+    Callback = function()
+        SmallServer()
+    end
 })
 
 -- CONFIG
@@ -742,6 +863,28 @@ Config:Colorpicker({
     Callback = function(color) end
 })
 
+UserInputService.JumpRequest:Connect(function()
+    if MiscConfig.InfiniteJump then
+        local hum = GetHumanoid()
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+LocalPlayer.Idled:Connect(function()
+    if MiscConfig.AntiAFK then
+        VirtualUser:Button2Down(Vector2.new(0, 0), Camera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0, 0), Camera.CFrame)
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    ApplyMovement()
+end)
+
 -- ==========================================================
 -- RUNSERVICE COMPILER LOOP (RenderStepped)
 -- ==========================================================
@@ -751,6 +894,19 @@ RunService.RenderStepped:Connect(function()
     end
 
     UpdateESP()
+
+ApplyMovement()
+
+if MiscConfig.Noclip then
+    local char = GetChar()
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end
 
     if not AimConfig.Enabled then
         CurrentTarget = nil
