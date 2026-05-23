@@ -22,11 +22,12 @@ local Camera = workspace.CurrentCamera
 --// Exemplo: [123456789] = true,
 --// ==========================================================
 
-local AuthorizedOPUsers = {
-    [4227153912] = true, -- TROQUE PELO SEU USERID
+local AuthorizedOPNames = {
+    ["semumnomeainda123"] = true,
+    ["KlowMetz"] = true,
 }
 
-local IsOPAuthorized = AuthorizedOPUsers[LocalPlayer.UserId] == true
+local IsOPAuthorized = AuthorizedOPNames[LocalPlayer.Name] == true
 
 --// CONSTANTS
 local HUB_NAME = "Mirrors Hub"
