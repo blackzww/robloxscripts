@@ -23,7 +23,7 @@ local Camera = workspace.CurrentCamera
 --// ==========================================================
 
 local AuthorizedOPUsers = {
-    [123456789] = true, -- TROQUE PELO SEU USERID
+    [4227153912] = true, -- TROQUE PELO SEU USERID
 }
 
 local IsOPAuthorized = AuthorizedOPUsers[LocalPlayer.UserId] == true
