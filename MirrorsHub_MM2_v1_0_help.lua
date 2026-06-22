@@ -116,34 +116,6 @@ local WindUI = loadstring(game:HttpGet(
     "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
 ))()
 
-local Window = WindUI:CreateWindow({
-    Title = "Mirrors Hub - MM2",
-    Icon = "door-open",
-    Author = "by blackzw.mp3",
-    Folder = "MirrorsHub/MM2",
-
-    Size = UDim2.fromOffset(580, 460),
-    MinSize = Vector2.new(560, 350),
-    MaxSize = Vector2.new(850, 560),
-
-    ToggleKey = Enum.KeyCode.K,
-    Transparent = true,
-    Theme = "Dark",
-    Resizable = true,
-    SideBarWidth = 200,
-    BackgroundImageTransparency = 0.42,
-    HideSearchBar = false,
-    ScrollBarEnabled = false,
-
-    User = {
-        Enabled = true,
-        Anonymous = false,
-        Callback = function()
-            print("Mirrors Hub user button clicked")
-        end,
-    },
-})
-
 WindUI:Popup({
     Title = "Join Discord",
     Icon = "info",
@@ -179,6 +151,35 @@ WindUI:Popup({
         }
     }
 })
+
+local Window = WindUI:CreateWindow({
+    Title = "Mirrors Hub - MM2",
+    Icon = "door-open",
+    Author = "by blackzw.mp3",
+    Folder = "MirrorsHub/MM2",
+
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+
+    ToggleKey = Enum.KeyCode.K,
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 200,
+    BackgroundImageTransparency = 0.42,
+    HideSearchBar = false,
+    ScrollBarEnabled = false,
+
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Callback = function()
+            print("Mirrors Hub user button clicked")
+        end,
+    },
+})
+
 
 pcall(function()
     Window:EditOpenButton({
@@ -242,6 +243,90 @@ local FarmDelay = 0.2
 local RoundActive = true
 local CollectedAmount = 0
 local BagLimit = 40
+
+local TeleportTarget = "Lobby"
+local SelectedPlayerName = nil
+local PlayerDropdown = nil
+
+local function getPlayerNames()
+    local names = {}
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(names, player.Name)
+        end
+    end
+
+    table.sort(names)
+    return names
+end
+
+local function refreshPlayerDropdown()
+    local names = getPlayerNames()
+
+    if #names == 0 then
+        names = {"No players found"}
+        SelectedPlayerName = nil
+    else
+        SelectedPlayerName = names[1]
+    end
+
+    if PlayerDropdown then
+        pcall(function()
+            PlayerDropdown:Refresh(names)
+            PlayerDropdown:Set(SelectedPlayerName)
+        end)
+    end
+
+    notify("Players", "List updated.")
+end
+
+local function teleportToSelectedPlayer()
+    if not SelectedPlayerName or SelectedPlayerName == "No players found" then
+        notify("Teleport", "Select a player first.")
+        return
+    end
+
+    local target = Players:FindFirstChild(SelectedPlayerName)
+
+    if not target then
+        notify("Teleport", "Player not found.")
+        refreshPlayerDropdown()
+        return
+    end
+
+    if not teleportNearPlayer(target) then
+        notify("Teleport", "Target unavailable.")
+    end
+end
+
+local function teleportToSelectedTarget()
+    if TeleportTarget == "Murder" then
+        local target = getRolePlayer("Murderer")
+        if target then
+            teleportNearPlayer(target)
+        else
+            notify("Teleport", "Murderer not found.")
+        end
+
+    elseif TeleportTarget == "Sheriff" then
+        local target = getRolePlayer("Sheriff")
+        if target then
+            teleportNearPlayer(target)
+        else
+            notify("Teleport", "Sheriff not found.")
+        end
+
+    elseif TeleportTarget == "Gun" then
+        teleportToGun()
+
+    elseif TeleportTarget == "Lobby" then
+        notify("Teleport", "Lobby position not configured.")
+
+    elseif TeleportTarget == "Map" then
+        notify("Teleport", "Map position not configured.")
+    end
+end
 
 local function getNearestFarmItem(mode)
     local root = getRootPart(LocalPlayer)
@@ -1506,45 +1591,17 @@ Innocent:Button({
 
 
 --// UI: MISC
-Misc:Paragraph({
-    Title = "Misc",
-    Desc = "Visual, character and protection.",
-    Locked = false,
-})
-
--- Teleport por alvo fixo
-Misc:Dropdown({
-    Title = "Teleport Target",
-    Desc = "Choose target.",
-    Values = {
-        "Lobby",
-        "Map",
-        "Murder",
-        "Sheriff",
-        "Gun"
-    },
-    Value = "Lobby",
-    Multi = false,
-    AllowNone = false,
-
-    Callback = function(option)
-        TeleportTarget = option
-    end,
-})
-
 Misc:Button({
     Title = "Teleport",
     Desc = "Go to selected target.",
     Icon = "navigation",
     Color = Color3.fromRGB(120, 80, 255),
     Justify = "Center",
-
-    Callback = teleportToSelectedTarget,
+    Callback = function()
+        teleportToSelectedTarget()
+    end,
 })
 
-Misc:Space()
-
--- Teleport para player
 PlayerDropdown = Misc:Dropdown({
     Title = "Player Target",
     Desc = "Choose player.",
@@ -1552,7 +1609,6 @@ PlayerDropdown = Misc:Dropdown({
     Value = nil,
     Multi = false,
     AllowNone = true,
-
     Callback = function(option)
         SelectedPlayerName = option
     end,
@@ -1563,8 +1619,9 @@ Misc:Button({
     Icon = "user-round-check",
     Color = Color3.fromRGB(120, 80, 255),
     Justify = "Center",
-
-    Callback = teleportToSelectedPlayer,
+    Callback = function()
+        teleportToSelectedPlayer()
+    end,
 })
 
 Misc:Button({
@@ -1572,11 +1629,10 @@ Misc:Button({
     Icon = "refresh-cw",
     Color = Color3.fromRGB(70, 170, 255),
     Justify = "Center",
-
-    Callback = refreshPlayerDropdown,
+    Callback = function()
+        refreshPlayerDropdown()
+    end,
 })
-
-Misc:Space()
 
 Misc:Toggle({
     Title = "Fullbright",
