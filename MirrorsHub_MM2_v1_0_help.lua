@@ -3,45 +3,6 @@
 
 hub = "mm2"
 
-WindUI:Popup({
-    Title = "Join Discord",
-    Icon = "info",
-    Content = "Mirrors Hub has given you the truth, do what you will. Join Us.",
-    Buttons = {
-        {
-            Title = "Cancel",
-            Variant = "Tertiary",
-            Callback = function() end,
-        },
-        {
-            Title = "Copy Discord",
-            Icon = "copy",
-            Variant = "Primary",
-            Callback = function()
-                local copy = setclipboard or toclipboard
-
-                if type(copy) == "function" then
-                    copy("https://discord.gg/YZEg6FyRSF")
-
-                    WindUI:Notify({
-                        Title = "Discord",
-                        Content = "Invite copied to clipboard.",
-                        Icon = "check-circle",
-                        Duration = 3
-                    })
-                else
-                    WindUI:Notify({
-                        Title = "Clipboard Error",
-                        Content = "Your executor does not support clipboard.",
-                        Icon = "x-circle",
-                        Duration = 3
-                    })
-                end
-            end,
-        }
-    }
-})
-
 --// CONFIG
 local SCRIPT_VERSION = "1.0"
 local WALK_SPEED_MIN = 16
@@ -181,6 +142,42 @@ local Window = WindUI:CreateWindow({
             print("Mirrors Hub user button clicked")
         end,
     },
+})
+
+WindUI:Popup({
+    Title = "Join Discord",
+    Icon = "info",
+    Content = "Mirrors Hub has given you the truth, do what you will. Join Us.",
+    Buttons = {
+        {
+            Title = "Cancel",
+            Variant = "Tertiary",
+            Callback = function() end
+        },
+        {
+            Title = "Copy Discord",
+            Variant = "Primary",
+            Callback = function()
+                local copy = setclipboard or toclipboard
+
+                if type(copy) == "function" then
+                    copy("https://discord.gg/YZEg6FyRSF")
+
+                    WindUI:Notify({
+                        Title = "Discord",
+                        Content = "Invite copied.",
+                        Duration = 3
+                    })
+                else
+                    WindUI:Notify({
+                        Title = "Clipboard",
+                        Content = "Clipboard not supported.",
+                        Duration = 3
+                    })
+                end
+            end
+        }
+    }
 })
 
 pcall(function()
