@@ -111,6 +111,13 @@ end)
 
 local LocalPlayer = Players.LocalPlayer
 
+
+
+--// WINDUI
+local WindUI = loadstring(game:HttpGet(
+    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+))()
+
 WindUI:Popup({
     Title = "Join Discord",
     Icon = "info",
@@ -146,12 +153,6 @@ WindUI:Popup({
         }
     }
 })
-
-
---// WINDUI
-local WindUI = loadstring(game:HttpGet(
-    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
-))()
 
 
 local Window = WindUI:CreateWindow({
