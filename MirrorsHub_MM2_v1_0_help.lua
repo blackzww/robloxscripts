@@ -118,41 +118,6 @@ local WindUI = loadstring(game:HttpGet(
     "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
 ))()
 
-WindUI:Popup({
-    Title = "Join Discord",
-    Icon = "info",
-    Content = "Mirrors Hub has given you the truth, do what you will. Join Us.",
-    Buttons = {
-        {
-            Title = "Cancel",
-            Variant = "Tertiary",
-            Callback = function() end
-        },
-        {
-            Title = "Copy Discord",
-            Variant = "Primary",
-            Callback = function()
-                local copy = setclipboard or toclipboard
-
-                if type(copy) == "function" then
-                    copy("https://discord.gg/YZEg6FyRSF")
-
-                    WindUI:Notify({
-                        Title = "Discord",
-                        Content = "Invite copied.",
-                        Duration = 3
-                    })
-                else
-                    WindUI:Notify({
-                        Title = "Clipboard",
-                        Content = "Clipboard not supported.",
-                        Duration = 3
-                    })
-                end
-            end
-        }
-    }
-})
 
 
 local Window = WindUI:CreateWindow({
