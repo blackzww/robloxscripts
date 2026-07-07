@@ -986,38 +986,20 @@ btnTitle(Tabs.Scripts,"Fly V3",function()runExternal("https://raw.githubusercont
 btnTitle(Tabs.Scripts,"Noclip",function()runExternal("https://rawscripts.net/raw/Universal-Script-Noclip-Open-source-10442")end)
 btnTitle(Tabs.Scripts,"Touch Fling",function()runExternal("https://pastebin.com/raw/LgZwZ7ZB")end)
 section(Tabs.Info,"Info");para(Tabs.Info,L("HomeTitle"),L("HomeDesc"),"Blue");para(Tabs.Info,L("BetaTitle"),L("BetaDesc"),"Orange");para(Tabs.Info,L("DiscordTitle"),L("DiscordDesc").."\n"..DISCORD_LINK,"Red");para(Tabs.Info,L("StatusTitle"),L("StatusDesc"),"Green");btn(Tabs.Info,"CopyDiscord",copyDiscord)
--- Garante que a seção existe
 section(Tabs.Status, "Server Status")
 
--- Criação dos parágrafos com o conteúdo inicial
-local serverInfo = Tabs.Status:Paragraph({
-    Title = "Server Details",
-    Content = "A carregar dados..."
-})
+-- Criamos um Label simples. 
+-- Labels na WindUI são muito mais maleáveis para atualização de texto.
+local statusLabel = Tabs.Status:Label("Carregando status...")
 
-local gameInfo = Tabs.Status:Paragraph({
-    Title = "Game Identity",
-    Content = "A carregar dados..."
-})
-
--- Botão de atualização funcional
-btn(Tabs.Status, "Refresh Status", function()
-    -- Construção das strings de informação
+btn(Tabs.Status, "Update Status", function()
     local sTxt = "Players: " .. #game.Players:GetPlayers() .. "/" .. game.Players.MaxPlayers .. 
-                 "\nPing: " .. (game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()) .. 
-                 "\nGravity: " .. math.floor(workspace.Gravity)
-    
-    local gTxt = "PlaceId: " .. game.PlaceId .. 
+                 "\nPing: " .. game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString() .. 
+                 "\nGravity: " .. math.floor(workspace.Gravity) .. 
                  "\nJobId: " .. game.JobId
     
-    -- Atualização direta dos elementos (SetContent é o padrão desta versão)
-    if serverInfo and serverInfo.ParagraphFrame then
-        serverInfo:SetContent(sTxt)
-    end
-    if gameInfo and gameInfo.ParagraphFrame then
-        gameInfo:SetContent(gTxt)
-    end
-    
+    -- O método :SetText() é o padrão para Labels na WindUI
+    statusLabel:SetText(sTxt)
     notify("Status atualizado!", "refresh-cw", 2)
 end)
 section(Tabs.Aimbot,"Main");tog(Tabs.Aimbot,"EnableAimbot","AimbotEnabled",false,function(v)Aim.Enabled=v;if not v then currentTarget=nil end end);tog(Tabs.Aimbot,"TeamCheck","AimbotTeamCheck",false,function(v)Aim.TeamCheck=v;currentTarget=nil end);tog(Tabs.Aimbot,"VisibleCheck","AimbotVisibleCheck",false,function(v)Aim.VisibleCheck=v;currentTarget=nil end);drop(Tabs.Aimbot,"TargetPart","AimbotTargetPart",{"Head","HumanoidRootPart"},"Head",function(v)Aim.TargetPart=v;currentTarget=nil end)
