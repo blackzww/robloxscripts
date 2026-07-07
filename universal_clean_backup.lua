@@ -575,36 +575,42 @@ local function antiVoidGuard()
 		end
 	end
 end
-local isFakeDead = false
-
 local function fakeDeath()
 	local h = hum(); local r = root()
 	if not h or not r then return end
 	
-	isFakeDead = true
 	h.PlatformStand = true
+	-- Joga o boneco longe e gira (Efeito forte)
 	r.AssemblyLinearVelocity = Vector3.new(math.random(-25,25), 55, math.random(-25,25))
 	r.AssemblyAngularVelocity = Vector3.new(25, 35, 25)
 	
-	h.JumpPower = 0
-	task.spawn(function()
-		while isFakeDead and h and h.Parent do
-			h.PlatformStand = true
-			h:ChangeState(Enum.HumanoidStateType.Physics)
-			task.wait(0.1)
+	-- Força o corpo a ficar horizontal em relação ao chão
+	local torso = r.Parent:FindFirstChild("Torso") or r.Parent:FindFirstChild("UpperTorso")
+	if torso then
+		local rootJoint = r:FindFirstChild("RootJoint") or torso:FindFirstChild("RootJoint")
+		if rootJoint then
+			rootJoint.C0 = rootJoint.C0 * CFrame.Angles(math.rad(90), 0, 0)
 		end
-	end)
+	end
 end
 
 local function standUp()
-	isFakeDead = false -- Quebra o loop imediatamente
 	local h = hum(); local r = root()
 	if not h or not r then return end
 	
 	h.PlatformStand = false
 	h:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
 	h:ChangeState(Enum.HumanoidStateType.GettingUp)
-	h.JumpPower = 50 -- Restaura o pulo padrão
+	
+	-- Reseta a rotação do corpo ao normal
+	local torso = r.Parent:FindFirstChild("Torso") or r.Parent:FindFirstChild("UpperTorso")
+	if torso then
+		local rootJoint = r:FindFirstChild("RootJoint") or torso:FindFirstChild("RootJoint")
+		if rootJoint then
+			rootJoint.C0 = CFrame.new(0, 0, 0) * CFrame.Angles(math.rad(-90), math.rad(180), 0) -- Padrão do Roblox
+		end
+	end
+	
 	r.AssemblyLinearVelocity = Vector3.zero
 	r.AssemblyAngularVelocity = Vector3.zero
 end
@@ -989,7 +995,7 @@ section(Tabs.OP,"Protection");tog(Tabs.OP,"AntiFling","OPAntiFling",false,functi
 section(Tabs.OP,"Fling");tog(Tabs.OP,"TouchFling","OPTouchFling",false,function(v)OpC.TouchFling=v;if v then startFling()else stopFling()end end);slid(Tabs.OP,"FlingPower","OPFlingPower",1000,10000,OpC.FlingPower,500,function(v)OpC.FlingPower=v end);slid(Tabs.OP,"FlingPulse","OPFlingPulse",0,50,10,1,function(v)OpC.FlingPulse=v/100 end);btn(Tabs.OP,"RefreshFling",function()if OpC.TouchFling then stopFling();task.wait(.05);startFling()end end)
 section(Tabs.OP,"Utility");local OPPlayerDrop = drop(Tabs.OP,"SelectPlayer","OPSelectedPlayer",playerNames(),"None",function(v)SelectedPlayer=v end);btn(Tabs.OP,"RefreshPlayers",function() local novaLista = playerNames(); if OPPlayerDrop then pcall(function() OPPlayerDrop.Values = novaLista; if OPPlayerDrop.Dropdown and OPPlayerDrop.Dropdown.Refresh then OPPlayerDrop.Dropdown:Refresh(novaLista) elseif OPPlayerDrop.Refresh then OPPlayerDrop:Refresh(novaLista) end end) print("--- REFRESH DISPARADO ---") print("Jogadores na lista atualizada:", table.concat(novaLista, ", ")) end; notify(L("PlayerListUpdated"),"refresh-cw",2) end);btn(Tabs.OP,"TeleportPlayer",tpToPlayer);btn(Tabs.OP,"TeleportBack",teleportBack);btn(Tabs.OP,"BringPlayer",bringPlayer);btn(Tabs.OP,"SpectatePlayer",spectatePlayer);btn(Tabs.OP,"Unspectate",unspectate)
 section(Tabs.OP,"Freeze");btn(Tabs.OP,"FreezeAll",freezeAll);btn(Tabs.OP,"UnfreezeAll",unfreezeAll)
-section(Tabs.Troll,"Utility");tog(Tabs.Troll,"FakeLag","TrollFakeLag",false,function(v)TrollC.FakeLag=v;if not v then stopFakeLag()end end);slid(Tabs.Troll,"FakeLagRate","TrollFakeLagRate",12,100,22,1,function(v)TrollC.FakeLagRate=math.max(v/100,.12) end);slid(Tabs.Troll,"FakeLagHold","TrollFakeLagHold",1,40,8,1,function(v)TrollC.FakeLagHold=v/100 end);btn(Tabs.Troll,"FakeDeath",function() fakeDeath() end);btn(Tabs.Troll,"FakeDeathCooldown",function() standUp() end)
+section(Tabs.Troll,"Utility");tog(Tabs.Troll,"FakeLag","TrollFakeLag",false,function(v)TrollC.FakeLag=v;if not v then stopFakeLag()end end);slid(Tabs.Troll,"FakeLagRate","TrollFakeLagRate",12,100,22,1,function(v)TrollC.FakeLagRate=math.max(v/100,.12) end);slid(Tabs.Troll,"FakeLagHold","TrollFakeLagHold",1,40,8,1,function(v)TrollC.FakeLagHold=v/100 end);btn(Tabs.Troll,L("FakeDeath"),function() fakeDeath() end);btn(Tabs.Troll,L("FakeDeathCooldown"),function() standUp() end)
 section(Tabs.Troll,"Movement");drop(Tabs.Troll,"SelectPlayer","TrollSelectedPlayer",playerNames(),"None",function(v)SelectedPlayer=v end);btn(Tabs.Troll,"RefreshPlayers",function()notify(L("PlayerListUpdated"),"refresh-cw",2)end);tog(Tabs.Troll,"Orbit","TrollOrbit",false,function(v)TrollC.Orbit=v end);drop(Tabs.Troll,"OrbitMode","TrollOrbitMode",{"Circle","UpDown","LeftRight","Diagonal"},"Circle",function(v)TrollC.OrbitMode=v end);slid(Tabs.Troll,"OrbitRadius","TrollOrbitRadius",2,35,TrollC.OrbitRadius,1,function(v)TrollC.OrbitRadius=v end);slid(Tabs.Troll,"OrbitSpeed","TrollOrbitSpeed",1,40,TrollC.OrbitSpeed,1,function(v)TrollC.OrbitSpeed=v end);slid(Tabs.Troll,"OrbitHeight","TrollOrbitHeight",0,25,TrollC.OrbitHeight,1,function(v)TrollC.OrbitHeight=v end);tog(Tabs.Troll,"SpinBot","TrollSpinBot",false,function(v)TrollC.Spin=v end);slid(Tabs.Troll,"SpinSpeed","TrollSpinSpeed",1,150,TrollC.SpinSpeed,1,function(v)TrollC.SpinSpeed=v end);tog(Tabs.Troll,"HeadSit","TrollHeadSit",false,function(v)TrollC.HeadSit=v;if not v then stopHeadSit()end end)
 section(Tabs.Troll,"Fling");tog(Tabs.Troll,"Annoy","TrollAnnoy",false,function(v)TrollC.Annoy=v end);drop(Tabs.Troll,"AnnoyMode","TrollAnnoyMode",{"Circle","Cross","Random"},"Circle",function(v)TrollC.AnnoyMode=v end);slid(Tabs.Troll,"AnnoySpeed","TrollAnnoySpeed",1,50,5,1,function(v)TrollC.AnnoySpeed=math.max(v/100,.01)end);tog(Tabs.Troll,"GhostTrail","TrollGhost",true,function(v)TrollC.Ghost=v end)
 section(Tabs.Config,"ConfigFile");para(Tabs.Config,L("Config"),L("ConfigPath"),"Blue");btn(Tabs.Config,"SaveConfig",function()if UConfig then UConfig:Save()end;notify(L("Saved"),"save",3)end);btn(Tabs.Config,"LoadConfig",function()if UConfig then UConfig:Load()end;loadProfile();safeStart();applyMove();setNoclip(MiscC.Noclip);updateWorldVisuals();updateHit();notify(L("LoadedConfig"),"folder-open",3)end);btn(Tabs.Config,"ExportConfig",exportConfig);btn(Tabs.Config,"ImportConfig",importConfig);input(Tabs.Config,"ProfileName","default",function(v)ProfileName=tostring(v or "default")end);tog(Tabs.Config,"AutoSave","ConfigAutoSave",false,function(v)AutoSave=v end);btn(Tabs.Config,"ResetSession",function()Aim.Enabled=false;Aim.FOVVisible=false;EspC.Enabled=false;MiscC.Noclip=false;MiscC.InfiniteJump=false;MiscC.Fullbright=false;MiscC.NoFog=false;HitC.Enabled=false;OpC.God100=false;OpC.GodInf=false;OpC.AntiFling=false;OpC.TouchFling=false;TrollC.FakeLag=false;TrollC.FakeDeath=false;TrollC.Orbit=false;TrollC.Spin=false;TrollC.HeadSit=false;TrollC.Annoy=false;setNoclip(false);stopFling();stopFakeLag();stopHeadSit();fakeDeath(false);unfreezeAll();clearESP();resetHit();updateWorldVisuals();if FOVCircle then FOVCircle.Visible=false end;notify(L("ResetDone"),"rotate-ccw",3)end)
