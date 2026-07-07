@@ -1,4 +1,16 @@
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local WindUI
+local success = pcall(function()
+    WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+end)
+
+if not WindUI then
+    WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/src/main.lua"))()
+end
+
+if not WindUI then
+    error("Falha ao carregar WindUI! Verifique sua conexão.")
+    return
+end
 
 WindUI:AddTheme({
     Name = "Amethyst",
@@ -15,11 +27,10 @@ WindUI:AddTheme({
 
 local Window = WindUI:CreateWindow({
     Title = "Mirrors Hub - FTF2",
-    Icon = "door-open", -- lucide icon
+    Icon = "door-open",
     Author = "by blackzw.mp3",
     Folder = "MirrorsHub/FTF2",
     
-    -- ↓ This all is Optional. You can remove it.
     Size = UDim2.fromOffset(580, 460),
     MinSize = Vector2.new(560, 350),
     MaxSize = Vector2.new(850, 560),
@@ -39,7 +50,6 @@ local Window = WindUI:CreateWindow({
             print("clicked")
         end,
     },
-
 })
 
 Window:EditOpenButton({
@@ -48,8 +58,8 @@ Window:EditOpenButton({
     CornerRadius = UDim.new(0, 16),
     StrokeThickness = 2,
     Color = ColorSequence.new(
-        Color3.fromHex("840ee6"), -- Roxo principal
-        Color3.fromHex("35065c")  -- Roxo claro
+        Color3.fromHex("840ee6"),
+        Color3.fromHex("35065c")
     ),
     OnlyMobile = false,
     Enabled = true,
@@ -64,10 +74,14 @@ local Hider = Window:Tab({Title = "Hider", Icon = "user"})
 local Misc = Window:Tab({Title = "Misc", Icon = "circle-ellipsis"})
 local Config = Window:Tab({Title = "Config", Icon = "cog"})
 
+-- ============================================
+-- ============= SUPER ESP SYSTEM =============
+-- ============================================
+
 local SuperESP = {}
 SuperESP.__index = SuperESP
 
-local CONFIG = {
+local PLAYER_ESP_CONFIG = {
     Colors = {
         Survivor = Color3.fromRGB(50, 150, 255),
         Beast = Color3.fromRGB(255, 50, 50)
@@ -83,6 +97,7 @@ local CONFIG = {
     OutlineTransparency = 0
 }
 
+-- ============ RESOURCE MANAGER ============
 local ResourceManager = {}
 ResourceManager.__index = ResourceManager
 
@@ -146,6 +161,12 @@ function ResourceManager:cleanupAll()
     for key in pairs(self.connections) do
         self:cleanupKey(key)
     end
+    for key in pairs(self.threads) do
+        self:cleanupKey(key)
+    end
+    for key in pairs(self.instances) do
+        self:cleanupKey(key)
+    end
 end
 
 function SuperESP.new(dependencies)
@@ -177,35 +198,35 @@ end
 
 function SuperESP:getPlayerColor(player)
     if self:isPlayerBeast(player) then
-        return CONFIG.Colors.Beast
+        return PLAYER_ESP_CONFIG.Colors.Beast
     end
-    return CONFIG.Colors.Survivor
+    return PLAYER_ESP_CONFIG.Colors.Survivor
 end
 
 function SuperESP:createVisuals(character, rootPart)
     local key = "visuals_" .. character.Name
     
-    local existingFolder = character:FindFirstChild(CONFIG.FolderName)
+    local existingFolder = character:FindFirstChild(PLAYER_ESP_CONFIG.FolderName)
     if existingFolder then
         existingFolder:Destroy()
     end
     
     local folder = Instance.new("Folder")
-    folder.Name = CONFIG.FolderName
+    folder.Name = PLAYER_ESP_CONFIG.FolderName
     folder.Parent = character
     self.resources:addInstance(key, folder)
     
     local highlight = Instance.new("Highlight")
     highlight.Adornee = character
-    highlight.FillTransparency = CONFIG.FillTransparency
-    highlight.OutlineTransparency = CONFIG.OutlineTransparency
+    highlight.FillTransparency = PLAYER_ESP_CONFIG.FillTransparency
+    highlight.OutlineTransparency = PLAYER_ESP_CONFIG.OutlineTransparency
     highlight.Parent = folder
     self.resources:addInstance(key, highlight)
     
     local billboard = Instance.new("BillboardGui")
     billboard.Adornee = rootPart
-    billboard.Size = CONFIG.BillboardSize
-    billboard.StudsOffset = CONFIG.BillboardOffset
+    billboard.Size = PLAYER_ESP_CONFIG.BillboardSize
+    billboard.StudsOffset = PLAYER_ESP_CONFIG.BillboardOffset
     billboard.AlwaysOnTop = true
     billboard.Name = "EspGui"
     billboard.Parent = folder
@@ -214,8 +235,8 @@ function SuperESP:createVisuals(character, rootPart)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, 0, 1, 0)
     label.BackgroundTransparency = 1
-    label.Font = CONFIG.Font
-    label.TextSize = CONFIG.TextSize
+    label.Font = PLAYER_ESP_CONFIG.Font
+    label.TextSize = PLAYER_ESP_CONFIG.TextSize
     label.TextStrokeTransparency = 0
     label.Parent = billboard
     self.resources:addInstance(key, label)
@@ -253,7 +274,7 @@ function SuperESP:startUpdateLoop(player, character, rootPart, visuals)
                 self:updateVisuals(visuals, color, player.Name, distance)
             end
             
-            task.wait(CONFIG.UpdateInterval)
+            task.wait(PLAYER_ESP_CONFIG.UpdateInterval)
         end
     end)
     
@@ -266,7 +287,7 @@ function SuperESP:setupPlayer(player)
     local key = "player_" .. player.Name
     
     local function onCharacterAdded(character)
-        local rootPart = character:WaitForChild("HumanoidRootPart", CONFIG.HumanoidRootPartTimeout)
+        local rootPart = character:WaitForChild("HumanoidRootPart", PLAYER_ESP_CONFIG.HumanoidRootPartTimeout)
         if not rootPart then
             warn("[SuperESP] HumanoidRootPart não encontrado para " .. player.Name)
             return
@@ -314,7 +335,7 @@ function SuperESP:disable()
     for _, player in pairs(self.getPlayers()) do
         local character = player.Character
         if character then
-            local folder = character:FindFirstChild(CONFIG.FolderName)
+            local folder = character:FindFirstChild(PLAYER_ESP_CONFIG.FolderName)
             if folder then
                 folder:Destroy()
             end
@@ -326,7 +347,7 @@ end
 
 local espSystem = SuperESP.new()
 
-local Toggle = Esp:Toggle({
+Esp:Toggle({
     Title = "Player ESP",
     Desc = "Azul: Sobreviventes | Vermelho: Besta",
     Type = "Toggle",
@@ -340,7 +361,11 @@ local Toggle = Esp:Toggle({
     end
 })
 
-local Config = {
+-- ============================================
+-- ============= DOOR ESP SYSTEM ==============
+-- ============================================
+
+local DOOR_ESP_CONFIG = {
     DoorTypes = {
         {
             Name = "SingleDoor",
@@ -412,16 +437,16 @@ function DoorDiscoveryService:invalidateCache()
     self._cache = {}
 end
 
-local HighlightFactory = {}
-HighlightFactory.__index = HighlightFactory
+local DoorHighlightFactory = {}
+DoorHighlightFactory.__index = DoorHighlightFactory
 
-function HighlightFactory.new(config)
-    local self = setmetatable({}, HighlightFactory)
-    self._config = config or Config.HighlightDefaults
+function DoorHighlightFactory.new(config)
+    local self = setmetatable({}, DoorHighlightFactory)
+    self._config = config or DOOR_ESP_CONFIG.HighlightDefaults
     return self
 end
 
-function HighlightFactory:create(parent)
+function DoorHighlightFactory:create(parent)
     local highlight = Instance.new("Highlight")
     highlight.FillColor = self._config.FillColor
     highlight.OutlineColor = self._config.OutlineColor
@@ -436,7 +461,7 @@ DoorStateReader.__index = DoorStateReader
 
 function DoorStateReader.new(stateConfig)
     local self = setmetatable({}, DoorStateReader)
-    self._config = stateConfig or Config.StateValues
+    self._config = stateConfig or DOOR_ESP_CONFIG.StateValues
     return self
 end
 
@@ -470,11 +495,11 @@ function DoorStateReader:getColor(door, doorTypeConfig, colorConfig)
     return nil
 end
 
-local ResourceManager = {}
-ResourceManager.__index = ResourceManager
+local DoorResourceManager = {}
+DoorResourceManager.__index = DoorResourceManager
 
-function ResourceManager.new()
-    local self = setmetatable({}, ResourceManager)
+function DoorResourceManager.new()
+    local self = setmetatable({}, DoorResourceManager)
     self._highlights = {}
     self._threads = {}
     self._connections = {}
@@ -482,7 +507,7 @@ function ResourceManager.new()
     return self
 end
 
-function ResourceManager:addHighlight(key, highlight)
+function DoorResourceManager:addHighlight(key, highlight)
     local bucket = self._highlights[key]
     if not bucket then
         bucket = {}
@@ -491,7 +516,7 @@ function ResourceManager:addHighlight(key, highlight)
     table.insert(bucket, highlight)
 end
 
-function ResourceManager:addThread(key, thread)
+function DoorResourceManager:addThread(key, thread)
     local bucket = self._threads[key]
     if not bucket then
         bucket = {}
@@ -500,7 +525,7 @@ function ResourceManager:addThread(key, thread)
     table.insert(bucket, thread)
 end
 
-function ResourceManager:addConnection(key, connection)
+function DoorResourceManager:addConnection(key, connection)
     local bucket = self._connections[key]
     if not bucket then
         bucket = {}
@@ -509,7 +534,7 @@ function ResourceManager:addConnection(key, connection)
     table.insert(bucket, connection)
 end
 
-function ResourceManager:cleanupKey(key)
+function DoorResourceManager:cleanupKey(key)
     local threads = self._threads[key]
     if threads then
         for _, thread in pairs(threads) do
@@ -541,7 +566,7 @@ function ResourceManager:cleanupKey(key)
     end
 end
 
-function ResourceManager:cleanupAll()
+function DoorResourceManager:cleanupAll()
     local keys = {}
 
     for key in pairs(self._highlights) do
@@ -561,11 +586,11 @@ function ResourceManager:cleanupAll()
     self._active = false
 end
 
-function ResourceManager:activate()
+function DoorResourceManager:activate()
     self._active = true
 end
 
-function ResourceManager:isActive()
+function DoorResourceManager:isActive()
     return self._active
 end
 
@@ -575,7 +600,7 @@ UpdateScheduler.__index = UpdateScheduler
 function UpdateScheduler.new(resourceManager, updateInterval)
     local self = setmetatable({}, UpdateScheduler)
     self._resources = resourceManager
-    self._interval = updateInterval or Config.Timing.UpdateInterval
+    self._interval = updateInterval or DOOR_ESP_CONFIG.Timing.UpdateInterval
     self._tasks = {}
     return self
 end
@@ -613,7 +638,7 @@ function DoorESP.new(dependencies)
     local deps = dependencies or {}
     local self = setmetatable({}, DoorESP)
     self._discovery = deps.discovery or DoorDiscoveryService.new()
-    self._factory = deps.factory or HighlightFactory.new()
+    self._factory = deps.factory or DoorHighlightFactory.new()
     self._stateReader = deps.stateReader or DoorStateReader.new()
     self._resources = nil
     self._scheduler = nil
@@ -645,7 +670,7 @@ function DoorESP:_initializeDoor(door, doorTypeConfig)
             return
         end
 
-        local color = self._stateReader:getColor(door, doorTypeConfig, Config.Colors)
+        local color = self._stateReader:getColor(door, doorTypeConfig, DOOR_ESP_CONFIG.Colors)
         if color then
             highlight.FillColor = color
             highlight.OutlineColor = color
@@ -669,12 +694,12 @@ function DoorESP:enable()
     self._enabled = true
     self._discovery:invalidateCache()
 
-    self._resources = ResourceManager.new()
+    self._resources = DoorResourceManager.new()
     self._resources:activate()
 
     self._scheduler = UpdateScheduler.new(self._resources)
 
-    for _, doorTypeConfig in pairs(Config.DoorTypes) do
+    for _, doorTypeConfig in pairs(DOOR_ESP_CONFIG.DoorTypes) do
         self:_processDoorsOfType(doorTypeConfig)
     end
 
@@ -698,9 +723,10 @@ end
 
 local doorEspSystem = DoorESP.new()
 
-local Toggle = Esp:Toggle({
+Esp:Toggle({
     Title = "Door ESP",
-    Desc = "Azul: Destrancada | Vermelho: Trancada",
+    Desc = "Verde: Destrancada | Vermelho: Trancada",
+    Icon = "door-open",
     Type = "Toggle",
     Value = false,
     Callback = function(state)
@@ -712,7 +738,11 @@ local Toggle = Esp:Toggle({
     end
 })
 
-local Config = {
+-- ============================================
+-- ============= COMPUTER ESP SYSTEM ==========
+-- ============================================
+
+local COMPUTER_ESP_CONFIG = {
 	ComputerName = "ComputerTable",
 	Colors = {
 		Default = Color3.new(1, 1, 1),
@@ -753,7 +783,7 @@ function ComputerDiscoveryService:discover()
 
 	local computers = {}
 	for _, descendant in pairs(self._workspace:GetDescendants()) do
-		if descendant.Name == Config.ComputerName then
+		if descendant.Name == COMPUTER_ESP_CONFIG.ComputerName then
 			table.insert(computers, descendant)
 		end
 	end
@@ -776,7 +806,7 @@ function ComputerDiscoveryService:startListening()
 	end
 
 	self._descendantAddedConn = self._workspace.DescendantAdded:Connect(function(descendant)
-		if descendant.Name ~= Config.ComputerName then
+		if descendant.Name ~= COMPUTER_ESP_CONFIG.ComputerName then
 			return
 		end
 		local cacheKey = "__all__"
@@ -789,7 +819,7 @@ function ComputerDiscoveryService:startListening()
 	end)
 
 	self._descendantRemovingConn = self._workspace.DescendantRemoving:Connect(function(descendant)
-		if descendant.Name ~= Config.ComputerName then
+		if descendant.Name ~= COMPUTER_ESP_CONFIG.ComputerName then
 			return
 		end
 		local cacheKey = "__all__"
@@ -822,16 +852,16 @@ function ComputerDiscoveryService:invalidateCache()
 	self._cache = {}
 end
 
-local HighlightFactory = {}
-HighlightFactory.__index = HighlightFactory
+local ComputerHighlightFactory = {}
+ComputerHighlightFactory.__index = ComputerHighlightFactory
 
-function HighlightFactory.new(config)
-	local self = setmetatable({}, HighlightFactory)
-	self._config = config or Config.HighlightDefaults
+function ComputerHighlightFactory.new(config)
+	local self = setmetatable({}, ComputerHighlightFactory)
+	self._config = config or COMPUTER_ESP_CONFIG.HighlightDefaults
 	return self
 end
 
-function HighlightFactory:create(parent)
+function ComputerHighlightFactory:create(parent)
 	local existing = parent:FindFirstChildOfClass("Highlight")
 	if existing then
 		existing:Destroy()
@@ -851,7 +881,7 @@ ComputerStateReader.__index = ComputerStateReader
 
 function ComputerStateReader.new(brickColorConfig)
 	local self = setmetatable({}, ComputerStateReader)
-	self._config = brickColorConfig or Config.BrickColors
+	self._config = brickColorConfig or COMPUTER_ESP_CONFIG.BrickColors
 	return self
 end
 
@@ -884,18 +914,18 @@ function ComputerStateReader:getColor(computer, colorConfig)
 	return colorConfig.Default
 end
 
-local ResourceManager = {}
-ResourceManager.__index = ResourceManager
+local ComputerResourceManager = {}
+ComputerResourceManager.__index = ComputerResourceManager
 
-function ResourceManager.new()
-	local self = setmetatable({}, ResourceManager)
+function ComputerResourceManager.new()
+	local self = setmetatable({}, ComputerResourceManager)
 	self._highlights = {}
 	self._connections = {}
 	self._active = false
 	return self
 end
 
-function ResourceManager:addHighlight(key, highlight)
+function ComputerResourceManager:addHighlight(key, highlight)
 	local bucket = self._highlights[key]
 	if not bucket then
 		bucket = {}
@@ -904,7 +934,7 @@ function ResourceManager:addHighlight(key, highlight)
 	table.insert(bucket, highlight)
 end
 
-function ResourceManager:addConnection(key, connection)
+function ComputerResourceManager:addConnection(key, connection)
 	local bucket = self._connections[key]
 	if not bucket then
 		bucket = {}
@@ -913,11 +943,11 @@ function ResourceManager:addConnection(key, connection)
 	table.insert(bucket, connection)
 end
 
-function ResourceManager:hasKey(key)
+function ComputerResourceManager:hasKey(key)
 	return self._highlights[key] ~= nil or self._connections[key] ~= nil
 end
 
-function ResourceManager:cleanupKey(key)
+function ComputerResourceManager:cleanupKey(key)
 	local connections = self._connections[key]
 	if connections then
 		for _, connection in pairs(connections) do
@@ -939,7 +969,7 @@ function ResourceManager:cleanupKey(key)
 	end
 end
 
-function ResourceManager:cleanupAll()
+function ComputerResourceManager:cleanupAll()
 	local keys = {}
 
 	for key in pairs(self._highlights) do
@@ -956,11 +986,11 @@ function ResourceManager:cleanupAll()
 	self._active = false
 end
 
-function ResourceManager:activate()
+function ComputerResourceManager:activate()
 	self._active = true
 end
 
-function ResourceManager:isActive()
+function ComputerResourceManager:isActive()
 	return self._active
 end
 
@@ -971,7 +1001,7 @@ function ComputerESP.new(dependencies)
 	local deps = dependencies or {}
 	local self = setmetatable({}, ComputerESP)
 	self._discovery = deps.discovery or ComputerDiscoveryService.new()
-	self._factory = deps.factory or HighlightFactory.new()
+	self._factory = deps.factory or ComputerHighlightFactory.new()
 	self._stateReader = deps.stateReader or ComputerStateReader.new()
 	self._resources = nil
 	self._enabled = false
@@ -1002,7 +1032,7 @@ function ComputerESP:_updateComputerColor(computer, highlight)
 		return
 	end
 
-	local color = self._stateReader:getColor(computer, Config.Colors)
+	local color = self._stateReader:getColor(computer, COMPUTER_ESP_CONFIG.Colors)
 	if color then
 		highlight.FillColor = color
 		highlight.OutlineColor = color
@@ -1056,7 +1086,7 @@ function ComputerESP:enable()
 	self._enabled = true
 	self._discovery:invalidateCache()
 
-	self._resources = ResourceManager.new()
+	self._resources = ComputerResourceManager.new()
 	self._resources:activate()
 
 	self._discovery:onComputerAdded(function(computer)
@@ -1089,16 +1119,19 @@ end
 
 local computerEspSystem = ComputerESP.new()
 
-local Toggle = Esp:Toggle({
-    Title = "Computer ESP",
-    Desc = "Branco: Normal | Azul: Hackeando | Verde: Hackeado",
-    Type = "Toggle",
-    Value = false,
-    Callback = function(state)
-        if state then
-            computerEspSystem:enable()
-        else
-            computerEspSystem:disable()
-        end
-    end
+Esp:Toggle({
+	Title = "Computer ESP",
+	Desc = "Branco: Normal | Azul: Hackeando | Verde: Hackeado",
+	Icon = "monitor",
+	Type = "Toggle",
+	Value = false,
+	Callback = function(state)
+		if state then
+			computerEspSystem:enable()
+		else
+			computerEspSystem:disable()
+		end
+	end,
 })
+
+print("[Mirrors Hub - FTF2] Script carregado com sucesso!")
