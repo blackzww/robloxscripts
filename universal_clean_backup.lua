@@ -392,7 +392,7 @@ local function applyHit(p)
 	local s = math.clamp(tonumber(HitC.Size) or 10, 2, HitC.MaxSize or 200)
 	local box = createdBoxes[p]
 	
-	-- Se a hitbox gigante ainda não existir para esse jogador, cria ela
+	-- Se a hitbox gigante ainda não existir, cria ela de forma totalmente independente no Workspace
 	if not box or not box.Parent or not box:IsDescendantOf(workspace) then
 		box = Instance.new("Part")
 		box.Name = "MirrorsHitbox"
@@ -401,21 +401,15 @@ local function applyHit(p)
 		box.CanCollide = false
 		box.CanTouch = true
 		box.CanQuery = true
-		box.Anchored = false
+		box.Anchored = true -- IMPORTANTE: Deixamos ancorado para que ele não afete a física do player de jeito nenhum!
 		
-		-- Gruda a hitbox na peça real (HumanoidRootPart) usando um Weld
-		local weld = Instance.new("Weld")
-		weld.Part0 = part
-		weld.Part1 = box
-		weld.C0 = CFrame.new(0, 0, 0)
-		weld.Parent = box
-		
-		box.Parent = part
+		box.Parent = workspace
 		createdBoxes[p] = box
 	end
 	
-	-- Atualiza as propriedades visuais em tempo real baseado no seu menu
+	-- Atualiza as propriedades visuais e teleporta a caixa para o jogador manualmente
 	box.Size = Vector3.new(s, s, s)
+	box.CFrame = part.CFrame -- Segue a posição e rotação exata do jogador
 	box.Transparency = HitC.Transparency
 	box.Color = HitC.Color
 	box.Material = Enum.Material.Neon
