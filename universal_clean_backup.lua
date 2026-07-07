@@ -504,7 +504,7 @@ local function updateWorldVisuals()
 		Lighting.Ambient = Color3.new(1, 1, 1)
 		Lighting.ColorShift_Bottom = Color3.new(1, 1, 1)
 		Lighting.ColorShift_Top = Color3.new(1, 1, 1)
-		Lighting.Brightness = 2
+		Lighting.Brightness = 4
 		Lighting.ClockTime = 14
 		Lighting.GlobalShadows = false
 	else
