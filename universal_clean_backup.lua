@@ -986,22 +986,44 @@ btnTitle(Tabs.Scripts,"Fly V3",function()runExternal("https://raw.githubusercont
 btnTitle(Tabs.Scripts,"Noclip",function()runExternal("https://rawscripts.net/raw/Universal-Script-Noclip-Open-source-10442")end)
 btnTitle(Tabs.Scripts,"Touch Fling",function()runExternal("https://pastebin.com/raw/LgZwZ7ZB")end)
 section(Tabs.Info,"Info");para(Tabs.Info,L("HomeTitle"),L("HomeDesc"),"Blue");para(Tabs.Info,L("BetaTitle"),L("BetaDesc"),"Orange");para(Tabs.Info,L("DiscordTitle"),L("DiscordDesc").."\n"..DISCORD_LINK,"Red");para(Tabs.Info,L("StatusTitle"),L("StatusDesc"),"Green");btn(Tabs.Info,"CopyDiscord",copyDiscord)
+-- ==========================================
+-- SEÇÃO CORRIGIDA DA ABA STATUS USANDO PARAGRAPH
+-- ==========================================
 section(Tabs.Status, "Server Status")
 
--- Criamos um Label simples. 
--- Labels na WindUI são muito mais maleáveis para atualização de texto.
-local statusLabel = Tabs.Status:Label("Carregando status...")
+local serverParaRef = nil
+local playerParaRef = nil
+
+-- Criamos os parágrafos capturando o retorno do elemento gráfico real interno da WindUI
+pcall(function()
+	local _, sObj = Tabs.Status:Paragraph({
+		Title = L("ServerPlayers") or "Server Details",
+		Desc = serverInfoText(),
+		Color = "Blue",
+		Locked = false
+	})
+	serverParaRef = sObj
+	
+	local _, pObj = Tabs.Status:Paragraph({
+		Title = L("PlayerInfo") or "Player Identity",
+		Desc = playerInfoText(),
+		Color = "Green",
+		Locked = false
+	})
+	playerParaRef = pObj
+end)
 
 btn(Tabs.Status, "Update Status", function()
-    local sTxt = "Players: " .. #game.Players:GetPlayers() .. "/" .. game.Players.MaxPlayers .. 
-                 "\nPing: " .. game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString() .. 
-                 "\nGravity: " .. math.floor(workspace.Gravity) .. 
-                 "\nJobId: " .. game.JobId
-    
-    -- O método :SetText() é o padrão para Labels na WindUI
-    statusLabel:SetText(sTxt)
-    notify("Status atualizado!", "refresh-cw", 2)
+	-- Executa a alteração dinâmica de forma direta nas instâncias gráficas via .ParagraphFrame
+	if serverParaRef and serverParaRef.ParagraphFrame then
+		serverParaRef.ParagraphFrame:SetDesc(serverInfoText())
+	end
+	if playerParaRef and playerParaRef.ParagraphFrame then
+		playerParaRef.ParagraphFrame:SetDesc(playerInfoText())
+	end
+	notify(L("PlayerListUpdated") or "Status atualizado!", "refresh-cw", 2)
 end)
+btn(Tabs.Status, "CopyServerInfo", copyServerInfo)
 section(Tabs.Aimbot,"Main");tog(Tabs.Aimbot,"EnableAimbot","AimbotEnabled",false,function(v)Aim.Enabled=v;if not v then currentTarget=nil end end);tog(Tabs.Aimbot,"TeamCheck","AimbotTeamCheck",false,function(v)Aim.TeamCheck=v;currentTarget=nil end);tog(Tabs.Aimbot,"VisibleCheck","AimbotVisibleCheck",false,function(v)Aim.VisibleCheck=v;currentTarget=nil end);drop(Tabs.Aimbot,"TargetPart","AimbotTargetPart",{"Head","HumanoidRootPart"},"Head",function(v)Aim.TargetPart=v;currentTarget=nil end)
 section(Tabs.Aimbot,"FOV");slid(Tabs.Aimbot,"AimbotFOV","AimbotFOV",10,500,Aim.FOV,1,function(v)Aim.FOV=v;if FOVCircle then FOVCircle.Radius=v end end);tog(Tabs.Aimbot,"ShowFOV","AimbotFOVVisible",false,function(v)Aim.FOVVisible=v;if FOVCircle then FOVCircle.Visible=v end end);col(Tabs.Aimbot,"FOVColor","AimbotFOVColor",Aim.FOVColor,function(v)Aim.FOVColor=v;if FOVCircle then FOVCircle.Color=v end end);tog(Tabs.Aimbot,"Crosshair","AimbotCrosshair",false,function(v)Aim.Crosshair=v end);slid(Tabs.Aimbot,"CrosshairSize","AimbotCrosshairSize",4,30,Aim.CrosshairSize,1,function(v)Aim.CrosshairSize=v end)
 section(Tabs.Aimbot,"Tuning");slid(Tabs.Aimbot,"Smoothness","AimbotSmoothness",1,100,35,1,function(v)Aim.Smoothness=v/388 end);slid(Tabs.Aimbot,"Strength","AimbotStrength",1,100,100,1,function(v)Aim.Strength=v/100 end);slid(Tabs.Aimbot,"SwitchDelay","AimbotSwitchDelay",0,2,Aim.TargetSwitchDelay,.05,function(v)Aim.TargetSwitchDelay=v end)
