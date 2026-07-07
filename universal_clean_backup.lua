@@ -478,6 +478,10 @@ local function setNoclip(on)
 	end
 end
 local originalLighting={Brightness=Lighting.Brightness,ClockTime=Lighting.ClockTime,FogEnd=Lighting.FogEnd,GlobalShadows=Lighting.GlobalShadows,Ambient=Lighting.Ambient}
+
+-- Tabela para guardar os valores originais das atmosferas e podermos restaurar depois
+local originalAtmospheres = {}
+
 local function updateWorldVisuals()
 	if MiscC.Fullbright then
 		Lighting.Brightness=2
@@ -490,7 +494,35 @@ local function updateWorldVisuals()
 		Lighting.GlobalShadows=originalLighting.GlobalShadows
 		Lighting.Ambient=originalLighting.Ambient
 	end
-	if MiscC.NoFog then Lighting.FogEnd=100000 else Lighting.FogEnd=originalLighting.FogEnd end
+	
+	if MiscC.NoFog then 
+		Lighting.FogEnd=999999 
+		
+		-- Limpa as atmosferas modernas do Lighting e da Workspace
+		local targets = {Lighting, workspace}
+		for _, parent in ipairs(targets) do
+			for _, child in ipairs(parent:GetChildren()) do
+				if child:IsA("Atmosphere") then
+					-- Salva o valor original se ainda não foi salvo
+					if not originalAtmospheres[child] then
+						originalAtmospheres[child] = {Density = child.Density, Haze = child.Haze}
+					end
+					child.Density = 0
+					child.Haze = 0
+				end
+			end
+		end
+	else 
+		Lighting.FogEnd=originalLighting.FogEnd 
+		
+		-- Restaura as atmosferas originais quando você desliga o No Fog
+		for atmosphere, original in pairs(originalAtmospheres) do
+			if atmosphere and atmosphere.Parent then
+				atmosphere.Density = original.Density
+				atmosphere.Haze = original.Haze
+			end
+		end
+	end
 end
 local function antiVoidGuard()
 	if not MiscC.AntiVoid then return end
