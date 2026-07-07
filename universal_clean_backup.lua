@@ -680,8 +680,14 @@ end
 
 local orbitA=0
 local function updateSpin(dt)
-	local r=root()
-	if TrollC.Spin and r then r.CFrame=r.CFrame*CFrame.Angles(0,math.rad(TrollC.SpinSpeed)*dt*12,0)end
+    local r = root()
+    if TrollC.Spin and r then
+        -- Em vez de sobrescrever o CFrame inteiro, multiplicamos apenas pela rotação.
+        -- Usamos o CFrame.Angles para rotacionar o ponto local, 
+        -- garantindo que o movimento do jogador (WASD) não seja interrompido.
+        local rotation = CFrame.Angles(0, math.rad(TrollC.SpinSpeed) * dt * 12, 0)
+        r.CFrame = r.CFrame * rotation
+    end
 end
 local function updateOrbit(dt)
 	if not TrollC.Orbit then return end
