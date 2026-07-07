@@ -701,7 +701,6 @@ local doorEspSystem = DoorESP.new()
 local Toggle = Esp:Toggle({
     Title = "Door ESP",
     Desc = "Azul: Destrancada | Vermelho: Trancada",
-    Icon = "door",
     Type = "Toggle",
     Value = false,
     Callback = function(state)
@@ -1091,15 +1090,15 @@ end
 local computerEspSystem = ComputerESP.new()
 
 local Toggle = Esp:Toggle({
-	Title = "Computer ESP",
-	Desc = "Branco: Normal | Azul: Hackeando | Verde: Hackeado",
-	Type = "Toggle",
-	Value = false,
-	Callback = function(state)
-		if state then
-			computerEspSystem:enable()
-		else
-			computerEspSystem:disable()
-		end
-	end,
+    Title = "Computer ESP",
+    Desc = "Branco: Normal | Azul: Hackeando | Verde: Hackeado",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state)
+        if state then
+            computerEspSystem:enable()
+        else
+            computerEspSystem:disable()
+        end
+    end
 })
