@@ -681,7 +681,7 @@ end
 local orbitA=0
 local function updateSpin(dt)
 	local r=root()
-	if TrollC.Spin and r then r.CFrame=r.CFrame*CFrame.Angles(0,math.rad(TrollC.SpinSpeed)*dt*8,0)end
+	if TrollC.Spin and r then r.CFrame=r.CFrame*CFrame.Angles(0,math.rad(TrollC.SpinSpeed)*dt*12,0)end
 end
 local function updateOrbit(dt)
 	if not TrollC.Orbit then return end
