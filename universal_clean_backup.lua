@@ -477,7 +477,7 @@ local function setNoclip(on)
 		end)
 	end
 end
--- Salva os valores originais do Lighting logo que o script é executado
+-- Salva os valores originais do Lighting de forma segura
 local originalLighting = {
 	Ambient = Lighting.Ambient,
 	ColorShift_Bottom = Lighting.ColorShift_Bottom,
@@ -490,17 +490,16 @@ local originalLighting = {
 }
 
 local function updateWorldVisuals()
-	-- --- SISTEMA DE NO FOG ---
+	-- --- NO FOG ---
 	if MiscC.NoFog then 
 		Lighting.FogEnd = 100000
 		Lighting.FogStart = 0
 	else 
-		-- Volta o Fog original do jogo se for desativado
 		Lighting.FogEnd = originalLighting.FogEnd
 		Lighting.FogStart = originalLighting.FogStart
 	end
 
-	-- --- SISTEMA DE FULLBRIGHT ---
+	-- --- FULLBRIGHT ---
 	if MiscC.Fullbright then
 		Lighting.Ambient = Color3.new(1, 1, 1)
 		Lighting.ColorShift_Bottom = Color3.new(1, 1, 1)
@@ -509,7 +508,6 @@ local function updateWorldVisuals()
 		Lighting.ClockTime = 14
 		Lighting.GlobalShadows = false
 	else
-		-- Volta a iluminação original do jogo se for desativado
 		Lighting.Ambient = originalLighting.Ambient
 		Lighting.ColorShift_Bottom = originalLighting.ColorShift_Bottom
 		Lighting.ColorShift_Top = originalLighting.ColorShift_Top
@@ -519,10 +517,13 @@ local function updateWorldVisuals()
 	end
 end
 
--- Mantém o Fullbright/NoFog ativos mesmo se o jogo tentar mudar o clima
-Lighting.LightingChanged:Connect(function()
-	if MiscC.Fullbright or MiscC.NoFog then
-		updateWorldVisuals()
+-- Em vez de usar LightingChanged, usamos um loop leve em segundo plano para forçar os valores
+task.spawn(function()
+	while true do
+		task.wait(0.1) -- Roda 10 vezes por segundo, leve e não gera lag
+		if MiscC.Fullbright or MiscC.NoFog then
+			updateWorldVisuals()
+		end
 	end
 end)
 local lastFakeDeath=0
