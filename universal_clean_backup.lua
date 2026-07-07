@@ -359,15 +359,21 @@ local function updateESP()
 	end
 end
 
-local hitboxesIndependentes = {}
+local originaisHitbox = {}
 
 local function resetHit()
-	for p, box in pairs(hitboxesIndependentes) do
-		if box and box.Parent then
-			pcall(function() box:Destroy() end)
+	for part, dados in pairs(originaisHitbox) do
+		if part and part.Parent then
+			pcall(function()
+				part.Size = dados.Size
+				part.Transparency = dados.Transparency
+				part.Color = dados.Color
+				part.Material = dados.Material
+				part.CanCollide = dados.CanCollide
+			end)
 		end
-		hitboxesIndependentes[p] = nil
 	end
+	originaisHitbox = {}
 end
 
 local function validHit(p)
@@ -378,41 +384,33 @@ local function validHit(p)
 end
 
 local function applyHit(p)
-	if not HitC.Enabled or not validHit(p) then 
-		if hitboxesIndependentes[p] then
-			pcall(function() hitboxesIndependentes[p]:Destroy() end)
-			hitboxesIndependentes[p] = nil
-		end
-		return 
-	end
-	
+	if not HitC.Enabled or not validHit(p) then return end
 	local part = root(p)
 	if not part or not part:IsA("BasePart") then return end
 	
 	local s = math.clamp(tonumber(HitC.Size) or 10, 2, HitC.MaxSize or 200)
-	local box = hitboxesIndependentes[p]
+	local tamanhoAlvo = Vector3.new(s, s, s)
 	
-	-- Cria uma caixa externa ancorada para nao interferir na fisica do player
-	if not box or not box.Parent or not box:IsDescendantOf(workspace) then
-		box = Instance.new("Part")
-		box.Name = "MirrorsHitbox"
-		box.Shape = Enum.PartType.Block
-		box.Massless = true
-		box.CanCollide = false
-		box.CanTouch = true    
-		box.CanQuery = true
-		box.Anchored = true    
-		
-		box.Parent = workspace
-		hitboxesIndependentes[p] = box
+	-- SE O TAMANHO JÁ FOR O ALVO, NÃO ENCOSTA NA PEÇA (Evita o congelamento por loop)
+	if part.Size == tamanhoAlvo then return end
+	
+	-- Salva apenas uma vez
+	if not originaisHitbox[part] then
+		originaisHitbox[part] = {
+			Size = part.Size,
+			Transparency = part.Transparency,
+			Color = part.Color,
+			Material = part.Material,
+			CanCollide = part.CanCollide
+		}
 	end
 	
-	-- Sincroniza a posicao e o tamanho da caixa com o player real
-	box.Size = Vector3.new(s, s, s)
-	box.CFrame = part.CFrame
-	box.Transparency = HitC.Transparency
-	box.Color = HitC.Color
-	box.Material = Enum.Material.Neon
+	-- Aplica as propriedades de forma direta e estática
+	part.Size = tamanhoAlvo
+	part.Transparency = HitC.Transparency
+	part.Color = HitC.Color
+	part.Material = Enum.Material.Neon
+	part.CanCollide = false
 end
 
 local function updateHit()
@@ -420,11 +418,6 @@ local function updateHit()
 		for _, p in ipairs(Players:GetPlayers()) do 
 			if validHit(p) then
 				applyHit(p) 
-			else
-				if hitboxesIndependentes[p] then
-					pcall(function() hitboxesIndependentes[p]:Destroy() end)
-					hitboxesIndependentes[p] = nil
-				end
 			end
 		end 
 	else
