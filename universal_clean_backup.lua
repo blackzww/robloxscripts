@@ -6,6 +6,7 @@ local TP=game:GetService("TeleportService")
 local Http=game:GetService("HttpService")
 local RS=game:GetService("ReplicatedStorage")
 local Lighting=game:GetService("Lighting")
+local lastSafePosition = nil
 local LocalizationService=game:GetService("LocalizationService")
 local LP=Players.LocalPlayer
 local Camera=workspace.CurrentCamera
@@ -493,11 +494,32 @@ local function updateWorldVisuals()
 end
 local function antiVoidGuard()
 	if not MiscC.AntiVoid then return end
-	local r=root()
-	if r and r.Position.Y<-80 then
-		r.CFrame=CFrame.new(r.Position.X,25,r.Position.Z)
-		r.AssemblyLinearVelocity=Vector3.zero
-		r.AssemblyAngularVelocity=Vector3.zero
+	
+	local c = char()
+	local r = root()
+	local h = hum()
+	
+	if c and r and h then
+		-- Verifica se o jogador está em um lugar seguro (com vida e acima do Void)
+		--workspace.FallenPartsDestroyHeight geralmente é onde o Roblox mata o player (-500 por padrão)
+		local voidThreshold = workspace.FallenPartsDestroyHeight + 20 
+		
+		if r.Position.Y > voidThreshold then
+			-- Se o personagem estiver no chão (FloorMaterial não vazio), salva a posição
+			if h.FloorMaterial ~= Enum.Material.Air then
+				lastSafePosition = r.CFrame
+			end
+		else
+			-- Se caiu abaixo do limite do Void, puxa de volta para a última posição salva
+			if lastSafePosition then
+				r.AssemblyLinearVelocity = Vector3.zero -- Zera o impulso da queda para não bugar
+				r.CFrame = lastSafePosition
+			else
+				-- Caso não tenha nenhuma salva ainda, joga um pouco para cima para salvar da morte
+				r.AssemblyLinearVelocity = Vector3.zero
+				r.CFrame = r.CFrame + Vector3.new(0, 100, 0)
+			end
+		end
 	end
 end
 local lastFakeDeath=0
