@@ -465,38 +465,15 @@ local function setNoclip(on)
 	if MiscC.Noclip then
 		noclipConn = RunService.Stepped:Connect(function()
 			if not MiscC.Noclip then return end
-			local c = char()
+			local c = player.Character
 			if not c then return end
 			
-			-- Desativa a colisão de todas as partes do personagem de forma agressiva
-			for _, v in ipairs(c:GetChildren()) do
-				if v:IsA("BasePart") then
-					-- Mantém apenas o HumanoidRootPart com colisão mínima se necessário, ou desativa tudo
-					-- Para não cair no chão infinito, o Roblox precisa que o estado NoClip do Humanoid cuide disso.
+			for _, v in pairs(c:GetDescendants()) do
+				if v:IsA("BasePart") and v.CanCollide then
 					v.CanCollide = false
 				end
 			end
-			
-			local h = c:FindFirstChildOfClass("Humanoid")
-			if h then
-				-- Aplica o estado fantasma
-				h:ChangeState(Enum.HumanoidStateType.NoClip)
-			end
 		end)
-	else
-		-- Restaura os estados normais quando desliga
-		local c = char()
-		local h = c and c:FindFirstChildOfClass("Humanoid")
-		if h then
-			h:ChangeState(Enum.HumanoidStateType.Running)
-		end
-		if c then
-			for _, v in ipairs(c:GetChildren()) do
-				if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-					v.CanCollide = true
-				end
-			end
-		end
 	end
 end
 local originalLighting={Brightness=Lighting.Brightness,ClockTime=Lighting.ClockTime,FogEnd=Lighting.FogEnd,GlobalShadows=Lighting.GlobalShadows,Ambient=Lighting.Ambient}
