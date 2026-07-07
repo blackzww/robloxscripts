@@ -710,43 +710,27 @@ local function god()
 	end
 end
 local function antiFling()
-	local r = root()
-	if not r or not OpC.AntiFling then return end
+	-- Verifica se o botão do menu está ligado
+	if not OpC.AntiFling then return end
 	
-	-- Mantém a segurança de velocidade original
-	if r.AssemblyLinearVelocity.Magnitude > 150 then 
-		r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, 0, r.AssemblyLinearVelocity.Z)
-	end
-	r.AssemblyAngularVelocity = Vector3.zero
-	
-	local meuChar = LP.Character
-	if meuChar then
-		-- Remove a colisão interna e externa forçando o estado de NoCollide pelo Humanoid
-		local hum = meuChar:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum:ChangeState(11) -- Estado 11 é 'Physics', que desativa colisões de character
-		end
-
-		-- Garante que o HumanoidRootPart não colida com nenhum outro jogador
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= LP and p.Character then
-				local seuRoot = p.Character:FindFirstChild("HumanoidRootPart")
-				local meuRoot = meuChar:FindFirstChild("HumanoidRootPart")
-				
-				if meuRoot and seuRoot then
-					-- Criamos uma restrição temporária de "Não Colidir" entre os dois Roots
-					if not meuRoot:FindFirstChild("AntiFling_" .. p.Name) then
-						local nc = Instance.new("NoCollisionConstraint")
-						nc.Name = "AntiFling_" .. p.Name
-						nc.Part0 = meuRoot
-						nc.Part1 = seuRoot
-						nc.Parent = meuRoot
-					end
+	-- O código exato que você mandou, usando as variáveis do seu script (LP e Players)
+	for _, CoPlayer in pairs(Players:GetChildren()) do
+		if CoPlayer ~= LP and CoPlayer.Character then
+			for _, Part in pairs(CoPlayer.Character:GetChildren()) do
+				if Part.Name == "HumanoidRootPart" then
+					Part.CanCollide = false
 				end
 			end
 		end
 	end
+ 
+	for _, Accessory in pairs(workspace:GetChildren()) do
+		if Accessory:IsA("Accessory") and Accessory:FindFirstChildWhichIsA("Part") then
+			Accessory:FindFirstChildWhichIsA("Part"):Destroy()
+		end
+	end
 end
+
 local flingRun=false
 pcall(function()
 	if not RS:FindFirstChild("juisdfj0i32i0eidsuf0iok")then
