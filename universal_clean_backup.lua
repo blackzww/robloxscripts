@@ -99,7 +99,7 @@ EnableESP="Enable ESP",ESPColor="ESP Color",ShowNames="Show Names",ShowHealth="S
 WalkSpeed="WalkSpeed",JumpPower="JumpPower",Noclip="Noclip",NoclipMode="Noclip Mode",NoclipPower="Noclip Assist Power",InfiniteJump="Infinite Jump",AntiAFK="Anti AFK",ResetCharacter="Reset Character",AntiVoid="Anti Void",Fullbright="Fullbright",NoFog="No Fog",
 Rejoin="Rejoin Server",ServerHop="Server Hop",SmallServer="Small Server",CopyJobId="Copy Job ID",JobIdInput="Job ID",JoinJobId="Join Job ID",
 EnableHitbox="Enable Hitbox Expander",HitboxSize="Hitbox Size",HitboxTransparency="Hitbox Transparency",HitboxColor="Hitbox Color",HitboxTeam="Hitbox Team Check",ResetHitboxes="Reset Hitboxes",HitboxesReset="Hitboxes reset.",
-God100="God Mode 1",GodInf="God Mode 2",AntiFling="Anti Fling",TouchFling="Touch Fling",FlingPower="Touch Fling Power",FlingPulse="Touch Fling Pulse",RefreshFling="Refresh Touch Fling",KillAura="Kill Aura",KillAuraDone="Kill Aura executed.",
+God100="God Mode 1",GodInf="God Mode 2",AntiFling="Anti Fling",TouchFling="Touch Fling",FlingPower="Touch Fling Power",FlingPulse="Touch Fling Pulse",RefreshFling="Refresh Touch Fling",
 SelectPlayer="Select Player",RefreshPlayers="Refresh Players",TeleportPlayer="Teleport To Player",BringPlayer="Bring Selected Player",SpectatePlayer="Spectate Player",Unspectate="Unspectate",TeleportBack="Teleport Back",FreezeSelected="Freeze Selected Player",FreezeAll="Freeze All Players",UnfreezeAll="Unfreeze All Players",NoPlayer="No player selected.",PlayerListUpdated="Player list updated.",Teleported="Teleported.",
 FakeLag="Fake Lag",FakeLagRate="Fake Lag Rate",FakeLagHold="Fake Lag Hold",FakeDeath="Fake Death",FakeDeathCooldown="Fake Death Cooldown",Orbit="Orbit Player",OrbitMode="Orbit Mode",OrbitRadius="Orbit Radius",OrbitSpeed="Orbit Speed",OrbitHeight="Orbit Height",SpinBot="Spin Bot",SpinSpeed="Spin Speed",HeadSit="Head Sit Follow",Annoy="Annoy Teleport",AnnoyMode="Annoy Mode",AnnoySpeed="Annoy Speed",GhostTrail="Ghost Trail",
 ConfigPath="Folder: MirrorsHub/config\nFile: universal-config.json",SaveConfig="Save Config",LoadConfig="Load Config",ResetSession="Reset Session",AutoLoadConfig="Auto Load Config",AutoSave="Auto Save",ExportConfig="Export Config",ImportConfig="Import Config",ProfileName="Profile Name",LanguageDropdown="Interface Language",Notifications="Notifications",Theme="Theme",ToggleKey="Toggle UI Key",DestroyUI="Destroy UI",BoostFPS="Boost FPS",
@@ -115,7 +115,7 @@ EnableESP="Ativar ESP",ESPColor="Cor do ESP",ShowNames="Mostrar Nomes",ShowHealt
 WalkSpeed="Velocidade",JumpPower="Força do Pulo",Noclip="Noclip",NoclipMode="Modo Noclip",NoclipPower="Força do Noclip",InfiniteJump="Pulo Infinito",AntiAFK="Anti AFK",ResetCharacter="Resetar Personagem",AntiVoid="Anti Void",Fullbright="Fullbright",NoFog="Sem Neblina",
 Rejoin="Reconectar Servidor",ServerHop="Trocar Servidor",SmallServer="Servidor Menor",CopyJobId="Copiar Job ID",JobIdInput="Job ID",JoinJobId="Entrar no Job ID",
 EnableHitbox="Ativar Expansor de Hitbox",HitboxSize="Tamanho da Hitbox",HitboxTransparency="Transparência da Hitbox",HitboxColor="Cor da Hitbox",HitboxTeam="Verificar Time da Hitbox",ResetHitboxes="Resetar Hitboxes",HitboxesReset="Hitboxes resetadas.",
-God100="God Mode 1",GodInf="God Mode 2",AntiFling="Anti Fling",TouchFling="Touch Fling",FlingPower="Força do Touch Fling",FlingPulse="Pulso do Touch Fling",RefreshFling="Atualizar Touch Fling",KillAura="Kill Aura",KillAuraDone="Kill Aura executado.",
+God100="God Mode 1",GodInf="God Mode 2",AntiFling="Anti Fling",TouchFling="Touch Fling",FlingPower="Força do Touch Fling",FlingPulse="Pulso do Touch Fling",RefreshFling="Atualizar Touch Fling",
 SelectPlayer="Selecionar Jogador",RefreshPlayers="Atualizar Jogadores",TeleportPlayer="Teleportar Para Jogador",BringPlayer="Trazer Jogador Selecionado",SpectatePlayer="Espectar Jogador",Unspectate="Parar Espectar",TeleportBack="Voltar Teleporte",FreezeSelected="Congelar Jogador Selecionado",FreezeAll="Congelar Todos Jogadores",UnfreezeAll="Descongelar Todos",NoPlayer="Nenhum jogador selecionado.",PlayerListUpdated="Lista de jogadores atualizada.",Teleported="Teleportado.",
 FakeLag="Fake Lag",FakeLagRate="Taxa do Fake Lag",FakeLagHold="Força do Fake Lag",FakeDeath="Fake Death",FakeDeathCooldown="Cooldown do Fake Death",Orbit="Orbitar Jogador",OrbitMode="Modo da Órbita",OrbitRadius="Raio da Órbita",OrbitSpeed="Velocidade da Órbita",OrbitHeight="Altura da Órbita",SpinBot="Spin Bot",SpinSpeed="Velocidade do Spin",HeadSit="Sentar na Cabeça",Annoy="Annoy Teleport",AnnoyMode="Modo Annoy",AnnoySpeed="Velocidade Annoy",GhostTrail="Rastro Fantasma",
 ConfigPath="Pasta: MirrorsHub/config\nArquivo: universal-config.json",SaveConfig="Salvar Config",LoadConfig="Carregar Config",ResetSession="Resetar Sessão",AutoLoadConfig="Auto Carregar Config",AutoSave="Auto Save",ExportConfig="Exportar Config",ImportConfig="Importar Config",ProfileName="Nome do Perfil",LanguageDropdown="Idioma da Interface",Notifications="Notificações",Theme="Tema",ToggleKey="Tecla da UI",DestroyUI="Destruir UI",BoostFPS="Boost de FPS",
@@ -131,7 +131,7 @@ EnableESP="Activar ESP",ESPColor="Color del ESP",ShowNames="Mostrar Nombres",Sho
 WalkSpeed="Velocidad",JumpPower="Poder de Salto",Noclip="Noclip",NoclipMode="Modo Noclip",NoclipPower="Fuerza del Noclip",InfiniteJump="Salto Infinito",AntiAFK="Anti AFK",ResetCharacter="Resetear Personaje",AntiVoid="Anti Void",Fullbright="Fullbright",NoFog="Sin Niebla",
 Rejoin="Reconectar Servidor",ServerHop="Cambiar Servidor",SmallServer="Servidor Pequeño",CopyJobId="Copiar Job ID",JobIdInput="Job ID",JoinJobId="Entrar al Job ID",
 EnableHitbox="Activar Expansor de Hitbox",HitboxSize="Tamaño de Hitbox",HitboxTransparency="Transparencia de Hitbox",HitboxColor="Color de Hitbox",HitboxTeam="Verificar Equipo de Hitbox",ResetHitboxes="Resetear Hitboxes",HitboxesReset="Hitboxes reseteadas.",
-God100="God Mode 1",GodInf="God Mode 2",AntiFling="Anti Fling",TouchFling="Touch Fling",FlingPower="Fuerza del Touch Fling",FlingPulse="Pulso del Touch Fling",RefreshFling="Actualizar Touch Fling",KillAura="Kill Aura",KillAuraDone="Kill Aura ejecutado.",
+God100="God Mode 1",GodInf="God Mode 2",AntiFling="Anti Fling",TouchFling="Touch Fling",FlingPower="Fuerza del Touch Fling",FlingPulse="Pulso del Touch Fling",RefreshFling="Actualizar Touch Fling",
 SelectPlayer="Seleccionar Jugador",RefreshPlayers="Actualizar Jugadores",TeleportPlayer="Teleportar al Jugador",BringPlayer="Traer Jugador Seleccionado",SpectatePlayer="Espectar Jugador",Unspectate="Dejar de Espectar",TeleportBack="Volver Teleporte",FreezeSelected="Congelar Jugador Seleccionado",FreezeAll="Congelar Todos Jugadores",UnfreezeAll="Descongelar Todos",NoPlayer="Ningún jugador seleccionado.",PlayerListUpdated="Lista actualizada.",Teleported="Teleportado.",
 FakeLag="Fake Lag",FakeLagRate="Tasa del Fake Lag",FakeLagHold="Fuerza del Fake Lag",FakeDeath="Fake Death",FakeDeathCooldown="Cooldown del Fake Death",Orbit="Orbitar Jugador",OrbitMode="Modo de Órbita",OrbitRadius="Radio de Órbita",OrbitSpeed="Velocidad de Órbita",OrbitHeight="Altura de Órbita",SpinBot="Spin Bot",SpinSpeed="Velocidad de Spin",HeadSit="Sentarse en Cabeza",Annoy="Annoy Teleport",AnnoyMode="Modo Annoy",AnnoySpeed="Velocidad Annoy",GhostTrail="Rastro Fantasma",
 ConfigPath="Carpeta: MirrorsHub/config\nArchivo: universal-config.json",SaveConfig="Guardar Config",LoadConfig="Cargar Config",ResetSession="Resetear Sesión",AutoLoadConfig="Auto Cargar Config",AutoSave="Auto Guardar",ExportConfig="Exportar Config",ImportConfig="Importar Config",ProfileName="Nombre del Perfil",LanguageDropdown="Idioma de Interfaz",Notifications="Notificaciones",Theme="Tema",ToggleKey="Tecla de UI",DestroyUI="Destruir UI",BoostFPS="Boost de FPS",
@@ -456,22 +456,6 @@ end
 local function unfreezeAll()
 	for p in pairs(frozen)do unfreezePlayer(p)end
 end
-local function killAura()
-	local count=0
-	for _,p in ipairs(Players:GetPlayers())do
-		if p~=LP and p.Character then
-			local h=hum(p)
-			if h and h.Health>0 then
-				pcall(function()h.Health=0 end)
-				pcall(function()h:TakeDamage(math.huge)end)
-				pcall(function()p.Character:BreakJoints()end)
-				count+=1
-			end
-		end
-	end
-	notify(L("KillAuraDone").." ("..tostring(count)..")","skull",3)
-end
-
 local function applyMove()
 	local h = hum()
 	if h then 
@@ -966,7 +950,7 @@ section(Tabs.ESP,"Visual");tog(Tabs.ESP,"FillBox","ESPFill",false,function(v)Esp
 section(Tabs.Misc,"Movement");slid(Tabs.Misc,"WalkSpeed","MiscWalkSpeed",16,200,MiscC.WalkSpeed,1,function(v)MiscC.WalkSpeed=v;applyMove()end);slid(Tabs.Misc,"JumpPower","MiscJumpPower",50,300,MiscC.JumpPower,1,function(v)MiscC.JumpPower=v;applyMove()end);tog(Tabs.Misc,"Noclip","MiscNoclip",false,function(v)setNoclip(v)end);tog(Tabs.Misc,"InfiniteJump","MiscInfiniteJump",false,function(v)MiscC.InfiniteJump=v end)
 section(Tabs.Misc,"Utility");tog(Tabs.Misc,"AntiAFK","MiscAntiAFK",false,function(v)MiscC.AntiAFK=v end);btn(Tabs.Misc,"ResetCharacter",function()local h=hum();if h then h.Health=0 end end);tog(Tabs.Misc,"AntiVoid","MiscAntiVoid",true,function(v)MiscC.AntiVoid=v end);tog(Tabs.Misc,"Fullbright","MiscFullbright",false,function(v)MiscC.Fullbright=v;updateWorldVisuals()end);tog(Tabs.Misc,"NoFog","MiscNoFog",false,function(v)MiscC.NoFog=v;updateWorldVisuals()end)
 section(Tabs.Misc,"Hitbox");tog(Tabs.Misc,"EnableHitbox","HitboxEnabled",false,function(v)HitC.Enabled=v;if not v then resetHit()else updateHit()end end);slid(Tabs.Misc,"HitboxSize","HitboxSize",2,200,HitC.Size,1,function(v)HitC.Size=math.clamp(v,2,HitC.MaxSize);updateHit()end);slid(Tabs.Misc,"HitboxTransparency","HitboxTransparency",0,100,math.floor(HitC.Transparency*100),1,function(v)HitC.Transparency=v/100;updateHit()end);col(Tabs.Misc,"HitboxColor","HitboxColor",HitC.Color,function(v)HitC.Color=v;updateHit()end);tog(Tabs.Misc,"HitboxTeam","HitboxTeamCheck",false,function(v)HitC.TeamCheck=v;resetHit();updateHit()end);btn(Tabs.Misc,"ResetHitboxes",function()resetHit();notify(L("HitboxesReset"),"rotate-ccw",3)end)
-section(Tabs.OP,"God");tog(Tabs.OP,"God100","OPGod100",false,function(v)OpC.God100=v;if v then OpC.GodInf=false end end);tog(Tabs.OP,"GodInf","OPGodInf",false,function(v)OpC.GodInf=v;if v then OpC.God100=false end end);btn(Tabs.OP,"KillAura",killAura)
+section(Tabs.OP,"God");tog(Tabs.OP,"God100","OPGod100",false,function(v)OpC.God100=v;if v then OpC.GodInf=false end end);tog(Tabs.OP,"GodInf","OPGodInf",false,function(v)OpC.GodInf=v;if v then OpC.God100=false end end);
 section(Tabs.OP,"Protection");tog(Tabs.OP,"AntiFling","OPAntiFling",false,function(v)OpC.AntiFling=v end)
 section(Tabs.OP,"Fling");tog(Tabs.OP,"TouchFling","OPTouchFling",false,function(v)OpC.TouchFling=v;if v then startFling()else stopFling()end end);slid(Tabs.OP,"FlingPower","OPFlingPower",1000,10000,OpC.FlingPower,500,function(v)OpC.FlingPower=v end);slid(Tabs.OP,"FlingPulse","OPFlingPulse",0,50,10,1,function(v)OpC.FlingPulse=v/100 end);btn(Tabs.OP,"RefreshFling",function()if OpC.TouchFling then stopFling();task.wait(.05);startFling()end end)
 section(Tabs.OP,"Utility");drop(Tabs.OP,"SelectPlayer","OPSelectedPlayer",playerNames(),"None",function(v)SelectedPlayer=v end);btn(Tabs.OP,"RefreshPlayers",function()notify(L("PlayerListUpdated"),"refresh-cw",2)end);btn(Tabs.OP,"TeleportPlayer",tpToPlayer);btn(Tabs.OP,"TeleportBack",teleportBack);btn(Tabs.OP,"BringPlayer",bringPlayer);btn(Tabs.OP,"SpectatePlayer",spectatePlayer);btn(Tabs.OP,"Unspectate",unspectate)
