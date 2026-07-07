@@ -994,35 +994,61 @@ section(Tabs.Status, "Server Status")
 local serverParaRef = nil
 local playerParaRef = nil
 
--- Criamos os parágrafos capturando o retorno do elemento gráfico real interno da WindUI
+-- Criamos os parágrafos capturando o retorno direto da tabela
 pcall(function()
-	local _, sObj = Tabs.Status:Paragraph({
+	serverParaRef = Tabs.Status:Paragraph({
 		Title = L("ServerPlayers") or "Server Details",
 		Desc = serverInfoText(),
 		Color = "Blue",
 		Locked = false
 	})
-	serverParaRef = sObj
 	
-	local _, pObj = Tabs.Status:Paragraph({
+	playerParaRef = Tabs.Status:Paragraph({
 		Title = L("PlayerInfo") or "Player Identity",
 		Desc = playerInfoText(),
 		Color = "Green",
 		Locked = false
 	})
-	playerParaRef = pObj
 end)
 
 btn(Tabs.Status, "Update Status", function()
-	-- Executa a alteração dinâmica de forma direta nas instâncias gráficas via .ParagraphFrame
-	if serverParaRef and serverParaRef.ParagraphFrame then
-		serverParaRef.ParagraphFrame:SetDesc(serverInfoText())
-	end
-	if playerParaRef and playerParaRef.ParagraphFrame then
-		playerParaRef.ParagraphFrame:SetDesc(playerInfoText())
-	end
+	-- Força a atualização localizando o TextLabel interno de forma bruta para não falhar
+	pcall(function()
+		if serverParaRef then
+			-- Tenta o método nativo da build
+			if serverParaRef.SetDesc then 
+				serverParaRef:SetDesc(serverInfoText())
+			elseif serverParaRef.ParagraphFrame and serverParaRef.ParagraphFrame.SetDesc then
+				serverParaRef.ParagraphFrame:SetDesc(serverInfoText())
+			else
+				-- Caminho alternativo encontrando o TextLabel via UI nativa
+				local frame = serverParaRef.ParagraphFrame or serverParaRef
+				local descLabel = frame:FindFirstChild("Desc", true) or frame:FindFirstChild("Description", true)
+				if descLabel then descLabel.Text = serverInfoText() end
+			end
+		end
+	end)
+
+	pcall(function()
+		if playerParaRef then
+			-- Tenta o método nativo da build
+			if playerParaRef.SetDesc then 
+				playerParaRef:SetDesc(playerInfoText())
+			elseif playerParaRef.ParagraphFrame and playerParaRef.ParagraphFrame.SetDesc then
+				playerParaRef.ParagraphFrame:SetDesc(playerInfoText())
+			else
+				-- Caminho alternativo encontrando o TextLabel via UI nativa
+				local frame = playerParaRef.ParagraphFrame or playerParaRef
+				local descLabel = frame:FindFirstChild("Desc", true) or frame:FindFirstChild("Description", true)
+				if descLabel then descLabel.Text = playerInfoText() end
+			end
+		end
+	end)
+
 	notify(L("PlayerListUpdated") or "Status atualizado!", "refresh-cw", 2)
 end)
+
+btn(Tabs.Status, "CopyServerInfo", copyServerInfo)
 btn(Tabs.Status, "CopyServerInfo", copyServerInfo)
 section(Tabs.Aimbot,"Main");tog(Tabs.Aimbot,"EnableAimbot","AimbotEnabled",false,function(v)Aim.Enabled=v;if not v then currentTarget=nil end end);tog(Tabs.Aimbot,"TeamCheck","AimbotTeamCheck",false,function(v)Aim.TeamCheck=v;currentTarget=nil end);tog(Tabs.Aimbot,"VisibleCheck","AimbotVisibleCheck",false,function(v)Aim.VisibleCheck=v;currentTarget=nil end);drop(Tabs.Aimbot,"TargetPart","AimbotTargetPart",{"Head","HumanoidRootPart"},"Head",function(v)Aim.TargetPart=v;currentTarget=nil end)
 section(Tabs.Aimbot,"FOV");slid(Tabs.Aimbot,"AimbotFOV","AimbotFOV",10,500,Aim.FOV,1,function(v)Aim.FOV=v;if FOVCircle then FOVCircle.Radius=v end end);tog(Tabs.Aimbot,"ShowFOV","AimbotFOVVisible",false,function(v)Aim.FOVVisible=v;if FOVCircle then FOVCircle.Visible=v end end);col(Tabs.Aimbot,"FOVColor","AimbotFOVColor",Aim.FOVColor,function(v)Aim.FOVColor=v;if FOVCircle then FOVCircle.Color=v end end);tog(Tabs.Aimbot,"Crosshair","AimbotCrosshair",false,function(v)Aim.Crosshair=v end);slid(Tabs.Aimbot,"CrosshairSize","AimbotCrosshairSize",4,30,Aim.CrosshairSize,1,function(v)Aim.CrosshairSize=v end)
