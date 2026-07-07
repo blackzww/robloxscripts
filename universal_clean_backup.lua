@@ -915,7 +915,7 @@ local function btn(tab,t,cb)pcall(function()tab:Button({Title=L(t),Desc="",Locke
 local function btnTitle(tab,t,cb)pcall(function()tab:Button({Title=t,Desc="",Locked=false,Callback=cb})end)end
 local function tog(tab,t,flag,val,cb)pcall(function()tab:Toggle({Title=L(t),Desc="",Flag=flag,Type="Checkbox",Value=val,Callback=cb})end)end
 local function slid(tab,t,flag,min,max,def,step,cb)pcall(function()tab:Slider({Title=L(t),Desc="",Flag=flag,Step=step or 1,Value={Min=min,Max=max,Default=def},Callback=cb})end)end
-local function drop(tab,t,flag,vals,val,cb)pcall(function()tab:Dropdown({Title=L(t),Desc="",Flag=flag,Values=vals,Value=val,Callback=cb})end)end
+local function drop(tab,t,flag,vals,val,cb) local d; pcall(function() d = tab:Dropdown({Title=L(t),Desc="",Flag=flag,Values=vals,Value=val,Callback=cb})end) return d end
 local function col(tab,t,flag,def,cb)pcall(function()tab:Colorpicker({Title=L(t),Desc="",Flag=flag,Default=def,Transparency=0,Locked=false,Callback=cb})end)end
 local function input(tab,t,ph,cb)
 	pcall(function()
