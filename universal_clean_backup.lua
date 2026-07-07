@@ -713,25 +713,34 @@ local function antiFling()
 	local r = root()
 	if not r or not OpC.AntiFling then return end
 	
-	-- Mantém a segurança de velocidade que você já tinha
+	-- Mantém a segurança de velocidade original
 	if r.AssemblyLinearVelocity.Magnitude > 150 then 
 		r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, 0, r.AssemblyLinearVelocity.Z)
 	end
 	r.AssemblyAngularVelocity = Vector3.zero
 	
-	-- Nova lógica: Desativa a colisão com os outros jogadores
 	local meuChar = LP.Character
 	if meuChar then
+		-- Remove a colisão interna e externa forçando o estado de NoCollide pelo Humanoid
+		local hum = meuChar:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum:ChangeState(11) -- Estado 11 é 'Physics', que desativa colisões de character
+		end
+
+		-- Garante que o HumanoidRootPart não colida com nenhum outro jogador
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LP and p.Character then
-				for _, minhaPeca in ipairs(meuChar:GetChildren()) do
-					if minhaPeca:IsA("BasePart") then
-						for _, suaPeca in ipairs(p.Character:GetChildren()) do
-							if suaPeca:IsA("BasePart") then
-								minhaPeca.CanCollide = false
-								suaPeca.CanCollide = false
-							end
-						end
+				local seuRoot = p.Character:FindFirstChild("HumanoidRootPart")
+				local meuRoot = meuChar:FindFirstChild("HumanoidRootPart")
+				
+				if meuRoot and seuRoot then
+					-- Criamos uma restrição temporária de "Não Colidir" entre os dois Roots
+					if not meuRoot:FindFirstChild("AntiFling_" .. p.Name) then
+						local nc = Instance.new("NoCollisionConstraint")
+						nc.Name = "AntiFling_" .. p.Name
+						nc.Part0 = meuRoot
+						nc.Part1 = seuRoot
+						nc.Parent = meuRoot
 					end
 				end
 			end
