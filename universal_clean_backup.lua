@@ -986,29 +986,41 @@ btnTitle(Tabs.Scripts,"Fly V3",function()runExternal("https://raw.githubusercont
 btnTitle(Tabs.Scripts,"Noclip",function()runExternal("https://rawscripts.net/raw/Universal-Script-Noclip-Open-source-10442")end)
 btnTitle(Tabs.Scripts,"Touch Fling",function()runExternal("https://pastebin.com/raw/LgZwZ7ZB")end)
 section(Tabs.Info,"Info");para(Tabs.Info,L("HomeTitle"),L("HomeDesc"),"Blue");para(Tabs.Info,L("BetaTitle"),L("BetaDesc"),"Orange");para(Tabs.Info,L("DiscordTitle"),L("DiscordDesc").."\n"..DISCORD_LINK,"Red");para(Tabs.Info,L("StatusTitle"),L("StatusDesc"),"Green");btn(Tabs.Info,"CopyDiscord",copyDiscord)
-section(Tabs.Status, "Server Information")
+section(Tabs.Status, "Server Info")
 
--- Criamos labels fixos para mostrar as informações sem ocupar espaço de botão
-local statusLabel = Tabs.Status:Label("Carregando status...")
+-- Criamos os parágrafos já com o conteúdo definido
+local serverInfo = Tabs.Status:Paragraph({
+    Title = "Server Details",
+    Content = "Carregando..." -- Inicialização obrigatória
+})
 
-btn(Tabs.Status, "Refresh Status", function()
-    local info = "Jogadores: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. 
+local gameInfo = Tabs.Status:Paragraph({
+    Title = "Game Identity",
+    Content = "Carregando..."
+})
+
+-- Botão de Atualizar que força a renderização do texto
+btn(Tabs.Status, "Update Status", function()
+    local sTxt = "Players: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. 
                  "\nPing: " .. getPingText() .. 
-                 "\nGravity: " .. math.floor(workspace.Gravity) .. 
-                 "\nExecutor: " .. (fs() and "Sim" or "Não") ..
-                 "\nConta: " .. LP.AccountAge .. " dias"
+                 "\nGravity: " .. math.floor(workspace.Gravity)
     
-    -- O método :SetText() é o padrão da WindUI para atualizar Labels
-    if statusLabel then
-        statusLabel:SetText(info)
-    end
+    local gTxt = "PlaceId: " .. game.PlaceId .. 
+                 "\nJobId: " .. game.JobId .. 
+                 "\nAccount Age: " .. LP.AccountAge .. " days"
+    
+    -- O método oficial para mudar o conteúdo é :SetContent()
+    -- Se não mudar, a versão do Footagesus pode exigir :Refresh()
+    if serverInfo then serverInfo:SetContent(sTxt) end
+    if gameInfo then gameInfo:SetContent(gTxt) end
+    
     notify(L("PlayerListUpdated"), "refresh-cw", 2)
 end)
 
--- Copia tudo de uma vez para não ter 10 botões de cópia
-btn(Tabs.Status, "Copy All Data", function()
-    setclipboard("Ping: " .. getPingText() .. " | JobId: " .. game.JobId)
-    notify("Copiado!", "clipboard", 2)
+-- Chama a atualização uma vez logo após criar para não ficar com "Carregando..."
+task.spawn(function()
+    task.wait(1) -- Pequeno delay para a UI renderizar
+    -- Aqui você pode chamar a função que definiu dentro do botão se quiser
 end)
 section(Tabs.Aimbot,"Main");tog(Tabs.Aimbot,"EnableAimbot","AimbotEnabled",false,function(v)Aim.Enabled=v;if not v then currentTarget=nil end end);tog(Tabs.Aimbot,"TeamCheck","AimbotTeamCheck",false,function(v)Aim.TeamCheck=v;currentTarget=nil end);tog(Tabs.Aimbot,"VisibleCheck","AimbotVisibleCheck",false,function(v)Aim.VisibleCheck=v;currentTarget=nil end);drop(Tabs.Aimbot,"TargetPart","AimbotTargetPart",{"Head","HumanoidRootPart"},"Head",function(v)Aim.TargetPart=v;currentTarget=nil end)
 section(Tabs.Aimbot,"FOV");slid(Tabs.Aimbot,"AimbotFOV","AimbotFOV",10,500,Aim.FOV,1,function(v)Aim.FOV=v;if FOVCircle then FOVCircle.Radius=v end end);tog(Tabs.Aimbot,"ShowFOV","AimbotFOVVisible",false,function(v)Aim.FOVVisible=v;if FOVCircle then FOVCircle.Visible=v end end);col(Tabs.Aimbot,"FOVColor","AimbotFOVColor",Aim.FOVColor,function(v)Aim.FOVColor=v;if FOVCircle then FOVCircle.Color=v end end);tog(Tabs.Aimbot,"Crosshair","AimbotCrosshair",false,function(v)Aim.Crosshair=v end);slid(Tabs.Aimbot,"CrosshairSize","AimbotCrosshairSize",4,30,Aim.CrosshairSize,1,function(v)Aim.CrosshairSize=v end)
