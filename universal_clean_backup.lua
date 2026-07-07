@@ -457,21 +457,37 @@ local function applyMove()
 end
 
 
-local noclipConn=nil
+local noclipConn = nil
 local function setNoclip(on)
-	MiscC.Noclip=on and true or false
-	if noclipConn then noclipConn:Disconnect();noclipConn=nil end
+	MiscC.Noclip = on and true or false
+	if noclipConn then noclipConn:Disconnect(); noclipConn = nil end
+	
 	if MiscC.Noclip then
-		noclipConn=RunService.Stepped:Connect(function()
+		noclipConn = RunService.Stepped:Connect(function()
 			if not MiscC.Noclip then return end
-			local c=char()
+			local c = char()
 			if not c then return end
-			for _,v in pairs(c:GetDescendants())do
+			
+			-- Força o estado NoClip no Humanoid para a física do Roblox não bugar embaixo de tetos
+			local h = c:FindFirstChildOfClass("Humanoid")
+			if h then
+				h:ChangeState(Enum.HumanoidStateType.NoClip)
+			end
+			
+			-- Desativa a colisão das partes para atravessar paredes
+			for _, v in pairs(c:GetDescendants()) do
 				if v:IsA("BasePart") and v.CanCollide then
-					v.CanCollide=false
+					v.CanCollide = false
 				end
 			end
 		end)
+	else
+		-- Quando desativa, força o boneco a voltar ao estado normal de corrida
+		local c = char()
+		local h = c and c:FindFirstChildOfClass("Humanoid")
+		if h then
+			h:ChangeState(Enum.HumanoidStateType.Running)
+		end
 	end
 end
 local originalLighting={Brightness=Lighting.Brightness,ClockTime=Lighting.ClockTime,FogEnd=Lighting.FogEnd,GlobalShadows=Lighting.GlobalShadows,Ambient=Lighting.Ambient}
