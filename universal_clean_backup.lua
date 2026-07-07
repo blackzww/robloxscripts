@@ -477,16 +477,30 @@ local function setNoclip(on)
 		end)
 	end
 end
+-- Salva os valores originais do Lighting logo que o script é executado
+local originalLighting = {
+	Ambient = Lighting.Ambient,
+	ColorShift_Bottom = Lighting.ColorShift_Bottom,
+	ColorShift_Top = Lighting.ColorShift_Top,
+	Brightness = Lighting.Brightness,
+	ClockTime = Lighting.ClockTime,
+	GlobalShadows = Lighting.GlobalShadows,
+	FogEnd = Lighting.FogEnd,
+	FogStart = Lighting.FogStart
+}
+
 local function updateWorldVisuals()
-	-- --- SEU NO FOG (DO JEITO QUE VOCÊ MANDOU ANTES) ---
+	-- --- SISTEMA DE NO FOG ---
 	if MiscC.NoFog then 
 		Lighting.FogEnd = 100000
 		Lighting.FogStart = 0
 	else 
-		Lighting.FogEnd = originalLighting.FogEnd 
+		-- Volta o Fog original do jogo se for desativado
+		Lighting.FogEnd = originalLighting.FogEnd
+		Lighting.FogStart = originalLighting.FogStart
 	end
 
-	-- --- SEU NOVO FULLBRIGHT INFINITO E AGRESSIVO ---
+	-- --- SISTEMA DE FULLBRIGHT ---
 	if MiscC.Fullbright then
 		Lighting.Ambient = Color3.new(1, 1, 1)
 		Lighting.ColorShift_Bottom = Color3.new(1, 1, 1)
@@ -495,15 +509,17 @@ local function updateWorldVisuals()
 		Lighting.ClockTime = 14
 		Lighting.GlobalShadows = false
 	else
-		-- Se desligar no menu, volta ao padrão do mapa
+		-- Volta a iluminação original do jogo se for desativado
+		Lighting.Ambient = originalLighting.Ambient
+		Lighting.ColorShift_Bottom = originalLighting.ColorShift_Bottom
+		Lighting.ColorShift_Top = originalLighting.ColorShift_Top
 		Lighting.Brightness = originalLighting.Brightness
 		Lighting.ClockTime = originalLighting.ClockTime
 		Lighting.GlobalShadows = originalLighting.GlobalShadows
-		Lighting.Ambient = originalLighting.Ambient
 	end
 end
 
--- Conecta a função para rodar instantaneamente se o jogo tentar mudar a iluminação
+-- Mantém o Fullbright/NoFog ativos mesmo se o jogo tentar mudar o clima
 Lighting.LightingChanged:Connect(function()
 	if MiscC.Fullbright or MiscC.NoFog then
 		updateWorldVisuals()
