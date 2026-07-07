@@ -359,10 +359,11 @@ local function updateESP()
 	end
 end
 
-local originaisHitbox = {}
+-- TABELA TOTALMENTE EXCLUSIVA PARA O HITBOX (Evita conflito com o Freeze)
+local backupPropriedadesHitbox = {}
 
 local function resetHit()
-	for part, dados in pairs(originaisHitbox) do
+	for part, dados in pairs(backupPropriedadesHitbox) do
 		if part and part.Parent then
 			pcall(function()
 				part.Size = dados.Size
@@ -373,7 +374,7 @@ local function resetHit()
 			end)
 		end
 	end
-	originaisHitbox = {}
+	backupPropriedadesHitbox = {}
 end
 
 local function validHit(p)
@@ -391,12 +392,12 @@ local function applyHit(p)
 	local s = math.clamp(tonumber(HitC.Size) or 10, 2, HitC.MaxSize or 200)
 	local tamanhoAlvo = Vector3.new(s, s, s)
 	
-	-- SE O TAMANHO JÁ FOR O ALVO, NÃO ENCOSTA NA PEÇA (Evita o congelamento por loop)
+	-- Se ja estiver no tamanho certo, ignora (Evita conflito de re-aplicação com o Freeze)
 	if part.Size == tamanhoAlvo then return end
 	
-	-- Salva apenas uma vez
-	if not originaisHitbox[part] then
-		originaisHitbox[part] = {
+	-- Salva na tabela exclusiva do Hitbox
+	if not backupPropriedadesHitbox[part] then
+		backupPropriedadesHitbox[part] = {
 			Size = part.Size,
 			Transparency = part.Transparency,
 			Color = part.Color,
@@ -405,10 +406,10 @@ local function applyHit(p)
 		}
 	end
 	
-	-- Aplica as propriedades de forma direta e estática
+	-- Aplica exatamente as configuracoes do teste que funcionou!
 	part.Size = tamanhoAlvo
-	part.Transparency = HitC.Transparency
-	part.Color = HitC.Color
+	part.Transparency = HitC.Transparency or 0.6
+	part.Color = HitC.Color or Color3.fromRGB(255, 0, 0)
 	part.Material = Enum.Material.Neon
 	part.CanCollide = false
 end
