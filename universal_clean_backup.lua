@@ -988,36 +988,28 @@ btnTitle(Tabs.Scripts,"Touch Fling",function()runExternal("https://pastebin.com/
 section(Tabs.Info,"Info");para(Tabs.Info,L("HomeTitle"),L("HomeDesc"),"Blue");para(Tabs.Info,L("BetaTitle"),L("BetaDesc"),"Orange");para(Tabs.Info,L("DiscordTitle"),L("DiscordDesc").."\n"..DISCORD_LINK,"Red");para(Tabs.Info,L("StatusTitle"),L("StatusDesc"),"Green");btn(Tabs.Info,"CopyDiscord",copyDiscord)
 section(Tabs.Status, "Server Information")
 
--- Criamos parágrafos para agrupar as informações por categoria
-local serverInfo = Tabs.Status:Paragraph({
-    Title = "Server Details",
-    Content = "Players: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. 
-              "\nPing: " .. getPingText() .. 
-              "\nGravity: " .. math.floor(workspace.Gravity) .. 
-              "\nServer Age: " .. niceTime(serverAge())
-})
+-- Criamos labels fixos para mostrar as informações sem ocupar espaço de botão
+local statusLabel = Tabs.Status:Label("Carregando status...")
 
-local identityInfo = Tabs.Status:Paragraph({
-    Title = "Game Identity",
-    Content = "PlaceId: " .. game.PlaceId .. 
-              "\nJobId: " .. game.JobId .. 
-              "\nAccount Age: " .. LP.AccountAge .. " Days"
-})
-
--- Agora, apenas botões de ação necessários
-section(Tabs.Status, "Actions")
-
-btn(Tabs.Status, "Refresh Data", function()
-    -- Atualiza o conteúdo dos parágrafos dinamicamente
-    serverInfo:SetContent("Players: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. 
-                          "\nPing: " .. getPingText() .. 
-                          "\nGravity: " .. math.floor(workspace.Gravity) .. 
-                          "\nServer Age: " .. niceTime(serverAge()))
-                          
-    notify("Status Updated", "refresh-cw", 2)
+btn(Tabs.Status, "Refresh Status", function()
+    local info = "Jogadores: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. 
+                 "\nPing: " .. getPingText() .. 
+                 "\nGravity: " .. math.floor(workspace.Gravity) .. 
+                 "\nExecutor: " .. (fs() and "Sim" or "Não") ..
+                 "\nConta: " .. LP.AccountAge .. " dias"
+    
+    -- O método :SetText() é o padrão da WindUI para atualizar Labels
+    if statusLabel then
+        statusLabel:SetText(info)
+    end
+    notify(L("PlayerListUpdated"), "refresh-cw", 2)
 end)
 
-btn(Tabs.Status, "Copy All Info", copyServerInfo)
+-- Copia tudo de uma vez para não ter 10 botões de cópia
+btn(Tabs.Status, "Copy All Data", function()
+    setclipboard("Ping: " .. getPingText() .. " | JobId: " .. game.JobId)
+    notify("Copiado!", "clipboard", 2)
+end)
 section(Tabs.Aimbot,"Main");tog(Tabs.Aimbot,"EnableAimbot","AimbotEnabled",false,function(v)Aim.Enabled=v;if not v then currentTarget=nil end end);tog(Tabs.Aimbot,"TeamCheck","AimbotTeamCheck",false,function(v)Aim.TeamCheck=v;currentTarget=nil end);tog(Tabs.Aimbot,"VisibleCheck","AimbotVisibleCheck",false,function(v)Aim.VisibleCheck=v;currentTarget=nil end);drop(Tabs.Aimbot,"TargetPart","AimbotTargetPart",{"Head","HumanoidRootPart"},"Head",function(v)Aim.TargetPart=v;currentTarget=nil end)
 section(Tabs.Aimbot,"FOV");slid(Tabs.Aimbot,"AimbotFOV","AimbotFOV",10,500,Aim.FOV,1,function(v)Aim.FOV=v;if FOVCircle then FOVCircle.Radius=v end end);tog(Tabs.Aimbot,"ShowFOV","AimbotFOVVisible",false,function(v)Aim.FOVVisible=v;if FOVCircle then FOVCircle.Visible=v end end);col(Tabs.Aimbot,"FOVColor","AimbotFOVColor",Aim.FOVColor,function(v)Aim.FOVColor=v;if FOVCircle then FOVCircle.Color=v end end);tog(Tabs.Aimbot,"Crosshair","AimbotCrosshair",false,function(v)Aim.Crosshair=v end);slid(Tabs.Aimbot,"CrosshairSize","AimbotCrosshairSize",4,30,Aim.CrosshairSize,1,function(v)Aim.CrosshairSize=v end)
 section(Tabs.Aimbot,"Tuning");slid(Tabs.Aimbot,"Smoothness","AimbotSmoothness",1,100,35,1,function(v)Aim.Smoothness=v/388 end);slid(Tabs.Aimbot,"Strength","AimbotStrength",1,100,100,1,function(v)Aim.Strength=v/100 end);slid(Tabs.Aimbot,"SwitchDelay","AimbotSwitchDelay",0,2,Aim.TargetSwitchDelay,.05,function(v)Aim.TargetSwitchDelay=v end)
