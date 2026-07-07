@@ -575,36 +575,38 @@ local function antiVoidGuard()
 		end
 	end
 end
-
 local isFakeDead = false
+
 local function fakeDeath()
 	local h = hum(); local r = root()
 	if not h or not r then return end
 	
-	isFakeDead = not isFakeDead -- Alterna o estado a cada clique
+	isFakeDead = true
+	h.PlatformStand = true
+	r.AssemblyLinearVelocity = Vector3.new(math.random(-25,25), 55, math.random(-25,25))
+	r.AssemblyAngularVelocity = Vector3.new(25, 35, 25)
 	
-	if isFakeDead then
-		-- EFEITO MAIS FORTE: Voa mais alto (55) e gira muito mais (25, 35, 25)
-		h.PlatformStand = true
-		r.AssemblyLinearVelocity = Vector3.new(math.random(-25,25), 55, math.random(-25,25))
-		r.AssemblyAngularVelocity = Vector3.new(25, 35, 25)
-		
-		-- TRAVA PARA FICAR DEITADO PERMANENTEMENTE
-		h.JumpPower = 0
-		task.spawn(function()
-			while isFakeDead and h and h.Parent do
-				h.PlatformStand = true
-				h:ChangeState(Enum.HumanoidStateType.Physics)
-				task.wait(0.1)
-			end
-		end)
-	else
-		-- LEVANTAR: Restaura tudo ao normal quando clica pela segunda vez
-		h.PlatformStand = false
-		h.JumpPower = 50 -- Ajuste para o valor padrão do seu jogo se for diferente
-		r.AssemblyLinearVelocity = Vector3.zero
-		r.AssemblyAngularVelocity = Vector3.zero
-	end
+	h.JumpPower = 0
+	task.spawn(function()
+		while isFakeDead and h and h.Parent do
+			h.PlatformStand = true
+			h:ChangeState(Enum.HumanoidStateType.Physics)
+			task.wait(0.1)
+		end
+	end)
+end
+
+local function standUp()
+	isFakeDead = false -- Quebra o loop imediatamente
+	local h = hum(); local r = root()
+	if not h or not r then return end
+	
+	h.PlatformStand = false
+	h:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+	h:ChangeState(Enum.HumanoidStateType.GettingUp)
+	h.JumpPower = 50 -- Restaura o pulo padrão
+	r.AssemblyLinearVelocity = Vector3.zero
+	r.AssemblyAngularVelocity = Vector3.zero
 end
 
 local lagT,lagHold,lagToken=0,false,0
