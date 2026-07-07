@@ -477,74 +477,38 @@ local function setNoclip(on)
 		end)
 	end
 end
-local originalLighting={Brightness=Lighting.Brightness,ClockTime=Lighting.ClockTime,FogEnd=Lighting.FogEnd,GlobalShadows=Lighting.GlobalShadows,Ambient=Lighting.Ambient}
-
 local function updateWorldVisuals()
-	if MiscC.Fullbright then
-		Lighting.Brightness=2
-		Lighting.ClockTime=14
-		Lighting.GlobalShadows=false
-		Lighting.Ambient=Color3.fromRGB(255,255,255)
-	else
-		Lighting.Brightness=originalLighting.Brightness
-		Lighting.ClockTime=originalLighting.ClockTime
-		Lighting.GlobalShadows=originalLighting.GlobalShadows
-		Lighting.Ambient=originalLighting.Ambient
-	end
-	
+	-- --- SEU NO FOG (DO JEITO QUE VOCÊ MANDOU ANTES) ---
 	if MiscC.NoFog then 
-		-- Força a neblina antiga para o infinito e zera o início dela
-		Lighting.FogStart = 999999
-		Lighting.FogEnd = 999999
-		
-		-- Remove/Zera qualquer atmosfera moderna no Lighting e na Workspace de forma direta
-		local targets = {Lighting, workspace}
-		for _, parent in ipairs(targets) do
-			for _, child in ipairs(parent:GetChildren()) do
-				if child:IsA("Atmosphere") then
-					child.Density = 0
-					child.Haze = 0
-				end
-			end
-		end
+		Lighting.FogEnd = 100000
+		Lighting.FogStart = 0
 	else 
-		-- Se desligar, apenas volta a neblina padrão antiga
 		Lighting.FogEnd = originalLighting.FogEnd 
 	end
-end
-local function antiVoidGuard()
-	if not MiscC.AntiVoid then return end
-	
-	local c = char()
-	local r = root()
-	local h = hum()
-	
-	if c and r and h then
-		-- Limite onde o Roblox destrói o boneco (geralmente -500)
-		local voidThreshold = workspace.FallenPartsDestroyHeight
-		
-		-- Define uma "zona de perigo" um pouco acima do limite do void (ex: 50 studs acima do void)
-		local dangerZone = voidThreshold + 50 
-		
-		-- Só atualiza a posição se você estiver BEM acima da zona de perigo do void
-		if r.Position.Y > dangerZone then
-			-- Garante que você está pisando firme no chão e não voando ou caindo
-			if h.FloorMaterial ~= Enum.Material.Air then
-				lastSafePosition = r.CFrame
-			end
-		elseif r.Position.Y <= voidThreshold + 20 then
-			-- Se você invadir a linha de salvamento (perto do fundo do void), teleporta de volta
-			if lastSafePosition then
-				r.AssemblyLinearVelocity = Vector3.zero -- Zera o impulso para não bugar a física
-				r.CFrame = lastSafePosition
-			else
-				-- Safe-guard caso comece o jogo já caindo: joga para cima
-				r.AssemblyLinearVelocity = Vector3.zero
-				r.CFrame = r.CFrame + Vector3.new(0, 150, 0)
-			end
-		end
+
+	-- --- SEU NOVO FULLBRIGHT INFINITO E AGRESSIVO ---
+	if MiscC.Fullbright then
+		Lighting.Ambient = Color3.new(1, 1, 1)
+		Lighting.ColorShift_Bottom = Color3.new(1, 1, 1)
+		Lighting.ColorShift_Top = Color3.new(1, 1, 1)
+		Lighting.Brightness = 2
+		Lighting.ClockTime = 14
+		Lighting.GlobalShadows = false
+	else
+		-- Se desligar no menu, volta ao padrão do mapa
+		Lighting.Brightness = originalLighting.Brightness
+		Lighting.ClockTime = originalLighting.ClockTime
+		Lighting.GlobalShadows = originalLighting.GlobalShadows
+		Lighting.Ambient = originalLighting.Ambient
 	end
 end
+
+-- Conecta a função para rodar instantaneamente se o jogo tentar mudar a iluminação
+Lighting.LightingChanged:Connect(function()
+	if MiscC.Fullbright or MiscC.NoFog then
+		updateWorldVisuals()
+	end
+end)
 local lastFakeDeath=0
 local function fakeDeath(on)
 	local h=hum();local r=root()
