@@ -468,25 +468,34 @@ local function setNoclip(on)
 			local c = char()
 			if not c then return end
 			
-			-- Força o estado NoClip no Humanoid para a física do Roblox não bugar embaixo de tetos
-			local h = c:FindFirstChildOfClass("Humanoid")
-			if h then
-				h:ChangeState(Enum.HumanoidStateType.NoClip)
-			end
-			
-			-- Desativa a colisão das partes para atravessar paredes
-			for _, v in pairs(c:GetDescendants()) do
-				if v:IsA("BasePart") and v.CanCollide then
+			-- Desativa a colisão de todas as partes do personagem de forma agressiva
+			for _, v in ipairs(c:GetChildren()) do
+				if v:IsA("BasePart") then
+					-- Mantém apenas o HumanoidRootPart com colisão mínima se necessário, ou desativa tudo
+					-- Para não cair no chão infinito, o Roblox precisa que o estado NoClip do Humanoid cuide disso.
 					v.CanCollide = false
 				end
 			end
+			
+			local h = c:FindFirstChildOfClass("Humanoid")
+			if h then
+				-- Aplica o estado fantasma
+				h:ChangeState(Enum.HumanoidStateType.NoClip)
+			end
 		end)
 	else
-		-- Quando desativa, força o boneco a voltar ao estado normal de corrida
+		-- Restaura os estados normais quando desliga
 		local c = char()
 		local h = c and c:FindFirstChildOfClass("Humanoid")
 		if h then
 			h:ChangeState(Enum.HumanoidStateType.Running)
+		end
+		if c then
+			for _, v in ipairs(c:GetChildren()) do
+				if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+					v.CanCollide = true
+				end
+			end
 		end
 	end
 end
