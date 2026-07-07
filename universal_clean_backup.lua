@@ -500,24 +500,27 @@ local function antiVoidGuard()
 	local h = hum()
 	
 	if c and r and h then
-		-- Verifica se o jogador está em um lugar seguro (com vida e acima do Void)
-		--workspace.FallenPartsDestroyHeight geralmente é onde o Roblox mata o player (-500 por padrão)
-		local voidThreshold = workspace.FallenPartsDestroyHeight + 20 
+		-- Limite onde o Roblox destrói o boneco (geralmente -500)
+		local voidThreshold = workspace.FallenPartsDestroyHeight
 		
-		if r.Position.Y > voidThreshold then
-			-- Se o personagem estiver no chão (FloorMaterial não vazio), salva a posição
+		-- Define uma "zona de perigo" um pouco acima do limite do void (ex: 50 studs acima do void)
+		local dangerZone = voidThreshold + 50 
+		
+		-- Só atualiza a posição se você estiver BEM acima da zona de perigo do void
+		if r.Position.Y > dangerZone then
+			-- Garante que você está pisando firme no chão e não voando ou caindo
 			if h.FloorMaterial ~= Enum.Material.Air then
 				lastSafePosition = r.CFrame
 			end
-		else
-			-- Se caiu abaixo do limite do Void, puxa de volta para a última posição salva
+		elseif r.Position.Y <= voidThreshold + 20 then
+			-- Se você invadir a linha de salvamento (perto do fundo do void), teleporta de volta
 			if lastSafePosition then
-				r.AssemblyLinearVelocity = Vector3.zero -- Zera o impulso da queda para não bugar
+				r.AssemblyLinearVelocity = Vector3.zero -- Zera o impulso para não bugar a física
 				r.CFrame = lastSafePosition
 			else
-				-- Caso não tenha nenhuma salva ainda, joga um pouco para cima para salvar da morte
+				-- Safe-guard caso comece o jogo já caindo: joga para cima
 				r.AssemblyLinearVelocity = Vector3.zero
-				r.CFrame = r.CFrame + Vector3.new(0, 100, 0)
+				r.CFrame = r.CFrame + Vector3.new(0, 150, 0)
 			end
 		end
 	end
