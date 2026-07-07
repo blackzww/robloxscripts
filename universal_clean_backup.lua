@@ -376,23 +376,36 @@ local function validHit(p)
 	return true
 end
 local function applyHit(p)
-	if not HitC.Enabled or not validHit(p)then return end
-	local part=root(p)
-	if not part or not part:IsA("BasePart")then return end
+	if not HitC.Enabled or not validHit(p) then return end
+	local part = root(p)
+	if not part or not part:IsA("BasePart") then return end
+	
 	savePart(part)
-	local s=math.clamp(tonumber(HitC.Size)or 10,2,HitC.MaxSize or 200)
-	part.Size=Vector3.new(s,s,s)
-	part.Transparency=HitC.Transparency
-	part.Color=HitC.Color
-	part.Material=Enum.Material.Neon
-	part.CanCollide=false
-	part.CanTouch=false
-	part.CanQuery=true
-	part.Massless=true
-	if part.AssemblyLinearVelocity.Magnitude>250 then part.AssemblyLinearVelocity=Vector3.zero end
-	if part.AssemblyAngularVelocity.Magnitude>250 then part.AssemblyAngularVelocity=Vector3.zero end
+	local s = math.clamp(tonumber(HitC.Size)or 10, 2, HitC.MaxSize or 200)
+	
+	-- ATUALIZAÇÃO SEGURA: Altera o tamanho e remove o peso e colisão de rampa/parede
+	part.Size = Vector3.new(s, s, s)
+	part.Transparency = HitC.Transparency
+	part.Color = HitC.Color
+	part.Material = Enum.Material.Neon
+	part.CanCollide = false
+	part.Massless = true
+	
+	-- Deixamos CanTouch e CanQuery originais para NÃO congelar a simulação do Roblox
 end
-local function updateHit()if HitC.Enabled then for _,p in ipairs(Players:GetPlayers())do applyHit(p)end end end
+
+local function updateHit()
+	if HitC.Enabled then 
+		for _, p in ipairs(Players:GetPlayers()) do 
+			if validHit(p) then
+				applyHit(p) 
+			end
+		end 
+	else
+		-- Quando DESATIVAR o toggle do expander, reseta os players na hora
+		resetHit()
+	end
+end
 
 local frozen={}
 local function freezePlayer(p)
