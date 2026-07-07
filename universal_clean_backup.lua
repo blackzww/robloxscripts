@@ -710,10 +710,33 @@ local function god()
 	end
 end
 local function antiFling()
-	local r=root()
+	local r = root()
 	if not r or not OpC.AntiFling then return end
-	if r.AssemblyLinearVelocity.Magnitude>150 then r.AssemblyLinearVelocity=Vector3.new(r.AssemblyLinearVelocity.X,0,r.AssemblyLinearVelocity.Z)end
-	r.AssemblyAngularVelocity=Vector3.zero
+	
+	-- Mantém a segurança de velocidade que você já tinha
+	if r.AssemblyLinearVelocity.Magnitude > 150 then 
+		r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, 0, r.AssemblyLinearVelocity.Z)
+	end
+	r.AssemblyAngularVelocity = Vector3.zero
+	
+	-- Nova lógica: Desativa a colisão com os outros jogadores
+	local meuChar = LP.Character
+	if meuChar then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LP and p.Character then
+				for _, minhaPeca in ipairs(meuChar:GetChildren()) do
+					if minhaPeca:IsA("BasePart") then
+						for _, suaPeca in ipairs(p.Character:GetChildren()) do
+							if suaPeca:IsA("BasePart") then
+								minhaPeca.CanCollide = false
+								suaPeca.CanCollide = false
+							end
+						end
+					end
+				end
+			end
+		end
+	end
 end
 local flingRun=false
 pcall(function()
