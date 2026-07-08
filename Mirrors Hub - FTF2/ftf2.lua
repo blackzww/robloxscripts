@@ -941,15 +941,12 @@ end)
 setreadonly(mt,true)
 
 Hider:Toggle({
-    Title = "Hack Assist",
-    Desc = "Detecta hack + Never Fail",
+    Title = "Q to Sprint",
+    Desc = "Segure Q para correr mais rápido",
     Type = "Toggle",
     Value = false,
-
     Callback = function(state)
-
-        HackAssistEnabled = state
-
+        QSprint(state)
     end
 })
 
