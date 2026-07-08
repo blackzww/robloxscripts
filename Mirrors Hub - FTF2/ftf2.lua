@@ -45,7 +45,7 @@ local Window = WindUI:CreateWindow({
 
     User = {
         Enabled = true,
-        Anonymous = true,
+        Anonymous = false,
         Callback = function()
             print("clicked")
         end,
@@ -789,7 +789,7 @@ local function RemoveComputerESP()
 end
 
 
-local Toggle = Tab:Toggle({
+local Toggle = Esp:Toggle({
     Title = "Computer ESP",
     Desc = "Mostra computadores",
     Type = "Toggle",
