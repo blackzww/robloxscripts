@@ -738,400 +738,69 @@ Esp:Toggle({
     end
 })
 
--- ============================================
--- ============= COMPUTER ESP SYSTEM ==========
--- ============================================
+local ComputerESPEnabled = false
 
-local COMPUTER_ESP_CONFIG = {
-	ComputerName = "ComputerTable",
-	Colors = {
-		Default = Color3.new(1, 1, 1),
-		Hacking = Color3.new(0, 0, 1),
-		Hacked = Color3.new(0, 1, 0),
-	},
-	BrickColors = {
-		Hacking = BrickColor.new("Bright blue"),
-		Hacked = BrickColor.new("Dark green"),
-	},
-	HighlightDefaults = {
-		FillColor = Color3.new(1, 1, 1),
-		OutlineColor = Color3.new(1, 1, 1),
-		FillTransparency = 0.5,
-		OutlineTransparency = 0,
-	},
-}
+local function ComputerESP()
+    ComputerESPEnabled = true
 
-local ComputerDiscoveryService = {}
-ComputerDiscoveryService.__index = ComputerDiscoveryService
+    local map = game.ReplicatedStorage.CurrentMap.Value
+    if map then
+        for _, obj in pairs(map:GetChildren()) do
+            if obj.Name == "ComputerTable" then
+                if not obj:FindFirstChild("Highlight") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    highlight.FillColor = Color3.fromRGB(13,105,172)
+                    highlight.OutlineColor = Color3.fromRGB(20,165,255)
+                    highlight.Parent = obj
 
-function ComputerDiscoveryService.new(workspaceInstance)
-	local self = setmetatable({}, ComputerDiscoveryService)
-	self._workspace = workspaceInstance or workspace
-	self._cache = {}
-	self._descendantAddedConn = nil
-	self._descendantRemovingConn = nil
-	self._addedListeners = {}
-	self._removingListeners = {}
-	return self
+                    task.spawn(function()
+                        while ComputerESPEnabled and highlight.Parent do
+                            local screen = obj:FindFirstChild("Screen")
+
+                            if screen then
+                                highlight.FillColor = screen.Color
+                            end
+
+                            task.wait(1)
+                        end
+                    end)
+                end
+            end
+        end
+    end
 end
 
-function ComputerDiscoveryService:discover()
-	local cacheKey = "__all__"
-	if self._cache[cacheKey] then
-		return self._cache[cacheKey]
-	end
 
-	local computers = {}
-	for _, descendant in pairs(self._workspace:GetDescendants()) do
-		if descendant.Name == COMPUTER_ESP_CONFIG.ComputerName then
-			table.insert(computers, descendant)
-		end
-	end
+local function RemoveComputerESP()
+    ComputerESPEnabled = false
 
-	self._cache[cacheKey] = computers
-	return computers
+    local map = game.ReplicatedStorage.CurrentMap.Value
+    if map then
+        for _, obj in pairs(map:GetChildren()) do
+            if obj.Name == "ComputerTable" then
+                local highlight = obj:FindFirstChild("Highlight")
+                if highlight then
+                    highlight:Destroy()
+                end
+            end
+        end
+    end
 end
 
-function ComputerDiscoveryService:onComputerAdded(callback)
-	table.insert(self._addedListeners, callback)
-end
 
-function ComputerDiscoveryService:onComputerRemoving(callback)
-	table.insert(self._removingListeners, callback)
-end
+local Toggle = Tab:Toggle({
+    Title = "Computer ESP",
+    Desc = "Mostra computadores",
+    Type = "Toggle",
+    Value = false,
 
-function ComputerDiscoveryService:startListening()
-	if self._descendantAddedConn then
-		return
-	end
-
-	self._descendantAddedConn = self._workspace.DescendantAdded:Connect(function(descendant)
-		if descendant.Name ~= COMPUTER_ESP_CONFIG.ComputerName then
-			return
-		end
-		local cacheKey = "__all__"
-		if self._cache[cacheKey] then
-			table.insert(self._cache[cacheKey], descendant)
-		end
-		for _, callback in pairs(self._addedListeners) do
-			callback(descendant)
-		end
-	end)
-
-	self._descendantRemovingConn = self._workspace.DescendantRemoving:Connect(function(descendant)
-		if descendant.Name ~= COMPUTER_ESP_CONFIG.ComputerName then
-			return
-		end
-		local cacheKey = "__all__"
-		if self._cache[cacheKey] then
-			for i, computer in pairs(self._cache[cacheKey]) do
-				if computer == descendant then
-					table.remove(self._cache[cacheKey], i)
-					break
-				end
-			end
-		end
-		for _, callback in pairs(self._removingListeners) do
-			callback(descendant)
-		end
-	end)
-end
-
-function ComputerDiscoveryService:stopListening()
-	if self._descendantAddedConn then
-		self._descendantAddedConn:Disconnect()
-		self._descendantAddedConn = nil
-	end
-	if self._descendantRemovingConn then
-		self._descendantRemovingConn:Disconnect()
-		self._descendantRemovingConn = nil
-	end
-end
-
-function ComputerDiscoveryService:invalidateCache()
-	self._cache = {}
-end
-
-local ComputerHighlightFactory = {}
-ComputerHighlightFactory.__index = ComputerHighlightFactory
-
-function ComputerHighlightFactory.new(config)
-	local self = setmetatable({}, ComputerHighlightFactory)
-	self._config = config or COMPUTER_ESP_CONFIG.HighlightDefaults
-	return self
-end
-
-function ComputerHighlightFactory:create(parent)
-	local existing = parent:FindFirstChildOfClass("Highlight")
-	if existing then
-		existing:Destroy()
-	end
-
-	local highlight = Instance.new("Highlight")
-	highlight.FillColor = self._config.FillColor
-	highlight.OutlineColor = self._config.OutlineColor
-	highlight.FillTransparency = self._config.FillTransparency
-	highlight.OutlineTransparency = self._config.OutlineTransparency
-	highlight.Parent = parent
-	return highlight
-end
-
-local ComputerStateReader = {}
-ComputerStateReader.__index = ComputerStateReader
-
-function ComputerStateReader.new(brickColorConfig)
-	local self = setmetatable({}, ComputerStateReader)
-	self._config = brickColorConfig or COMPUTER_ESP_CONFIG.BrickColors
-	return self
-end
-
-function ComputerStateReader:read(computer)
-	local screen = computer:FindFirstChild("Screen")
-	if not screen then
-		return nil
-	end
-
-	if not screen:IsA("BasePart") then
-		return nil
-	end
-
-	return screen.BrickColor
-end
-
-function ComputerStateReader:getColor(computer, colorConfig)
-	local brickColor = self:read(computer)
-	if not brickColor then
-		return nil
-	end
-
-	if brickColor == self._config.Hacking then
-		return colorConfig.Hacking
-	end
-	if brickColor == self._config.Hacked then
-		return colorConfig.Hacked
-	end
-
-	return colorConfig.Default
-end
-
-local ComputerResourceManager = {}
-ComputerResourceManager.__index = ComputerResourceManager
-
-function ComputerResourceManager.new()
-	local self = setmetatable({}, ComputerResourceManager)
-	self._highlights = {}
-	self._connections = {}
-	self._active = false
-	return self
-end
-
-function ComputerResourceManager:addHighlight(key, highlight)
-	local bucket = self._highlights[key]
-	if not bucket then
-		bucket = {}
-		self._highlights[key] = bucket
-	end
-	table.insert(bucket, highlight)
-end
-
-function ComputerResourceManager:addConnection(key, connection)
-	local bucket = self._connections[key]
-	if not bucket then
-		bucket = {}
-		self._connections[key] = bucket
-	end
-	table.insert(bucket, connection)
-end
-
-function ComputerResourceManager:hasKey(key)
-	return self._highlights[key] ~= nil or self._connections[key] ~= nil
-end
-
-function ComputerResourceManager:cleanupKey(key)
-	local connections = self._connections[key]
-	if connections then
-		for _, connection in pairs(connections) do
-			if connection.Connected then
-				connection:Disconnect()
-			end
-		end
-		self._connections[key] = nil
-	end
-
-	local highlights = self._highlights[key]
-	if highlights then
-		for _, highlight in pairs(highlights) do
-			if highlight.Parent then
-				highlight:Destroy()
-			end
-		end
-		self._highlights[key] = nil
-	end
-end
-
-function ComputerResourceManager:cleanupAll()
-	local keys = {}
-
-	for key in pairs(self._highlights) do
-		keys[key] = true
-	end
-	for key in pairs(self._connections) do
-		keys[key] = true
-	end
-
-	for key in pairs(keys) do
-		self:cleanupKey(key)
-	end
-
-	self._active = false
-end
-
-function ComputerResourceManager:activate()
-	self._active = true
-end
-
-function ComputerResourceManager:isActive()
-	return self._active
-end
-
-local ComputerESP = {}
-ComputerESP.__index = ComputerESP
-
-function ComputerESP.new(dependencies)
-	local deps = dependencies or {}
-	local self = setmetatable({}, ComputerESP)
-	self._discovery = deps.discovery or ComputerDiscoveryService.new()
-	self._factory = deps.factory or ComputerHighlightFactory.new()
-	self._stateReader = deps.stateReader or ComputerStateReader.new()
-	self._resources = nil
-	self._enabled = false
-	return self
-end
-
-function ComputerESP:_initializeComputer(computer)
-	local computerKey = computer:GetFullName()
-
-	if self._resources:hasKey(computerKey) then
-		return
-	end
-
-	local highlight = self._factory:create(computer)
-	self._resources:addHighlight(computerKey, highlight)
-
-	self:_updateComputerColor(computer, highlight)
-
-	self:_listenToScreenChanges(computer, computerKey, highlight)
-end
-
-function ComputerESP:_updateComputerColor(computer, highlight)
-	if not computer:IsDescendantOf(game) then
-		return
-	end
-
-	if not highlight:IsDescendantOf(game) then
-		return
-	end
-
-	local color = self._stateReader:getColor(computer, COMPUTER_ESP_CONFIG.Colors)
-	if color then
-		highlight.FillColor = color
-		highlight.OutlineColor = color
-	end
-end
-
-function ComputerESP:_listenToScreenChanges(computer, computerKey, highlight)
-	local screen = computer:FindFirstChild("Screen")
-	if not screen then
-		return
-	end
-
-	if not screen:IsA("BasePart") then
-		return
-	end
-
-	local connectionKey = computerKey .. "_screen"
-	local connection = screen:GetPropertyChangedSignal("BrickColor"):Connect(function()
-		self:_updateComputerColor(computer, highlight)
-	end)
-
-	self._resources:addConnection(connectionKey, connection)
-end
-
-function ComputerESP:_onComputerAdded(computer)
-	if not self._enabled then
-		return
-	end
-
-	self:_initializeComputer(computer)
-end
-
-function ComputerESP:_onComputerRemoving(computer)
-	local computerKey = computer:GetFullName()
-	self._resources:cleanupKey(computerKey)
-end
-
-function ComputerESP:_processAllComputers()
-	local computers = self._discovery:discover()
-
-	for _, computer in pairs(computers) do
-		self:_initializeComputer(computer)
-	end
-end
-
-function ComputerESP:enable()
-	if self._enabled then
-		return
-	end
-
-	self._enabled = true
-	self._discovery:invalidateCache()
-
-	self._resources = ComputerResourceManager.new()
-	self._resources:activate()
-
-	self._discovery:onComputerAdded(function(computer)
-		self:_onComputerAdded(computer)
-	end)
-
-	self._discovery:onComputerRemoving(function(computer)
-		self:_onComputerRemoving(computer)
-	end)
-
-	self._discovery:startListening()
-
-	self:_processAllComputers()
-end
-
-function ComputerESP:disable()
-	if not self._enabled then
-		return
-	end
-
-	self._enabled = false
-
-	self._discovery:stopListening()
-
-	if self._resources then
-		self._resources:cleanupAll()
-		self._resources = nil
-	end
-end
-
-local computerEspSystem = ComputerESP.new()
-
-Esp:Toggle({
-	Title = "Computer ESP",
-	Desc = "Branco: Normal | Azul: Hackeando | Verde: Hackeado",
-	Icon = "monitor",
-	Type = "Toggle",
-	Value = false,
-	Callback = function(state)
-		if state then
-			computerEspSystem:enable()
-		else
-			computerEspSystem:disable()
-		end
-	end,
+    Callback = function(state)
+        if state then
+            ComputerESP()
+        else
+            RemoveComputerESP()
+        end
+    end
 })
 
-print("[Mirrors Hub - FTF2] Script carregado com sucesso!")
