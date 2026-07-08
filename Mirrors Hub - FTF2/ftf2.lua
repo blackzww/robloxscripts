@@ -384,6 +384,15 @@ local DOOR_ESP_CONFIG = {
             TriggerPath = function(door)
                 return door.DoorTrigger
             end
+        },
+        {
+    Name = "ExitDoor",
+    HighlightParent = function(door)
+        return door
+    end,
+    TriggerPath = function(door)
+        return door
+    end
         }
     },
     Colors = {
@@ -466,19 +475,25 @@ function DoorStateReader.new(stateConfig)
 end
 
 function DoorStateReader:read(door, doorTypeConfig)
+
+    if door.Name == "ExitDoor" then
+        return 11
+    end
+
     local trigger = doorTypeConfig.TriggerPath(door)
+
     if not trigger then
         return nil
     end
 
     local actionSign = trigger:FindFirstChild("ActionSign")
+
     if not actionSign then
         return nil
     end
 
     return actionSign.Value
 end
-
 function DoorStateReader:getColor(door, doorTypeConfig, colorConfig)
     local state = self:read(door, doorTypeConfig)
     if state == nil then
@@ -724,9 +739,8 @@ end
 local doorEspSystem = DoorESP.new()
 
 Esp:Toggle({
-    Title = "Door ESP",
+    Title = "Doors ESP",
     Desc = "Verde: Destrancada | Vermelho: Trancada",
-    Icon = "door-open",
     Type = "Toggle",
     Value = false,
     Callback = function(state)
@@ -789,12 +803,11 @@ local function RemoveComputerESP()
 end
 
 
-local Toggle = Esp:Toggle({
+Esp:Toggle({
     Title = "Computer ESP",
-    Desc = "Mostra computadores",
-    Type = "Checkbox",
+    Desc = "Mostre os Computadores",
+    Type = "Toggle",
     Value = false,
-
     Callback = function(state)
         if state then
             ComputerESP()
@@ -804,3 +817,370 @@ local Toggle = Esp:Toggle({
     end
 })
 
+local FreezePodESPEnabled = false
+
+local function FreezePodESP()
+    FreezePodESPEnabled = true
+
+    local map = game.ReplicatedStorage.CurrentMap.Value
+
+    if map then
+        for _, pod in pairs(map:GetChildren()) do
+            if pod.Name == "FreezePod" then
+                
+                if not pod:FindFirstChild("Highlight") then
+                    local highlight = Instance.new("Highlight")
+                    
+                    highlight.Name = "FreezePodESP"
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    highlight.FillColor = Color3.fromRGB(120,200,255)
+                    highlight.OutlineColor = Color3.fromRGB(160,255,255)
+                    highlight.FillTransparency = 0.3
+                    highlight.OutlineTransparency = 0
+                    
+                    highlight.Parent = pod
+                end
+            end
+        end
+    end
+end
+
+
+local function RemoveFreezePodESP()
+    FreezePodESPEnabled = false
+
+    local map = game.ReplicatedStorage.CurrentMap.Value
+
+    if map then
+        for _, pod in pairs(map:GetChildren()) do
+            if pod.Name == "FreezePod" then
+                
+                local highlight = pod:FindFirstChild("FreezePodESP")
+                
+                if highlight then
+                    highlight:Destroy()
+                end
+            end
+        end
+    end
+end
+
+Esp:Toggle({
+    Title = "Freeze Pod ESP",
+    Desc = "Mostra as cápsulas de congelamento",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state)
+        if state then
+            FreezePodESP()
+        else
+            RemoveFreezePodESP()
+        end
+    end
+})
+
+-- ============================================
+-- ============= HACK DETECTOR ================
+-- ============================================
+
+function IsPlayerHacking()
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+
+    if not character then
+        return false
+    end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if not humanoid then
+        return false
+    end
+
+    local animations = humanoid:GetPlayingAnimationTracks()
+
+    for _, anim in pairs(animations) do
+        if anim.Name == "AnimTyping" then
+            return true
+        end
+    end
+
+    return false
+end
+
+
+-- ============================================
+-- ============= NEVER FAIL SYSTEM ============
+-- ============================================
+
+local HackAssistEnabled = false
+
+
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+
+setreadonly(mt,false)
+
+mt.__namecall = newcclosure(function(self,...)
+
+    local args = {...}
+
+    if getnamecallmethod() == "FireServer"
+    and args[1] == "SetPlayerMinigameResult"
+    and HackAssistEnabled
+    and IsPlayerHacking() then
+
+        args[2] = true
+
+    end
+
+    return oldNamecall(self, unpack(args))
+end)
+
+setreadonly(mt,true)
+
+Hider:Toggle({
+    Title = "Hack Assist",
+    Desc = "Detecta hack + Never Fail",
+    Type = "Toggle",
+    Value = false,
+
+    Callback = function(state)
+
+        HackAssistEnabled = state
+
+    end
+})
+
+local SpeedLock = {}
+
+SpeedLock.Enabled = false
+SpeedLock.Speed = 20
+SpeedLock.Connection = nil
+
+function SpeedLock:Enable(humanoid)
+	if self.Connection then
+		self.Connection:Disconnect()
+	end
+
+	self.Enabled = true
+
+	humanoid.WalkSpeed = self.Speed
+
+	self.Connection = humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+		if self.Enabled and humanoid.WalkSpeed ~= self.Speed then
+			humanoid.WalkSpeed = self.Speed
+		end
+	end)
+end
+
+function SpeedLock:Disable()
+	self.Enabled = false
+
+	if self.Connection then
+		self.Connection:Disconnect()
+		self.Connection = nil
+	end
+end
+
+return SpeedLock
+
+Beast:Toggle({
+    Title = "No Slow",
+    Desc = "Mantém a velocidade em 20",
+    Type = "Toggle",
+    Value = false,
+
+    Callback = function(state)
+
+        local character = game.Players.LocalPlayer.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+        if humanoid then
+
+            if state then
+                SpeedLock:Enable(humanoid)
+            else
+                SpeedLock:Disable()
+            end
+
+        end
+    end
+})
+
+local CrawlEnabled = false
+
+local function EnableCrawl(state)
+    CrawlEnabled = state
+
+    local player = game.Players.LocalPlayer
+
+    pcall(function()
+        if player:FindFirstChild("TempPlayerStatsModule") then
+            player.TempPlayerStatsModule.DisableCrawl.Value = not state
+        end
+    end)
+end
+
+
+Beast:Toggle({
+    Title = "Enable Crawl",
+    Desc = "Permite usar Crawl",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state)
+        EnableCrawl(state)
+    end
+})
+
+local RemoveSoundGlowEnabled = false
+
+local function RemoveSoundGlow(state)
+    RemoveSoundGlowEnabled = state
+
+    if state then
+        local player = game.Players.LocalPlayer
+
+        pcall(function()
+            if player.Character
+            and player.Character:FindFirstChild("Hammer")
+            and player.Character.Hammer:FindFirstChild("Handle") then
+
+                for _,v in pairs(player.Character.Hammer.Handle:GetChildren()) do
+                    if v:IsA("Sound") then
+                        v:Destroy()
+                    end
+                end
+            end
+        end)
+
+        pcall(function()
+            if player.Character
+            and player.Character:FindFirstChild("Gemstone")
+            and player.Character.Gemstone:FindFirstChild("Handle")
+            and player.Character.Gemstone.Handle:FindFirstChild("PointLight") then
+
+                player.Character.Gemstone.Handle.PointLight:Destroy()
+            end
+        end)
+    end
+end
+
+
+Beast:Toggle({
+    Title = "Remove Sound And Glow",
+    Desc = "Remove som do martelo e brilho da gema",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state)
+        RemoveSoundGlow(state)
+    end
+})
+
+local FixCameraEnabled = false
+
+local function FixCamera(state)
+    FixCameraEnabled = state
+
+    if state then
+        local player = game.Players.LocalPlayer
+
+        pcall(function()
+            local character = player.Character
+            if not character then return end
+
+            local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+            if humanoid then
+                workspace.CurrentCamera.CameraSubject = humanoid
+            end
+
+            workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+
+            player.CameraMinZoomDistance = 0.5
+            player.CameraMaxZoomDistance = math.huge
+            player.CameraMode = Enum.CameraMode.Classic
+
+            if character:FindFirstChild("Head") then
+                character.Head.Anchored = false
+            end
+        end)
+    end
+end
+
+
+Beast:Toggle({
+    Title = "Fix Camera",
+    Desc = "Corrige a câmera travada",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state)
+        FixCamera(state)
+    end
+})
+
+local QSprintEnabled = false
+local QSprintBegan
+local QSprintEnded
+
+local function QSprint(state)
+    QSprintEnabled = state
+
+    if QSprintBegan then
+        QSprintBegan:Disconnect()
+        QSprintBegan = nil
+    end
+
+    if QSprintEnded then
+        QSprintEnded:Disconnect()
+        QSprintEnded = nil
+    end
+
+    if state then
+        local UIS = game:GetService("UserInputService")
+        local player = game.Players.LocalPlayer
+
+        QSprintBegan = UIS.InputBegan:Connect(function(key)
+            if key.KeyCode == Enum.KeyCode.Q then
+                pcall(function()
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid.WalkSpeed = 30
+                    end
+                end)
+            end
+        end)
+
+        QSprintEnded = UIS.InputEnded:Connect(function(key)
+            if key.KeyCode == Enum.KeyCode.Q then
+                pcall(function()
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid.WalkSpeed = 16
+                    end
+                end)
+            end
+        end)
+
+        pcall(function()
+            player.Character.PowersLocalScript:Destroy()
+        end)
+
+    else
+        pcall(function()
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.WalkSpeed = 16
+            end
+        end)
+    end
+end
+
+
+Hider:Toggle({
+    Title = "Q to Sprint",
+    Desc = "Segure Q para correr mais rápido",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state)
+        QSprint(state)
+    end
+})
