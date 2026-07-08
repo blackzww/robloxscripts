@@ -792,7 +792,7 @@ end
 local Toggle = Esp:Toggle({
     Title = "Computer ESP",
     Desc = "Mostra computadores",
-    Type = "Toggle",
+    Type = "Checkbox",
     Value = false,
 
     Callback = function(state)
