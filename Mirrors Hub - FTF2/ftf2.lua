@@ -981,7 +981,6 @@ function SpeedLock:Disable()
 	end
 end
 
-return SpeedLock
 
 Beast:Toggle({
     Title = "No Slow",
@@ -995,13 +994,11 @@ Beast:Toggle({
         local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 
         if humanoid then
-
             if state then
                 SpeedLock:Enable(humanoid)
             else
                 SpeedLock:Disable()
             end
-
         end
     end
 })
