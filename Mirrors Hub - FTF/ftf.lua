@@ -540,18 +540,21 @@ local ToggleCrawlMobile = Misc:Toggle({
     Type = "Toggle",
     Value = false,
     Callback = function(state)
-        local player = game.Players.LocalPlayer
-        local char = player.Character
-        if char and char:FindFirstChildWhichIsA("Humanoid") then
-            local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-            if state then
-                -- Diminui a altura do quadril simulando o agachamento perfeito
-                humanoid.HipHeight = -1.5 
-            else
-                -- Reseta para a altura em pé padrão do Roblox
-                humanoid.HipHeight = 0 
+        pcall(function()
+            local player = game.Players.LocalPlayer
+            local char = player.Character or player.CharacterAdded:Wait()
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            
+            if humanoid then
+                if state then
+                    -- Diminui a altura do quadril simulando o agachamento perfeito
+                    humanoid.HipHeight = -1.5 
+                else
+                    -- Reseta para a altura em pé padrão do Roblox
+                    humanoid.HipHeight = 0 
+                end
             end
-        end
+        end)
     end
 })
 
