@@ -254,27 +254,21 @@ local function startPlayerESP()
     end)
 end
 
+local IsCrouchingMobile = false
+
 local ToggleMobileCrouch = Misc:Toggle({
     Title = "Criar Botão C (Mobile)",
-    Desc = "Cria um botão virtual C que ativa a função nativa Crawl do jogo",
+    Desc = "Força o agachamento nativo alterando as propriedades locais sincronizadas com o servidor",
     Type = "Toggle",
     Value = false,
     Callback = function(state)
         local player = game.Players.LocalPlayer
-        local ContextActionService = game:GetService("ContextActionService")
+        local Remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
         
         if state then
             if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
             
-            -- Garanja que o script não trave o crawl (Sua lógica do TempPlayerStatsModule)
-            pcall(function()
-                local stats = player:FindFirstChild("TempPlayerStatsModule")
-                if stats and stats:FindFirstChild("DisableCrawl") then
-                    stats.DisableCrawl.Value = false
-                end
-            end)
-            
-            -- Criação visual do botão C na tela do celular
+            -- Criação visual do botão C na tela
             local sg = Instance.new("ScreenGui")
             sg.Name = "MobileCrouchBtn"
             sg.ResetOnSpawn = false
@@ -297,15 +291,47 @@ local ToggleMobileCrouch = Misc:Toggle({
             btn.Active = true
             btn.Draggable = true
             
-            -- Lógica Infalível: Disparar a ação oficial registrada pelo próprio jogo!
             btn.MouseButton1Click:Connect(function()
-                pcall(function()
-                    -- Força o clique simulando o pressionar (Begin) da ação nativa do Flee the Facility
-                    ContextActionService:CallFunction("Crawl", Enum.UserInputState.Begin, game:GetService("UserInputService"):GetLastInputType())
-                end)
+                local character = player.Character
+                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                local animations = game:GetService("ReplicatedStorage"):FindFirstChild("Animations")
+                
+                if humanoid and Remote and animations then
+                    pcall(function()
+                        IsCrouchingMobile = not IsCrouchingMobile
+                        
+                        if IsCrouchingMobile then
+                            -- Executa exatamente o que está dentro da função nativa 'CrawlingGoDown'
+                            Remote:FireServer("Input", "Crawl", true)
+                            humanoid.HipHeight = -2
+                            humanoid.WalkSpeed = 8
+                            
+                            local animCrawl = animations:FindFirstChild("AnimCrawl")
+                            if animCrawl then
+                                local track = humanoid:LoadAnimation(animCrawl)
+                                track:Play(0.1, 1, 1)
+                            end
+                            
+                            btn.BackgroundColor3 = Color3.fromHex("4c1d95")
+                        else
+                            -- Executa exatamente o que está dentro da função nativa 'CrawlingStandUp'
+                            Remote:FireServer("Input", "Crawl", false)
+                            humanoid.HipHeight = 0
+                            humanoid.WalkSpeed = 16
+                            
+                            -- Interrompe as animações de Crawl ativas no Humanoid
+                            for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                                if track.Name == "AnimCrawl" or (track.Animation and track.Animation.Name == "AnimCrawl") then
+                                    track:Stop()
+                                end
+                            end
+                            
+                            btn.BackgroundColor3 = Color3.fromHex("8b5cf6")
+                        end
+                    end)
+                end
             end)
         else
-            -- Se desligar o toggle, deleta o botão
             local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
             if existingBtn then existingBtn:Destroy() end
         end
