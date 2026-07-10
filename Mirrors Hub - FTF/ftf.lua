@@ -254,11 +254,11 @@ local function startPlayerESP()
     end)
 end
 
-local IsCrouchingMobile = false -- Controla o estado para saber se vai agachar ou levantar
+local IsCrouchingMobile = false -- Controla se o boneco vai deitar ou levantar
 
 local ToggleMobileCrouch = Misc:Toggle({
     Title = "Criar Botão C (Mobile)",
-    Desc = "Cria um botão virtual que dispara o RemoteEvent exato do jogo para agachar",
+    Desc = "Cria o botão C virtual simulando os pacotes de Touch da CrawlFunction",
     Type = "Toggle",
     Value = false,
     Callback = function(state)
@@ -268,7 +268,7 @@ local ToggleMobileCrouch = Misc:Toggle({
         if state then
             if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
             
-            -- Criação do botão visual na tela
+            -- Criação visual do botão C na tela
             local sg = Instance.new("ScreenGui")
             sg.Name = "MobileCrouchBtn"
             sg.ResetOnSpawn = false
@@ -291,33 +291,35 @@ local ToggleMobileCrouch = Misc:Toggle({
             btn.Active = true
             btn.Draggable = true
             
-            -- Clique usando os pacotes interceptados do Cobalt!
+            -- Lógica corrigida baseada no dump da CrawlFunction
             btn.MouseButton1Click:Connect(function()
                 if Remote then
                     pcall(function()
-                        -- Inverte o estado atual toda vez que clica
+                        -- Inverte o estado a cada clique do botão virtual
                         IsCrouchingMobile = not IsCrouchingMobile
                         
-                        -- Envia o comando direto pro servidor do Roblox
-                        Remote:FireServer("Input", "Crawl", IsCrouchingMobile)
-                        
-                        -- Um feedback visual simples no botão para você saber se está agachado
                         if IsCrouchingMobile then
-                            btn.BackgroundColor3 = Color3.fromHex("4c1d95") -- Roxo escuro (Agachado)
+                            -- Simula o início do toque para agachar (UserInputState.Begin)
+                            Remote:FireServer("Input", "Crawl", Enum.UserInputState.Begin)
+                            btn.BackgroundColor3 = Color3.fromHex("4c1d95") -- Roxo escuro (Indica agachado)
                         else
-                            btn.BackgroundColor3 = Color3.fromHex("8b5cf6") -- Roxo normal (Em pé)
+                            -- Simula o fim do toque para levantar (UserInputState.End)
+                            Remote:FireServer("Input", "Crawl", Enum.UserInputState.End)
+                            btn.BackgroundColor3 = Color3.fromHex("8b5cf6") -- Roxo claro (Indica em pé)
                         end
                     end)
                 end
             end)
         else
-            -- Se desligar o toggle, remove o botão e garante que o boneco levante
+            -- Se desligar o toggle no menu, desfaz tudo e força o boneco a levantar
             local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
             if existingBtn then existingBtn:Destroy() end
             
             if Remote and IsCrouchingMobile then
                 IsCrouchingMobile = false
-                pcall(function() Remote:FireServer("Input", "Crawl", false) end)
+                pcall(function() 
+                    Remote:FireServer("Input", "Crawl", Enum.UserInputState.End) 
+                end)
             end
         end
     end
