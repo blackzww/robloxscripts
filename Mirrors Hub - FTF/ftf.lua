@@ -254,6 +254,59 @@ local function startPlayerESP()
     end)
 end
 
+local ToggleCrawlMobile = Misc:Toggle({
+    Title = "Botão de Agachar Flutuante",
+    Desc = "Cria um botão arrastável na tela para não ficar em cima do Q",
+    Value = false,
+    Callback = function(state)
+        local VirtualInputManager = game:GetService("VirtualInputManager")
+        local player = game.Players.LocalPlayer
+        
+        -- Se ligar o Toggle, cria o botão na tela do celular
+        if state then
+            -- Se o botão já existir, não cria outro
+            if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
+            
+            local sg = Instance.new("ScreenGui")
+            sg.Name = "MobileCrouchBtn"
+            sg.ResetOnSpawn = false
+            sg.Parent = player.PlayerGui
+            
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, 65, 0, 65)
+            btn.Position = UDim2.new(0.7, 0, 0.5, 0) -- Posição inicial na tela
+            btn.BackgroundColor3 = Color3.fromHex("8b5cf6") -- Roxo do seu tema
+            btn.Text = "C"
+            btn.TextColor3 = Color3.new(1, 1, 1)
+            btn.TextSize = 24
+            btn.Font = Enum.Font.SourceSansBold
+            btn.Parent = sg
+            
+            -- Deixa o botão redondo e bonito
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 50)
+            corner.Parent = btn
+            
+            -- Faz o botão ser arrastável no Mobile para você colocar onde quiser
+            btn.Active = true
+            btn.Draggable = true
+            
+            -- Função de clique (Simula a tecla C do teclado)
+            btn.MouseButton1Click:Connect(function()
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                task.wait(0.05)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+            end)
+        else
+            -- Se desligar o Toggle, deleta o botão da tela
+            local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
+            if existingBtn then
+                existingBtn:Destroy()
+            end
+        end
+    end
+})
+
 -- ==========================================
 -- [ COMPUTER ESP FUNCTIONS / LOGIC ]
 -- ==========================================
@@ -531,30 +584,6 @@ local ToggleInvisible = Hider:Toggle({
         else
             getgenv().Running = false
         end
-    end
-})
-
-local ToggleCrawlMobile = Misc:Toggle({
-    Title = "Agachar Alternativo (Mobile)",
-    Desc = "Buga o corpo para agachar sem precisar clicar no botão nativo 'C/Q'",
-    Type = "Toggle",
-    Value = false,
-    Callback = function(state)
-        pcall(function()
-            local player = game.Players.LocalPlayer
-            local char = player.Character or player.CharacterAdded:Wait()
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            
-            if humanoid then
-                if state then
-                    -- Diminui a altura do quadril simulando o agachamento perfeito
-                    humanoid.HipHeight = -1.5 
-                else
-                    -- Reseta para a altura em pé padrão do Roblox
-                    humanoid.HipHeight = 0 
-                end
-            end
-        end)
     end
 })
 
