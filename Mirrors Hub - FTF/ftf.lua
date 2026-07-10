@@ -254,7 +254,7 @@ local function startPlayerESP()
     end)
 end
 
-local ToggleMobileCrouch = Misc:AddToggle({
+local ToggleMobileCrouch = Misc:Toggle({
     Title = "Criar Botão C (Mobile)",
     Desc = "Libera o agachamento para a Besta e cria o botão C arrastável na tela",
     Value = false,
