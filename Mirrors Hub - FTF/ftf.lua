@@ -254,21 +254,27 @@ local function startPlayerESP()
     end)
 end
 
-local IsCrouchingMobile = false -- Controla se o boneco vai deitar ou levantar
-
 local ToggleMobileCrouch = Misc:Toggle({
     Title = "Criar Botão C (Mobile)",
-    Desc = "Cria o botão C virtual simulando os pacotes de Touch da CrawlFunction",
+    Desc = "Cria um botão virtual C que ativa a função nativa Crawl do jogo",
     Type = "Toggle",
     Value = false,
     Callback = function(state)
         local player = game.Players.LocalPlayer
-        local Remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
+        local ContextActionService = game:GetService("ContextActionService")
         
         if state then
             if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
             
-            -- Criação visual do botão C na tela
+            -- Garanja que o script não trave o crawl (Sua lógica do TempPlayerStatsModule)
+            pcall(function()
+                local stats = player:FindFirstChild("TempPlayerStatsModule")
+                if stats and stats:FindFirstChild("DisableCrawl") then
+                    stats.DisableCrawl.Value = false
+                end
+            end)
+            
+            -- Criação visual do botão C na tela do celular
             local sg = Instance.new("ScreenGui")
             sg.Name = "MobileCrouchBtn"
             sg.ResetOnSpawn = false
@@ -291,36 +297,17 @@ local ToggleMobileCrouch = Misc:Toggle({
             btn.Active = true
             btn.Draggable = true
             
-            -- Lógica corrigida baseada no dump da CrawlFunction
+            -- Lógica Infalível: Disparar a ação oficial registrada pelo próprio jogo!
             btn.MouseButton1Click:Connect(function()
-                if Remote then
-                    pcall(function()
-                        -- Inverte o estado a cada clique do botão virtual
-                        IsCrouchingMobile = not IsCrouchingMobile
-                        
-                        if IsCrouchingMobile then
-                            -- Simula o início do toque para agachar (UserInputState.Begin)
-                            Remote:FireServer("Input", "Crawl", Enum.UserInputState.Begin)
-                            btn.BackgroundColor3 = Color3.fromHex("4c1d95") -- Roxo escuro (Indica agachado)
-                        else
-                            -- Simula o fim do toque para levantar (UserInputState.End)
-                            Remote:FireServer("Input", "Crawl", Enum.UserInputState.End)
-                            btn.BackgroundColor3 = Color3.fromHex("8b5cf6") -- Roxo claro (Indica em pé)
-                        end
-                    end)
-                end
+                pcall(function()
+                    -- Força o clique simulando o pressionar (Begin) da ação nativa do Flee the Facility
+                    ContextActionService:CallFunction("Crawl", Enum.UserInputState.Begin, game:GetService("UserInputService"):GetLastInputType())
+                end)
             end)
         else
-            -- Se desligar o toggle no menu, desfaz tudo e força o boneco a levantar
+            -- Se desligar o toggle, deleta o botão
             local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
             if existingBtn then existingBtn:Destroy() end
-            
-            if Remote and IsCrouchingMobile then
-                IsCrouchingMobile = false
-                pcall(function() 
-                    Remote:FireServer("Input", "Crawl", Enum.UserInputState.End) 
-                end)
-            end
         end
     end
 })
