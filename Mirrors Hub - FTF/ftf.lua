@@ -254,21 +254,18 @@ local function startPlayerESP()
     end)
 end
 
-local IsCrouchingMobile = false
-
 local ToggleMobileCrouch = Misc:Toggle({
     Title = "Criar Botão C (Mobile)",
-    Desc = "Força o agachamento nativo alterando as propriedades locais sincronizadas com o servidor",
+    Desc = "Ativa o Crawl manipulando as funções internas e upvalues do jogo",
     Type = "Toggle",
     Value = false,
     Callback = function(state)
         local player = game.Players.LocalPlayer
-        local Remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
         
         if state then
             if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
             
-            -- Criação visual do botão C na tela
+            -- Criação do botão visual na tela
             local sg = Instance.new("ScreenGui")
             sg.Name = "MobileCrouchBtn"
             sg.ResetOnSpawn = false
@@ -292,44 +289,34 @@ local ToggleMobileCrouch = Misc:Toggle({
             btn.Draggable = true
             
             btn.MouseButton1Click:Connect(function()
-                local character = player.Character
-                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-                local animations = game:GetService("ReplicatedStorage"):FindFirstChild("Animations")
+                -- 1. Tenta simular via ContextActionService enviando a tabela falsa de Touch
+                pcall(function()
+                    local fakeInputObject = {
+                        UserInputType = Enum.UserInputType.Touch,
+                        UserInputState = Enum.UserInputState.Begin
+                    }
+                    game:GetService("ContextActionService"):CallFunction("Crawl", Enum.UserInputState.Begin, fakeInputObject)
+                end)
                 
-                if humanoid and Remote and animations then
-                    pcall(function()
-                        IsCrouchingMobile = not IsCrouchingMobile
-                        
-                        if IsCrouchingMobile then
-                            -- Executa exatamente o que está dentro da função nativa 'CrawlingGoDown'
-                            Remote:FireServer("Input", "Crawl", true)
-                            humanoid.HipHeight = -2
-                            humanoid.WalkSpeed = 8
-                            
-                            local animCrawl = animations:FindFirstChild("AnimCrawl")
-                            if animCrawl then
-                                local track = humanoid:LoadAnimation(animCrawl)
-                                track:Play(0.1, 1, 1)
-                            end
-                            
-                            btn.BackgroundColor3 = Color3.fromHex("4c1d95")
-                        else
-                            -- Executa exatamente o que está dentro da função nativa 'CrawlingStandUp'
-                            Remote:FireServer("Input", "Crawl", false)
-                            humanoid.HipHeight = 0
-                            humanoid.WalkSpeed = 16
-                            
-                            -- Interrompe as animações de Crawl ativas no Humanoid
-                            for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
-                                if track.Name == "AnimCrawl" or (track.Animation and track.Animation.Name == "AnimCrawl") then
-                                    track:Stop()
+                -- 2. Se o de cima falhar devido a sandbox, vamos interceptar via Upvalues usando o debug do exploit
+                pcall(function()
+                    local character = player.Character
+                    local localScript = character and character:FindFirstChild("LocalPlayerScript")
+                    if localScript then
+                        -- Procura as funções na memória do script
+                        for _, v in pairs(getgc()) do
+                            if type(v) == "function" and getfenv(v).script == localScript then
+                                local info = debug.getinfo(v)
+                                -- Se acharmos a função CrawlFunction ou o closure que gerencia o CrawlingGoDown
+                                if info.name == "CrawlFunction" or info.name == "CrawlingGoDown" then
+                                    setupvalue(v, 2, true) -- Altera v_u_26 para true (evita o reset no Stepped)
+                                    setupvalue(v, 3, true) -- Altera v_u_27 para true
+                                    v() -- Executa a função interna do jogo diretamente
                                 end
                             end
-                            
-                            btn.BackgroundColor3 = Color3.fromHex("8b5cf6")
                         end
-                    end)
-                end
+                    end
+                end)
             end)
         else
             local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
