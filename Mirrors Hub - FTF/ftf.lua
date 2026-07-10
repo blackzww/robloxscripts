@@ -6,68 +6,50 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 -- ==========================================
 -- [ THEME CONFIGURATIONS ]
 -- ==========================================
-
 WindUI:AddTheme({
     Name = "PurpleDark",
-    
     Accent = WindUI:Gradient({                                                      
         ["0"] = { Color = Color3.fromHex("8b5cf6"), Transparency = 0 },            
         ["100"]   = { Color = Color3.fromHex("6d28d9"), Transparency = 0 },        
-    }, {                                                                            
-        Rotation = 90,                                                               
-    }),
-    
+    }, { Rotation = 90 }),
     Background = Color3.fromHex("090611"), 
     Outline = Color3.fromHex("211a30"),
     Text = Color3.fromHex("f3f4f6"),
     Placeholder = Color3.fromHex("6b7280"),
-    
     Button = WindUI:Gradient({                                                      
         ["0"] = { Color = Color3.fromHex("2e165b"), Transparency = 0 },            
         ["100"]   = { Color = Color3.fromHex("1c0d3a"), Transparency = 0 },        
-    }, {                                                                            
-        Rotation = 90,                                                               
-    }),
+    }, { Rotation = 90 }),
     Icon = Color3.fromHex("c084fc"),
-    
     Hover = Color3.fromHex("a78bfa"),
     BackgroundTransparency = 0,
-    
     WindowBackground = Color3.fromHex("090611"), 
     WindowShadow = Color3.fromHex("020105"),
-    
     DialogBackground = Color3.fromHex("110c22"),
     DialogBackgroundTransparency = 0,
     DialogTitle = Color3.fromHex("f3f4f6"),
     DialogContent = Color3.fromHex("d8b4fe"),
     DialogIcon = Color3.fromHex("c084fc"),
-    
     WindowTopbarButtonIcon = Color3.fromHex("c084fc"),
     WindowTopbarTitle = Color3.fromHex("f3f4f6"),
     WindowTopbarAuthor = Color3.fromHex("a78bfa"),
     WindowTopbarIcon = Color3.fromHex("8b5cf6"),
-    
     TabBackground = Color3.fromHex("140e28"),
     TabTitle = Color3.fromHex("f3f4f6"),
     TabIcon = Color3.fromHex("c084fc"),
-    
     ElementBackground = Color3.fromHex("110c22"),
     ElementTitle = Color3.fromHex("f3f4f6"),
     ElementDesc = Color3.fromHex("9ca3af"),
     ElementIcon = Color3.fromHex("c084fc"),
-    
     PopupBackground = Color3.fromHex("110c22"),
     PopupBackgroundTransparency = 0,
     PopupTitle = Color3.fromHex("f3f4f6"),
     PopupContent = Color3.fromHex("d8b4fe"),
     PopupIcon = Color3.fromHex("c084fc"),
-    
     Toggle = Color3.fromHex("2e165b"),
     ToggleBar = Color3.fromHex("8b5cf6"),
-    
     Checkbox = Color3.fromHex("2e165b"),
     CheckboxIcon = Color3.fromHex("8b5cf6"),
-    
     Slider = Color3.fromHex("2e165b"),
     SliderThumb = Color3.fromHex("a78bfa"),
 })
@@ -93,15 +75,10 @@ local Window = WindUI:CreateWindow({
     User = {
         Enabled = true,
         Anonymous = false,
-        Callback = function()
-            print("hi guys")
-        end,
+        Callback = function() print("hi guys") end,
     },
 })
 
--- ==========================================
--- [ UTILITY / CONTROLS ]
--- ==========================================
 Window:SetToggleKey(Enum.KeyCode.K)
 
 Window:EditOpenButton({
@@ -109,10 +86,7 @@ Window:EditOpenButton({
     Icon = "monitor",
     CornerRadius = UDim.new(0, 16),
     StrokeThickness = 2,
-    Color = ColorSequence.new(
-        Color3.fromHex("6d28d9"),
-        Color3.fromHex("1c0d3a")
-    ),
+    Color = ColorSequence.new(Color3.fromHex("6d28d9"), Color3.fromHex("1c0d3a")),
     OnlyMobile = false,
     Enabled = true,
     Draggable = true,
@@ -131,7 +105,6 @@ local Config = Window:Tab({Title = "Config", Icon = "cog"})
 -- ==========================================
 -- [ ESP FUNCTIONS / LOGIC - PORTAS ]
 -- ==========================================
-
 getgenv().DoorESP = false
 
 local function removeDoorESP()
@@ -148,7 +121,6 @@ end
 
 local function startDoorESP()
     removeDoorESP()
-
     task.spawn(function()
         while getgenv().DoorESP do
             for _, v in pairs(workspace:GetDescendants()) do
@@ -159,35 +131,34 @@ local function startDoorESP()
                         local highlight = v.Door:FindFirstChild("Highlight")
                         if not highlight then
                             highlight = Instance.new("Highlight")
-                            highlight.FillTransparency = 0.7 -- Aumentado para 0.7 (Mais transparente)
-                            highlight.OutlineTransparency = 0.5 -- Um pouco mais suave
+                            highlight.FillTransparency = 0.7
+                            highlight.OutlineTransparency = 0.5
                             highlight.Parent = v.Door
                         end
                         
                         if v.DoorTrigger.ActionSign.Value == 11 then
-                            highlight.FillColor = Color3.fromRGB(150, 255, 180) -- Verde mais suave/branco
+                            highlight.FillColor = Color3.fromRGB(150, 255, 180)
                             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                         elseif v.DoorTrigger.ActionSign.Value == 10 then
-                            highlight.FillColor = Color3.fromRGB(255, 255, 255) -- Branco Puro
+                            highlight.FillColor = Color3.fromRGB(255, 255, 255)
                             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                         end
                     end)
-
                 elseif v.Name == "DoubleDoor" and v:FindFirstChild("DoorTrigger") then
                     pcall(function()
                         local highlight = v:FindFirstChild("Highlight")
                         if not highlight then
                             highlight = Instance.new("Highlight")
-                            highlight.FillTransparency = 0.7 -- Aumentado para 0.7
+                            highlight.FillTransparency = 0.7
                             highlight.OutlineTransparency = 0.5
                             highlight.Parent = v
                         end
                         
                         if v.DoorTrigger.ActionSign.Value == 11 then
-                            highlight.FillColor = Color3.fromRGB(150, 255, 180) -- Verde suave
+                            highlight.FillColor = Color3.fromRGB(150, 255, 180)
                             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                         elseif v.DoorTrigger.ActionSign.Value == 10 then
-                            highlight.FillColor = Color3.fromRGB(255, 255, 255) -- Branco Puro
+                            highlight.FillColor = Color3.fromRGB(255, 255, 255)
                             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                         end
                     end)
@@ -201,27 +172,22 @@ end
 -- ==========================================
 -- [ PLAYER ESP FUNCTIONS / LOGIC ]
 -- ==========================================
-
 getgenv().PlayerESP = false
 
 local function removePlayerESP()
     for _, v in pairs(game.Players:GetPlayers()) do
         if v.Character then
             local folder = v.Character:FindFirstChild(v.Name .. "'s ESP")
-            if folder then
-                pcall(function() folder:Destroy() end)
-            end
+            if folder then pcall(function() folder:Destroy() end) end
         end
     end
 end
 
 local function startPlayerESP()
     removePlayerESP()
-
     task.spawn(function()
         while getgenv().PlayerESP do
             local localPlayer = game.Players.LocalPlayer
-            
             for _, v in pairs(game.Players:GetPlayers()) do
                 if not getgenv().PlayerESP then break end
                 
@@ -237,8 +203,8 @@ local function startPlayerESP()
                             
                             local highlight = Instance.new("Highlight")
                             highlight.Name = "PlrHighlight"
-                            highlight.FillTransparency = 0.5 -- Transparência interna limpa
-                            highlight.OutlineTransparency = 0 -- Contorno 100% visível para destacar nas paredes
+                            highlight.FillTransparency = 0.5
+                            highlight.OutlineTransparency = 0
                             highlight.Adornee = char
                             highlight.Parent = folder
                             
@@ -246,7 +212,7 @@ local function startPlayerESP()
                             bbg.Name = "TagGui"
                             bbg.AlwaysOnTop = true
                             bbg.Size = UDim2.new(0, 200, 0, 50)
-                            bbg.StudsOffset = Vector3.new(0, 1.8, 0) -- Mudado de 4 para 1.8 (Texto muito mais baixo e colado na cabeça)
+                            bbg.StudsOffset = Vector3.new(0, 1.8, 0)
                             bbg.Parent = folder
                             bbg.Adornee = char.Head
                             
@@ -269,13 +235,11 @@ local function startPlayerESP()
                             local isBeast = v:FindFirstChild("TempPlayerStatsModule") and v.TempPlayerStatsModule:FindFirstChild("IsBeast") and v.TempPlayerStatsModule.IsBeast.Value
                             
                             if isBeast then
-                                -- BESTA DETONANDO NA TELA (Outline Vermelho Forte e Brilhante)
                                 highlight.FillColor = Color3.fromRGB(255, 0, 0)
                                 highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
                                 label.TextColor3 = Color3.fromRGB(255, 20, 20)
                                 label.Text = "Beast: " .. v.Name .. " [" .. distance .. "]"
                             else
-                                -- INOCENTE (Destaque em Ciano Elétrico)
                                 highlight.FillColor = Color3.fromRGB(0, 150, 255)
                                 highlight.OutlineColor = Color3.fromRGB(0, 255, 255)
                                 label.TextColor3 = Color3.fromRGB(0, 180, 255)
@@ -293,7 +257,6 @@ end
 -- ==========================================
 -- [ COMPUTER ESP FUNCTIONS / LOGIC ]
 -- ==========================================
-
 getgenv().ComputerESP = false
 
 local function removeComputerESP()
@@ -307,7 +270,6 @@ end
 
 local function startComputerESP()
     removeComputerESP()
-
     task.spawn(function()
         while getgenv().ComputerESP do
             for _, v in pairs(workspace:GetDescendants()) do
@@ -341,7 +303,6 @@ end
 -- ==========================================
 -- [ FREEZE POD ESP FUNCTIONS / LOGIC ]
 -- ==========================================
-
 getgenv().FreezePodESP = false
 
 local function removeFreezePodESP()
@@ -355,7 +316,6 @@ end
 
 local function startFreezePodESP()
     removeFreezePodESP()
-
     task.spawn(function()
         while getgenv().FreezePodESP do
             for _, v in pairs(workspace:GetDescendants()) do
@@ -381,9 +341,8 @@ local function startFreezePodESP()
 end
 
 -- ==========================================
--- [ INTERFACE TOGGLES ]
+-- [ INTERFACE TOGGLES (ESP) ]
 -- ==========================================
-
 local ToggleDoor = Esp:Toggle({
     Title = "Door Esp",
     Desc = "Mostra o status das portas (Verde/Vermelho)",
@@ -428,23 +387,24 @@ local ToggleFreeze = Esp:Toggle({
     end
 })
 
-getgenv().AutoHack = false -- Variável que controla o estado do loop
+-- ==========================================
+-- [ HIDER FUNCTIONS (SOBREVIVENTE) ]
+-- ==========================================
+getgenv().AutoHack = false
 
 local ToggleAutoHack = Hider:Toggle({
     Title = "Auto Hack Perfeito",
     Desc = "Acerta automaticamente todos os minijogos dos computadores",
+    Type = "Toggle",
     Value = false,
     Callback = function(state)
         getgenv().AutoHack = state
-        
-        -- Se o usuário ligar o botão, inicia o loop
         if state then
             task.spawn(function()
                 while getgenv().AutoHack do
                     pcall(function()
                         game.ReplicatedStorage.RemoteEvent:FireServer("SetPlayerMinigameResult", true)
                     end)
-                    -- Um pequeno delay de 0.05 para não estressar o motor do jogo desnecessariamente
                     task.wait(0.05) 
                 end
             end)
@@ -457,45 +417,25 @@ getgenv().FE_Invisible_Active = false
 local ToggleInvisible = Hider:Toggle({
     Title = "Invisibilidade FE (Tecla F)",
     Desc = "Te deixa invisível no servidor. Requer Anti-Cheat desativado!",
+    Type = "Toggle",
     Value = false,
     Callback = function(state)
         getgenv().FE_Invisible_Active = state
-        
-        -- Se o Toggle foi ligado, roda a lógica do script de invisibilidade
         if state then
             task.spawn(function()
                 local Global = getgenv()
                 local First = true
-                local Restart = false -- Mudado para false para não quebrar o menu se reiniciar
                 local SoundService = game:GetService("SoundService")
                 local StoredCF
                 local SafeZone = Global.SafeZone or CFrame.new(0, -300, 0)
                 local ScriptStart = true
-                local Reset = false
                 local DeleteOnDeath = {}
                 local Activate = Global.Key or "F"
-                local Noclip = Global.Noclip or false
 
-                local function notify(Message)
-                    game:GetService("StarterGui"):SetCore("SendNotification", { 
-                        Title = "FE Invisible",
-                        Text = Message,
-                        Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"
-                    })
-                    local sound = Instance.new("Sound")
-                    sound.SoundId = "rbxassetid://7046168694"
-                    SoundService:PlayLocalSound(sound)
-                end
-
-                if Global.Running then
-                    return notify("O script já está em execução!")
-                else
-                    Global.Running = true
-                end
+                if Global.Running then return end
+                Global.Running = true
 
                 local IsInvisible = false
-                local WasInvisible = false
-                local Died = false
                 local LP = game:GetService("Players").LocalPlayer
                 local UserInputService = game:GetService("UserInputService")
                 
@@ -527,14 +467,6 @@ local ToggleInvisible = Hider:Toggle({
                     end
                 end
 
-                for i, v in pairs(RealChar:GetChildren()) do
-                    if v:IsA("LocalScript") then
-                        local clone = v:Clone()
-                        clone.Disabled = true
-                        clone.Parent = FakeChar
-                    end
-                end
-
                 local function Visible()
                     StoredCF = FakeChar:GetPrimaryPartCFrame()
                     for _, child in pairs(RealChar:GetDescendants()) do
@@ -547,57 +479,29 @@ local ToggleInvisible = Hider:Toggle({
                     LP.Character = RealChar
                     FakeChar:WaitForChild("Humanoid"):UnequipTools()
                     workspace.CurrentCamera.CameraSubject = RealChar:WaitForChild("Humanoid")
-                    for _, child in pairs(FakeChar:GetDescendants()) do
-                        if child:IsA("BasePart") and child.CanCollide == true then
-                            child.CanCollide = false
-                        end
-                    end
                     FakeChar:SetPrimaryPartCFrame(SafeZone * CFrame.new(0, 5, 0))
-                    FakeChar:WaitForChild("HumanoidRootPart").Anchored = true
-                    for i, v in pairs(FakeChar:GetChildren()) do
-                        if v:IsA("LocalScript") then v.Disabled = true end
-                    end
                 end
 
                 local function Invisible()
                     StoredCF = RealChar:GetPrimaryPartCFrame()
-                    if First then
-                        First = false
-                        for _, v in pairs(LP:WaitForChild("PlayerGui"):GetChildren()) do 
-                            if v:IsA("ScreenGui") and v.ResetOnSpawn == true then
-                                v.ResetOnSpawn = false
-                                table.insert(DeleteOnDeath, v)
-                            end
-                        end
-                    end
-                    
                     FakeChar:SetPrimaryPartCFrame(StoredCF)
                     FakeChar:WaitForChild("HumanoidRootPart").Anchored = false
                     LP.Character = FakeChar
                     workspace.CurrentCamera.CameraSubject = FakeChar:WaitForChild("Humanoid")
-                    
                     for _, child in pairs(RealChar:GetDescendants()) do
                         if child:IsA("BasePart") and child.CanCollide == true then
                             child.CanCollide = false
                         end
                     end
-
                     RealChar:SetPrimaryPartCFrame(SafeZone * CFrame.new(0, 5, 0))
-                    RealChar:WaitForChild("Humanoid"):UnequipTools()
-
-                    for i, v in pairs(FakeChar:GetChildren()) do
-                        if v:IsA("LocalScript") then v.Disabled = false end
-                    end
                 end
 
                 local function StopScript()
                     if not ScriptStart then return end
-                    Part:Destroy()
-                    if IsInvisible and RealChar:FindFirstChild("HumanoidRootPart") then
-                        Visible()
-                    end
+                    pcall(function() Part:Destroy() end)
+                    if IsInvisible and RealChar:FindFirstChild("HumanoidRootPart") then Visible() end
                     workspace.CurrentCamera.CameraSubject = RealChar:WaitForChild("Humanoid")
-                    if FakeChar then FakeChar:Destroy() end
+                    if FakeChar then pcall(function() FakeChar:Destroy() end) end
                     Global.Running = false
                     ScriptStart = false
                 end
@@ -605,7 +509,6 @@ local ToggleInvisible = Hider:Toggle({
                 RealChar:WaitForChild("Humanoid").Died:Connect(StopScript)
                 FakeChar:WaitForChild("Humanoid").Died:Connect(StopScript)
 
-                -- Conexão do Teclado monitorando o Toggle ativo
                 local connection
                 connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if not getgenv().FE_Invisible_Active or not ScriptStart then 
@@ -626,22 +529,19 @@ local ToggleInvisible = Hider:Toggle({
                 end)
             end)
         else
-            -- Se desligar o toggle na interface, desativa as flags globais
             getgenv().Running = false
         end
     end
 })
 
 -- ==========================================
--- [ INTERFACE BUTTONS ]
+-- [ INTERFACE BUTTONS (BEAST) ]
 -- ==========================================
-
 local ButtonNoSlow = Beast:Button({
     Title = "No Slow",
     Desc = "Remove a lentidão da Besta ao errar marretadas",
     Locked = false,
     Callback = function()
-        -- Verifica se você é a Besta na partida atual
         local player = game.Players.LocalPlayer
         if player:FindFirstChild("TempPlayerStatsModule") and player.TempPlayerStatsModule:FindFirstChild("IsBeast") and player.TempPlayerStatsModule.IsBeast.Value == true then
             pcall(function()
@@ -659,8 +559,6 @@ local ButtonEnableCrawl = Beast:Button({
     Locked = false,
     Callback = function()
         local player = game.Players.LocalPlayer
-        
-        -- Verifica se você é a Besta e se a configuração existe
         if player:FindFirstChild("TempPlayerStatsModule") and player.TempPlayerStatsModule:FindFirstChild("IsBeast") and player.TempPlayerStatsModule.IsBeast.Value == true then
             pcall(function()
                 if player.TempPlayerStatsModule:FindFirstChild("DisableCrawl") then
@@ -677,23 +575,16 @@ local ButtonSilentBeast = Beast:Button({
     Locked = false,
     Callback = function()
         local player = game.Players.LocalPlayer
-        
-        -- Verifica se você é a Besta
         if player:FindFirstChild("TempPlayerStatsModule") and player.TempPlayerStatsModule:FindFirstChild("IsBeast") and player.TempPlayerStatsModule.IsBeast.Value == true then
             local char = player.Character
             if char then
-                -- Remove os sons da Marreta
                 pcall(function()
                     if char:FindFirstChild("Hammer") and char.Hammer:FindFirstChild("Handle") then
                         for _, v in pairs(char.Hammer.Handle:GetChildren()) do
-                            if v:IsA("Sound") then
-                                v:Destroy()
-                            end
+                            if v:IsA("Sound") then v:Destroy() end
                         end
                     end
                 end)
-                
-                -- Remove o brilho da Gemstone (Pedra das costas)
                 pcall(function()
                     if char:FindFirstChild("Gemstone") and char.Gemstone:FindFirstChild("Handle") and char.Gemstone.Handle:FindFirstChild("PointLight") then
                         char.Gemstone.Handle.PointLight:Destroy()
@@ -704,32 +595,25 @@ local ButtonSilentBeast = Beast:Button({
     end
 })
 
-local ButtonFixCamera = Misc:Button({ -- Mudei para a aba Misc porque serve tanto para Besta quanto para Sobrevivente bugar
+-- ==========================================
+-- [ MISC BUTTONS ]
+-- ==========================================
+local ButtonFixCamera = Misc:Button({
     Title = "Fix Camera",
     Desc = "Destrava a câmera e foca de volta no seu personagem se travar",
     Locked = false,
     Callback = function()
         local player = game.Players.LocalPlayer
         local char = player.Character
-        
         if char then
             pcall(function()
-                -- Redireciona o foco da câmera para o seu boneco
                 local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-                if humanoid then
-                    workspace.CurrentCamera.CameraSubject = humanoid
-                end
-                
-                -- Reseta o modo de controle da câmera para o padrão livre
+                if humanoid then workspace.CurrentCamera.CameraSubject = humanoid end
                 workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
                 player.CameraMinZoomDistance = 0.5
                 player.CameraMaxZoomDistance = math.huge
                 player.CameraMode = Enum.CameraMode.Classic
-                
-                -- Desancora a cabeça caso o jogo tenha te travado no lugar
-                if char:FindFirstChild("Head") then
-                    char.Head.Anchored = false
-                end
+                if char:FindFirstChild("Head") then char.Head.Anchored = false end
             end)
         end
     end
@@ -742,31 +626,22 @@ local ButtonBypass = Misc:Button({
     Callback = function()
         local player = game.Players.LocalPlayer
         local character = player.Character
-        
         if character then
             pcall(function()
                 local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
                 local root = character:FindFirstChild("HumanoidRootPart")
-                
                 if torso and root then
-                    -- Desconecta temporariamente para quebrar o rastreamento síncrono
                     character.Parent = nil
                     root.Parent = nil 
-                    
                     task.wait(0.5)
-                    
-                    -- Cria a réplica para substituir a identidade do componente principal
                     local fake = torso:Clone()
                     fake.Parent = character
-                    
                     torso.Name = "HumanoidRootPart"
                     torso.Transparency = 1
                     getgenv().Torsoo = torso
-                    
-                    -- Devolve o modelo modificado ao ambiente do mapa
                     character.Parent = workspace
                 end
-             pcall)
+            end) -- Corrigido de pcall) para end)
         end
     end
 })
