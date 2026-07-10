@@ -534,6 +534,27 @@ local ToggleInvisible = Hider:Toggle({
     end
 })
 
+local ToggleCrawlMobile = Misc:Toggle({
+    Title = "Agachar Alternativo (Mobile)",
+    Desc = "Buga o corpo para agachar sem precisar clicar no botão nativo 'C/Q'",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state)
+        local player = game.Players.LocalPlayer
+        local char = player.Character
+        if char and char:FindFirstChildWhichIsA("Humanoid") then
+            local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+            if state then
+                -- Diminui a altura do quadril simulando o agachamento perfeito
+                humanoid.HipHeight = -1.5 
+            else
+                -- Reseta para a altura em pé padrão do Roblox
+                humanoid.HipHeight = 0 
+            end
+        end
+    end
+})
+
 -- ==========================================
 -- [ INTERFACE BUTTONS (BEAST) ]
 -- ==========================================
