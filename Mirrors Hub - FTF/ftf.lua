@@ -254,28 +254,21 @@ local function startPlayerESP()
     end)
 end
 
+local IsCrouchingMobile = false -- Controla o estado para saber se vai agachar ou levantar
+
 local ToggleMobileCrouch = Misc:Toggle({
     Title = "Criar Botão C (Mobile)",
-    Desc = "Libera o agachamento para a Besta e cria o botão C arrastável",
+    Desc = "Cria um botão virtual que dispara o RemoteEvent exato do jogo para agachar",
     Type = "Toggle",
     Value = false,
     Callback = function(state)
         local player = game.Players.LocalPlayer
-        local VirtualInputManager = game:GetService("VirtualInputManager")
+        local Remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
         
         if state then
-            -- Verifica se já existe pra não duplicar
             if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
             
-            -- Lógica original de destravar o Crawl
-            pcall(function()
-                local stats = player:FindFirstChild("TempPlayerStatsModule")
-                if stats and stats:FindFirstChild("DisableCrawl") then
-                    stats.DisableCrawl.Value = false
-                end
-            end)
-            
-            -- Criação do botão na tela
+            -- Criação do botão visual na tela
             local sg = Instance.new("ScreenGui")
             sg.Name = "MobileCrouchBtn"
             sg.ResetOnSpawn = false
@@ -298,25 +291,33 @@ local ToggleMobileCrouch = Misc:Toggle({
             btn.Active = true
             btn.Draggable = true
             
-            -- Clique do botão simulando a tecla C
+            -- Clique usando os pacotes interceptados do Cobalt!
             btn.MouseButton1Click:Connect(function()
-                pcall(function()
-                    -- Garante que o DisableCrawl continue false antes de enviar o sinal
-                    local stats = player:FindFirstChild("TempPlayerStatsModule")
-                    if stats and stats:FindFirstChild("DisableCrawl") then
-                        stats.DisableCrawl.Value = false
-                    end
-                    
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                    task.wait(0.02)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-                end)
+                if Remote then
+                    pcall(function()
+                        -- Inverte o estado atual toda vez que clica
+                        IsCrouchingMobile = not IsCrouchingMobile
+                        
+                        -- Envia o comando direto pro servidor do Roblox
+                        Remote:FireServer("Input", "Crawl", IsCrouchingMobile)
+                        
+                        -- Um feedback visual simples no botão para você saber se está agachado
+                        if IsCrouchingMobile then
+                            btn.BackgroundColor3 = Color3.fromHex("4c1d95") -- Roxo escuro (Agachado)
+                        else
+                            btn.BackgroundColor3 = Color3.fromHex("8b5cf6") -- Roxo normal (Em pé)
+                        end
+                    end)
+                end
             end)
         else
-            -- Remove o botão se desligar o toggle
+            -- Se desligar o toggle, remove o botão e garante que o boneco levante
             local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
-            if existingBtn then
-                existingBtn:Destroy()
+            if existingBtn then existingBtn:Destroy() end
+            
+            if Remote and IsCrouchingMobile then
+                IsCrouchingMobile = false
+                pcall(function() Remote:FireServer("Input", "Crawl", false) end)
             end
         end
     end
