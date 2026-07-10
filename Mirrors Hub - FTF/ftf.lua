@@ -256,16 +256,18 @@ end
 
 local ToggleMobileCrouch = Misc:Toggle({
     Title = "Criar Botão C (Mobile)",
-    Desc = "Libera o agachamento para a Besta e cria o botão C arrastável na tela",
+    Desc = "Libera o agachamento para a Besta e cria o botão C arrastável",
+    Type = "Toggle",
     Value = false,
     Callback = function(state)
         local player = game.Players.LocalPlayer
         local VirtualInputManager = game:GetService("VirtualInputManager")
         
         if state then
+            -- Verifica se já existe pra não duplicar
             if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
             
-            -- 1. LIBERA O AGACHAMENTO (A lógica exata do botão original que você mandou)
+            -- Lógica original de destravar o Crawl
             pcall(function()
                 local stats = player:FindFirstChild("TempPlayerStatsModule")
                 if stats and stats:FindFirstChild("DisableCrawl") then
@@ -273,7 +275,7 @@ local ToggleMobileCrouch = Misc:Toggle({
                 end
             end)
             
-            -- 2. CRIA O BOTÃO FÍSICO NA TELA PARA VOCÊ CLICAR
+            -- Criação do botão na tela
             local sg = Instance.new("ScreenGui")
             sg.Name = "MobileCrouchBtn"
             sg.ResetOnSpawn = false
@@ -296,22 +298,22 @@ local ToggleMobileCrouch = Misc:Toggle({
             btn.Active = true
             btn.Draggable = true
             
-            -- Quando você clica no botão da tela, ele força o jogo a entender que o comando "C" foi enviado
+            -- Clique do botão simulando a tecla C
             btn.MouseButton1Click:Connect(function()
                 pcall(function()
-                    -- Garante mais uma vez que o jogo não bloqueou o agachamento
+                    -- Garante que o DisableCrawl continue false antes de enviar o sinal
                     local stats = player:FindFirstChild("TempPlayerStatsModule")
                     if stats and stats:FindFirstChild("DisableCrawl") then
                         stats.DisableCrawl.Value = false
                     end
                     
-                    -- Manda o sinal real de agachar para o jogo
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game)
                     task.wait(0.02)
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.C, false, game)
                 end)
             end)
         else
+            -- Remove o botão se desligar o toggle
             local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
             if existingBtn then
                 existingBtn:Destroy()
