@@ -254,18 +254,19 @@ local function startPlayerESP()
     end)
 end
 
-local ToggleMobileCrouch = Misc:Toggle({
+local ToggleMobileCrouch = Misc:AddToggle({
     Title = "Criar Botão C (Mobile)",
-    Desc = "Cria um botão virtual C na tela que força o agachamento usando as stats do jogo",
+    Desc = "Cria um botão virtual C arrastável que simula perfeitamente o clique da tecla C original",
     Value = false,
     Callback = function(state)
         local player = game.Players.LocalPlayer
+        local VirtualInputManager = game:GetService("VirtualInputManager")
         
         if state then
             -- Se o botão já existir na tela, não cria outro
             if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
             
-            -- Cria a interface do botão na tela
+            -- Interface do botão virtual
             local sg = Instance.new("ScreenGui")
             sg.Name = "MobileCrouchBtn"
             sg.ResetOnSpawn = false
@@ -273,7 +274,7 @@ local ToggleMobileCrouch = Misc:Toggle({
             
             local btn = Instance.new("TextButton")
             btn.Size = UDim2.new(0, 65, 0, 65)
-            btn.Position = UDim2.new(0.75, 0, 0.45, 0) -- Posição inicial na tela (mude se quiser)
+            btn.Position = UDim2.new(0.75, 0, 0.45, 0) -- Posição inicial na tela
             btn.BackgroundColor3 = Color3.fromHex("8b5cf6") -- Roxo do seu tema
             btn.Text = "C"
             btn.TextColor3 = Color3.new(1, 1, 1)
@@ -281,36 +282,31 @@ local ToggleMobileCrouch = Misc:Toggle({
             btn.Font = Enum.Font.SourceSansBold
             btn.Parent = sg
             
-            -- Deixa o botão redondo
             local corner = Instance.new("UICorner")
             corner.CornerRadius = UDim.new(0, 50)
             corner.Parent = btn
             
-            -- Torna o botão arrastável para você posicionar onde preferir no celular
+            -- Deixa o botão arrastável para você tirar de cima do Q
             btn.Active = true
             btn.Draggable = true
             
-            -- Ação ao clicar no botão virtual "C"
+            -- Lógica idêntica ao botão original do teclado/jogo
             btn.MouseButton1Click:Connect(function()
                 pcall(function()
+                    -- Primeiro garante que o jogo não vai bloquear o comando (sua lógica)
                     local stats = player:FindFirstChild("TempPlayerStatsModule")
-                    if stats then
-                        -- Libera o agachamento (sua lógica do DisableCrawl)
-                        if stats:FindFirstChild("DisableCrawl") then
-                            stats.DisableCrawl.Value = false
-                        end
-                        
-                        -- Inverte o estado atual (se tá em pé agacha, se tá agachado levanta)
-                        if stats:FindFirstChild("Crouch") then
-                            stats.Crouch.Value = not stats.Crouch.Value
-                        elseif stats:FindFirstChild("IsCrouching") then
-                            stats.IsCrouching.Value = not stats.IsCrouching.Value
-                        end
+                    if stats and stats:FindFirstChild("DisableCrawl") then
+                        stats.DisableCrawl.Value = false
                     end
+                    
+                    -- Simula o input exato da tecla C (Pressiona e solta)
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                    task.wait(0.02)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.C, false, game)
                 end)
             end)
         else
-            -- Se você desligar o Toggle no menu, remove o botão da tela
+            -- Remove o botão se desativar o Toggle
             local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
             if existingBtn then
                 existingBtn:Destroy()
