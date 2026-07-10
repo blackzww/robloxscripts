@@ -254,73 +254,70 @@ local function startPlayerESP()
     end)
 end
 
-local ToggleMobileCrouch = Misc:Toggle({
-    Title = "Criar Botão C (Mobile)",
-    Desc = "Ativa o Crawl manipulando as funções internas e upvalues do jogo",
+local currentAnimTrack = nil
+local connection = nil
+local player = game.Players.LocalPlayer
+local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
+local animStorage = game:GetService("ReplicatedStorage"):FindFirstChild("Animations")
+local animPath = animStorage and animStorage:FindFirstChild("AnimCrawl")
+
+local Toggle = Beast:Toggle({
+    Title = "Crawl Button",
+    Desc = "Ativa o rastejo sincronizado e visivel para todos",
     Type = "Toggle",
     Value = false,
-    Callback = function(state)
-        local player = game.Players.LocalPlayer
+    Callback = function(state) 
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local animator = hum and hum:FindFirstChildOfClass("Animator")
         
         if state then
-            if player.PlayerGui:FindFirstChild("MobileCrouchBtn") then return end
-            
-            -- Criação do botão visual na tela
-            local sg = Instance.new("ScreenGui")
-            sg.Name = "MobileCrouchBtn"
-            sg.ResetOnSpawn = false
-            sg.Parent = player.PlayerGui
-            
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(0, 65, 0, 65)
-            btn.Position = UDim2.new(0.75, 0, 0.45, 0)
-            btn.BackgroundColor3 = Color3.fromHex("8b5cf6")
-            btn.Text = "C"
-            btn.TextColor3 = Color3.new(1, 1, 1)
-            btn.TextSize = 24
-            btn.Font = Enum.Font.SourceSansBold
-            btn.Parent = sg
-            
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, 50)
-            corner.Parent = btn
-            
-            btn.Active = true
-            btn.Draggable = true
-            
-            btn.MouseButton1Click:Connect(function()
-                -- 1. Tenta simular via ContextActionService enviando a tabela falsa de Touch
-                pcall(function()
-                    local fakeInputObject = {
-                        UserInputType = Enum.UserInputType.Touch,
-                        UserInputState = Enum.UserInputState.Begin
-                    }
-                    game:GetService("ContextActionService"):CallFunction("Crawl", Enum.UserInputState.Begin, fakeInputObject)
-                end)
+            if hum and animator and animPath then
+                hum.HipHeight = -1.85 
+                hum.WalkSpeed = 11
                 
-                -- 2. Se o de cima falhar devido a sandbox, vamos interceptar via Upvalues usando o debug do exploit
-                pcall(function()
-                    local character = player.Character
-                    local localScript = character and character:FindFirstChild("LocalPlayerScript")
-                    if localScript then
-                        -- Procura as funções na memória do script
-                        for _, v in pairs(getgc()) do
-                            if type(v) == "function" and getfenv(v).script == localScript then
-                                local info = debug.getinfo(v)
-                                -- Se acharmos a função CrawlFunction ou o closure que gerencia o CrawlingGoDown
-                                if info.name == "CrawlFunction" or info.name == "CrawlingGoDown" then
-                                    setupvalue(v, 2, true) -- Altera v_u_26 para true (evita o reset no Stepped)
-                                    setupvalue(v, 3, true) -- Altera v_u_27 para true
-                                    v() -- Executa a função interna do jogo diretamente
-                                end
-                            end
+                currentAnimTrack = animator:LoadAnimation(animPath)
+                currentAnimTrack.Priority = Enum.AnimationPriority.Action4
+                
+                currentAnimTrack:Play()
+                currentAnimTrack:AdjustSpeed(0)
+                
+                connection = hum:GetPropertyChangedSignal("MoveDirection"):Connect(function()
+                    if currentAnimTrack then
+                        if hum.MoveDirection.Magnitude > 0 then
+                            currentAnimTrack:AdjustSpeed(1.6)
+                        else
+                            currentAnimTrack:AdjustSpeed(0)
                         end
                     end
                 end)
+                
+                if hum.MoveDirection.Magnitude > 0 then
+                    currentAnimTrack:AdjustSpeed(1.6)
+                end
+            end
+            
+            task.spawn(function()
+                while state and player.Character == char do
+                    if remote then 
+                        remote:FireServer("Input", "Crawl", true) 
+                    end
+                    task.wait(0.05)
+                end
             end)
+            
         else
-            local existingBtn = player.PlayerGui:FindFirstChild("MobileCrouchBtn")
-            if existingBtn then existingBtn:Destroy() end
+            if connection then connection:Disconnect() end
+            if currentAnimTrack then currentAnimTrack:Stop() end
+            
+            if hum then
+                hum.HipHeight = 0
+                hum.WalkSpeed = 16
+            end
+            
+            if remote then 
+                remote:FireServer("Input", "Crawl", false) 
+            end
         end
     end
 })
