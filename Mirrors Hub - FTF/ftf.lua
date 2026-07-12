@@ -602,6 +602,144 @@ local ToggleInvisible = Hider:Toggle({
     end
 })
 
+-- 1. VARIÁVEL DE CONTROLE
+local RemoveRope_Ativo = false
+
+-- 2. CRIAÇÃO DO TOGGLE NA WINDUI
+local ToggleRemoveRope = Hider:Toggle({
+    Title = "Remove Rope (You)",
+    Desc = "Liberta você automaticamente se a Besta te puxar ou carregar",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state) 
+        RemoveRope_Ativo = state
+    end
+})
+
+-- 3. FUNÇÕES AUXILIARES DE CHECAGEM
+local function IsThereChar(plr)
+    local p = plr or game.Players.LocalPlayer
+    return p and p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+end
+
+-- 4. FUNÇÃO COM A LÓGICA DO UNTIEME
+local function ExecutarRemoveRope()
+    -- Se o botão estiver desativado, não faz nada
+    if not RemoveRope_Ativo then return end
+
+    local localChar = game.Players.LocalPlayer.Character
+    if not IsThereChar(game.Players.LocalPlayer) then return end
+
+    -- Procura pela Besta na partida
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= game.Players.LocalPlayer and v:FindFirstChild("TempPlayerStatsModule") then
+            local isBeastObj = v.TempPlayerStatsModule:FindFirstChild("IsBeast")
+            
+            -- Se o jogador for a Besta e tiver um personagem válido
+            if isBeastObj and isBeastObj.Value == true and IsThereChar(v) then
+                local char = v.Character
+                local hammer = char:FindFirstChild("Hammer")
+
+                -- Verifica se ela tem o martelo e o evento remoto
+                if hammer and hammer:FindFirstChild("HammerEvent") then
+                    
+                    -- Escaneia o personagem da Besta procurando por cordas presas em você
+                    for _, descendant in pairs(char:GetDescendants()) do
+                        if descendant:IsA("RopeConstraint") then
+                            local att0 = descendant.Attachment0
+                            local att1 = descendant.Attachment1
+                            
+                            -- Se a corda estiver conectada a qualquer parte do seu corpo, força a Besta a te soltar
+                            if (att0 and att0:IsDescendantOf(localChar)) or (att1 and att1:IsDescendantOf(localChar)) then
+                                hammer.HammerEvent:FireServer("HammerClick", true)
+                            end
+                        end
+                    end
+
+                end
+            end
+        end
+    end
+end
+
+-- 5. LOOP DE ATUALIZAÇÃO (Coloque junto com seus outros loops no final do script)
+task.spawn(function()
+    while true do
+        task.wait(0.1) -- Checa 10 vezes por segundo de forma super leve
+        pcall(ExecutarRemoveRope)
+    end
+end)
+
+-- 1. VARIÁVEIS DE CONTROLE
+local RemoveRopeAll_Ativo = false
+local SlowBeast_Ativo = false
+
+-- 2. CRIAÇÃO DOS TOGGLES NA WINDUI
+local ToggleRemoveRopeAll = Hider:Toggle({
+    Title = "Remove Rope (All)",
+    Desc = "Força a Besta a soltar qualquer jogador que ela tente carregar ou prender",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state) 
+        RemoveRopeAll_Ativo = state
+    end
+})
+
+local ToggleSlowBeast = Hider:Toggle({
+    Title = "Slow Down Beast",
+    Desc = "Deixa a Besta lenta ou travada forçando o evento de pulo dela",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state) 
+        SlowBeast_Ativo = state
+    end
+})
+
+-- 3. FUNÇÕES AUXILIARES DE CHECAGEM
+local function IsThereChar(plr)
+    local p = plr or game.Players.LocalPlayer
+    return p and p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+end
+
+-- 4. FUNÇÃO COM A LÓGICA DO ALL E SLOW BEAST
+local function ExecutarExploitsBeast()
+    -- Se nenhum dos dois estiver ligado, mata a execução para economizar desempenho
+    if not (RemoveRopeAll_Ativo or SlowBeast_Ativo) then return end
+
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= game.Players.LocalPlayer and v:FindFirstChild("TempPlayerStatsModule") then
+            local isBeastObj = v.TempPlayerStatsModule:FindFirstChild("IsBeast")
+            
+            -- Detecta se o jogador atual do loop é a Besta
+            if isBeastObj and isBeastObj.Value == true and IsThereChar(v) then
+                local char = v.Character
+                local hammer = char:FindFirstChild("Hammer")
+                local bPowers = char:FindFirstChild("BeastPowers")
+
+                -- LOGICA: Remove Rope (All)
+                if RemoveRopeAll_Ativo and hammer and hammer:FindFirstChild("HammerEvent") then
+                    -- Envia spam de cliques falsos de martelo, fazendo a besta soltar todo mundo instantaneamente
+                    hammer.HammerEvent:FireServer("HammerClick", true)
+                end
+
+                -- LOGICA: Slow Down Beast
+                if SlowBeast_Ativo and bPowers and bPowers:FindFirstChild("PowersEvent") then
+                    -- Spama o evento de pulo/habilidade da besta para bugar a velocidade dela
+                    bPowers.PowersEvent:FireServer("Jumped")
+                end
+            end
+        end
+    end
+end
+
+-- 5. LOOP DE ATUALIZAÇÃO (Coloque no final do seu script junto com os outros)
+task.spawn(function()
+    while true do
+        task.wait(0.1) -- Roda de forma leve e contínua
+        pcall(ExecutarExploitsBeast)
+    end
+end)
+
 -- 1. Criação do botão na WindUI
 local Button = Hider:Button({
     Title = "Ver Poder da Besta",
