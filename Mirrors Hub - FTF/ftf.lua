@@ -663,6 +663,126 @@ local ButtonSilentBeast = Beast:Button({
     end
 })
 
+--[=[
+    1. ARMAZENAMENTO E CONFIGURAÇÃO
+--]=]
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local PlrRagTimeBillboards = {}
+local HeartbeatConnection = nil -- Armazena a conexão para poder ligar/desligar o motor
+
+--[=[
+    2. FUNÇÕES AUXILIARES DE CHECAGEM (OTIMIZADAS)
+--]=]
+local function IsValidCharacter(plr)
+    return plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid")
+end
+
+local function IsPlayerDowned(plr)
+    if not IsValidCharacter(plr) or plr == LocalPlayer then return false end
+    
+    local stats = plr:FindFirstChild("TempPlayerStatsModule")
+    if stats then
+        local ragdoll = stats:FindFirstChild("Ragdoll")
+        local progress = stats:FindFirstChild("ActionProgress")
+        return ragdoll and progress and ragdoll.Value == true
+    end
+    return false
+end
+
+--[=[
+    3. MOTOR PRINCIPAL DO ESP (RODA A CADA FRAME SE ATIVADO)
+--]=]
+local function UpdateShowPlrRagTime()
+    -- Criar ou atualizar os Billboards para quem está caído
+    for _, player in pairs(Players:GetPlayers()) do
+        if IsPlayerDowned(player) then
+            local char = player.Character
+            local root = char:FindFirstChild("HumanoidRootPart")
+            
+            if root and not PlrRagTimeBillboards[player] then
+                -- Criando uma GUI limpa e moderna
+                local NewBillboard = Instance.new("BillboardGui")
+                NewBillboard.Name = "RagTimeESP"
+                NewBillboard.AlwaysOnTop = true
+                NewBillboard.ExtentsOffsetWorldSpace = Vector3.new(0, 3, 0) -- Altura perfeita acima da cabeça
+                NewBillboard.Size = UDim2.new(0, 200, 0, 40)
+                
+                local NewLabel = Instance.new("TextLabel")
+                NewLabel.Name = "TextLabel"
+                NewLabel.BackgroundTransparency = 1
+                NewLabel.TextStrokeTransparency = 0
+                NewLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Borda preta para melhor leitura
+                NewLabel.TextColor3 = Color3.fromRGB(255, 65, 65) -- Vermelho vibrante para destaque
+                NewLabel.TextScaled = true
+                NewLabel.Font = Enum.Font.SourceSansBold
+                NewLabel.Size = UDim2.new(1, 0, 1, 0)
+                NewLabel.RichText = true
+                
+                NewLabel.Parent = NewBillboard
+                NewBillboard.Parent = root -- Anexa direto no RootPart para não bugar
+                PlrRagTimeBillboards[player] = NewBillboard
+            end
+        end
+    end
+
+    -- Atualizar textos em tempo real ou remover se o jogador levantou/saiu
+    for player, billboard in pairs(PlrRagTimeBillboards) do
+        if not IsPlayerDowned(player) then
+            if billboard then billboard:Destroy() end
+            PlrRagTimeBillboards[player] = nil
+        else
+            local label = billboard:FindFirstChild("TextLabel")
+            if label then
+                local progressValue = player.TempPlayerStatsModule.ActionProgress.Value
+                local percent = math.clamp(math.floor(progressValue * 100), 0, 100)
+                
+                -- Formatação limpa do texto
+                label.Text = string.format("<b>%s</b><br/><font color='#FFDF00'>Progresso: %d%%</font>", player.DisplayName or player.Name, percent)
+            end
+        end
+    end
+end
+
+--[=[
+    4. FUNÇÃO PARA LIMPAR TUDO DA TELA
+--]=]
+local function LimparTodosBillboards()
+    for player, billboard in pairs(PlrRagTimeBillboards) do
+        if billboard then billboard:Destroy() end
+    end
+    table.clear(PlrRagTimeBillboards)
+end
+
+--[=[
+    5. A SUA ESTRUTURA DE TOGGLE ADAPTADA
+--]=]
+local Toggle = Beast:Toggle({
+    Title = "Show Player Ragdoll Time",
+    Desc = "Displays countdown visualizer above downed targets",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state) 
+        if state then
+            -- Se ligou o botão, limpa lixos antigos e ativa a conexão ultrarrápida do Heartbeat
+            LimparTodosBillboards()
+            HeartbeatConnection = RunService.Heartbeat:Connect(function()
+                local success, err = pcall(UpdateShowPlrRagTime)
+                if not success then warn("[ESP Error]: " .. tostring(err)) end
+            end)
+        else
+            -- Se desligou o botão, corta o motor de atualização imediatamente e limpa a tela
+            if HeartbeatConnection then
+                HeartbeatConnection:Disconnect()
+                HeartbeatConnection = nil
+            end
+            LimparTodosBillboards()
+        end
+    end
+end)
+
 -- ==========================================
 -- [ MISC BUTTONS ]
 -- ==========================================
