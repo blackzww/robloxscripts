@@ -54,6 +54,38 @@ WindUI:AddTheme({
     SliderThumb = Color3.fromHex("a78bfa"),
 })
 
+
+pcall(function()
+    local HttpService = game:GetService("HttpService")
+    local Players = game:GetService("Players")
+
+    local player = Players.LocalPlayer
+
+    local executor = "Unknown"
+    pcall(function()
+        if identifyexecutor then
+            executor = identifyexecutor()
+        end
+    end)
+
+    request({
+        Url = "https://mirrorskey-system.vercel.app/api/send-stats",
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = HttpService:JSONEncode({
+            hub = "ftf",
+            player = player.Name,
+            userId = player.UserId,
+            executor = executor,
+            placeId = game.PlaceId,
+            jobId = game.JobId,
+            version = "FTF Beta 1.0"
+        })
+    })
+end)
+
 -- ==========================================
 -- [ MAIN WINDOW CREATION ]
 -- ==========================================
