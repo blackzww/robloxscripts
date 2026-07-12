@@ -700,7 +700,7 @@ end
 --[=[
     3. A SUA ESTRUTURA DE TOGGLE (APENAS ATUALIZA O ESTADO)
 --]=]
-local Toggle = Tab:Toggle({
+local Toggle = Beast:Toggle({
     Title = "Show Player Ragdoll Time",
     Desc = "Displays countdown visualizer above downed targets",
     Type = "Toggle",
