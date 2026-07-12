@@ -602,6 +602,42 @@ local ToggleInvisible = Hider:Toggle({
     end
 })
 
+-- 1. Criação do botão na WindUI
+local Button = Hider:Button({
+    Title = "Ver Poder da Besta",
+    Desc = "Mostra uma notificação com o poder atual da Beast",
+    Locked = false,
+    Callback = function()
+        -- Procura o objeto que armazena o poder no ReplicatedStorage
+        local CurrentPowerObj = game.ReplicatedStorage:FindFirstChild("CurrentPower")
+        
+        if CurrentPowerObj then
+            local poderAtual = CurrentPowerObj.Value
+            
+            -- Se o valor estiver vazio ou nulo (ex: intervalo de partida)
+            if poderAtual == "" or poderAtual == nil then
+                poderAtual = "Nenhum (Esperando Partida)"
+            end
+            
+            -- Envia a notificação com o poder encontrado
+            WindUI:Notify({
+                Title = "Beast Power",
+                Content = "O poder atual da Besta é: " .. tostring(poderAtual),
+                Duration = 4,
+                Icon = "swords", -- Ícone combinando com poder/luta
+            })
+        else
+            -- Caso o jogo mude ou o objeto não seja encontrado
+            WindUI:Notify({
+                Title = "Erro",
+                Content = "Não foi possível detectar o poder da Besta!",
+                Duration = 4,
+                Icon = "shield-alert",
+            })
+        end
+    end
+})
+
 -- ==========================================
 -- [ INTERFACE BUTTONS (BEAST) ]
 -- ==========================================
