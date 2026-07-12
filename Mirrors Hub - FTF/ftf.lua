@@ -974,6 +974,176 @@ local ButtonFixCamera = Misc:Button({
     end
 })
 
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local noclipConnection = nil
+
+local Toggle = Misc:Toggle({
+    Title = "Noclip",
+    Desc = "Permite atravessar paredes e blocos do mapa",
+    Type = "Toggle",
+    Value = false, -- Valor inicial desligado
+    Callback = function(state) 
+        if state then
+            -- Se o Toggle for ativado, liga o Noclip
+            noclipConnection = RunService.Stepped:Connect(function()
+                if LocalPlayer.Character then
+                    for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part.CanCollide == true then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        else
+            -- Se o Toggle for desativado, desliga o Noclip
+            if noclipConnection then
+                noclipConnection:Disconnect()
+                noclipConnection = nil
+            end
+        end
+    end
+})
+
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local jumpConnection = nil
+
+local Toggle = Misc:Toggle({
+    Title = "Infinite Jump",
+    Desc = "Permite pular infinitamente no ar",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state) 
+        if state then
+            -- Ativa a conexão que detecta o pulo
+            jumpConnection = UserInputService.JumpRequest:Connect(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                    -- Altera o estado do humanoide para pulo, permitindo pular no ar
+                    LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end)
+        else
+            -- Desativa o pulo infinito quando desliga o toggle
+            if jumpConnection then
+                jumpConnection:Disconnect()
+                jumpConnection = nil
+            end
+        end
+    end
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local speaker = Players.LocalPlayer
+local nowe = false
+local tpwalking = false
+local speeds = 1 -- Velocidade padrão (pode ser controlada por outros botões do seu menu)
+
+-- Função para alterar o comportamento de estados do Humanoid
+local function setHumanoidStates(state)
+    local character = speaker.Character
+    local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+    
+    if humanoid then
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics, state)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, state)
+    end
+end
+
+-- Estrutura do Toggle adaptada ao seu Menu
+local Toggle = Misc:Toggle({
+    Title = "Toggle Fly",
+    Desc = "Voa usando o analógico do Mobile e WASD do PC",
+    Type = "Toggle",
+    Value = false,
+    Callback = function(state) 
+        nowe = state
+        
+        local chr = speaker.Character
+        local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+        
+        if not nowe then
+            -- DESATIVAR VÔO
+            tpwalking = false
+            setHumanoidStates(true)
+            
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+            end
+            
+            if chr and chr:FindFirstChild("Animate") then
+                chr.Animate.Disabled = false
+            end
+            
+            -- Reajusta a velocidade das animações ao normal
+            if hum then
+                local animator = hum:FindFirstChildOfClass("Animator") or hum
+                for _, track in next, animator:GetPlayingAnimationTracks() do
+                    track:AdjustSpeed(1)
+                end
+            end
+        else
+            -- ATIVAR VÔO
+            tpwalking = true
+            
+            -- Cria a quantidade de loops baseado na velocidade 'speeds' (Lógica idêntica ao seu script)
+            for i = 1, speeds do
+                task.spawn(function() 
+                    local hb = RunService.Heartbeat
+                    while tpwalking and hb:Wait() and speaker.Character and speaker.Character:FindFirstChildWhichIsA("Humanoid") do
+                        local currentChr = speaker.Character
+                        local currentHum = currentChr:FindFirstChildWhichIsA("Humanoid")
+                        
+                        if currentHum and currentHum.MoveDirection.Magnitude > 0 then
+                            currentChr:TranslateBy(currentHum.MoveDirection)
+                        end
+                    end 
+                end)
+            end
+            
+            -- Congela animações nativas para não ficar travando o boneco
+            if chr and chr:FindFirstChild("Animate") then
+                chr.Animate.Disabled = true
+            end
+            
+            if hum then
+                local animator = hum:FindFirstChildOfClass("Animator") or hum
+                for _, track in next, animator:GetPlayingAnimationTracks() do
+                    track:AdjustSpeed(0)
+                end
+                
+                setHumanoidStates(false)
+                hum:ChangeState(Enum.HumanoidStateType.Swimming) -- Aplica o estado de natação infinita no ar
+            end
+        end
+    end
+})
+
+-- Reseta os estados se o personagem morrer
+speaker.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    tpwalking = false
+    nowe = false
+end)
+    
+
 local ButtonBypass = Misc:Button({
     Title = "Bypass Anticheat",
     Desc = "Modifica a estrutura do personagem. Não use se for a Besta!",
