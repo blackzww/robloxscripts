@@ -93,9 +93,9 @@ WindUI:AddTheme({
     PopupContent = Color3.fromHex("#c4b5fd"),
     PopupIcon = Color3.fromHex("#a78bfa"),
     
-    Toggle = Color3.fromHex("#FFFFFF"),
-    ToggleBar = Color3.fromHex("#FFFFFF"),
-    
+    Toggle = Color3.fromHex("#52525b"), -- fundo cinza
+    ToggleBar = Color3.fromHex("#FFFFFF"), -- alavanca branca
+        
     Checkbox = Color3.fromHex("#4c1d95"),
     CheckboxIcon = Color3.fromHex("#a78bfa"),
     
@@ -1223,6 +1223,27 @@ speaker.CharacterAdded:Connect(function(char)
     tpwalking = false
     nowe = false
 end)
+
+
+    local Dialog = Misc:Dialog({
+    Icon = "bird",
+    Title = "Dialog Title",
+    Content = "Content Text",
+    Buttons = {
+        {
+            Title = "Confirm",
+            Callback = function()
+                print("Confirmed!")
+            end,
+        },
+        {
+            Title = "Cancel",
+            Callback = function()
+                print("Cancelled!")
+            end,
+        },
+    },
+})
     
 
 local ButtonBypass = Misc:Button({
