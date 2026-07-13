@@ -1893,7 +1893,7 @@ HitboxController.CharacterConnection =
 
 -- Toggle de ativação
 
-local HitboxToggle = Tab:Toggle({
+local HitboxToggle = Misc:Toggle({
 	Title = "Área de detecção",
 	Desc = "Ativa a área adicional de interação",
 	Type = "Toggle",
@@ -1916,7 +1916,7 @@ local HitboxToggle = Tab:Toggle({
 
 -- Slider de alcance
 
-local RangeSlider = Tab:Slider({
+local RangeSlider = Misc:Slider({
 	Title = "Tamanho do alcance",
 	Desc = "Define a largura da área de detecção",
 
