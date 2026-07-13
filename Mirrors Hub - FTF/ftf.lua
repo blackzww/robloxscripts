@@ -94,7 +94,7 @@ WindUI:AddTheme({
     PopupIcon = Color3.fromHex("#a78bfa"),
     
     Toggle = Color3.fromHex("#FFFFFF"),
-    ToggleBar = Color3.fromHex("#a78bfa"),
+    ToggleBar = Color3.fromHex("#FFFFFF"),
     
     Checkbox = Color3.fromHex("#4c1d95"),
     CheckboxIcon = Color3.fromHex("#a78bfa"),
