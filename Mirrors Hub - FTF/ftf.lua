@@ -1504,7 +1504,6 @@ local FlyToggle = Misc:Toggle({
 	end,
 })
 
-
 --[[
 	Robox 2 — Hitbox Expander oficial
 
@@ -1893,25 +1892,20 @@ HitboxController.CharacterConnection =
 
 -- Toggle de ativação
 
+-- Toggle de ativação
+
 local HitboxToggle = Misc:Toggle({
 	Title = "Área de detecção",
 	Desc = "Ativa a área adicional de interação",
 	Type = "Toggle",
 	Value = false,
-
 	Callback = function(state)
 		local success = HitboxController:SetEnabled(state)
 
-		if state and not success then
-			warn(
-				"Não foi possível ativar a área: "
-				.. "personagem indisponível."
-			)
-
-			-- Caso sua biblioteca permita atualizar o estado:
-			-- HitboxToggle:SetValue(false)
+		if state == true and success == false then
+			warn("Não foi possível ativar a área: personagem indisponível.")
 		end
-	end,
+	end
 })
 
 -- Slider de alcance
@@ -1919,20 +1913,16 @@ local HitboxToggle = Misc:Toggle({
 local RangeSlider = Misc:Slider({
 	Title = "Tamanho do alcance",
 	Desc = "Define a largura da área de detecção",
-
 	Step = 1,
-
 	Value = {
 		Min = 20,
 		Max = 120,
-		Default = DEFAULT_RANGE,
+		Default = DEFAULT_RANGE
 	},
-
 	Callback = function(value)
 		HitboxController:SetRange(value)
-	end,
-})
-    
+	end
+})	
 
 local ButtonBypass = Misc:Button({
     Title = "Bypass Anticheat",
