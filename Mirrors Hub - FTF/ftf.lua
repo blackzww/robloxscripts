@@ -1225,7 +1225,7 @@ speaker.CharacterAdded:Connect(function(char)
 end)
 
 
-    local Dialog = Misc:Dialog({
+    local Dialog = Window:Dialog({
     Icon = "bird",
     Title = "Dialog Title",
     Content = "Content Text",
