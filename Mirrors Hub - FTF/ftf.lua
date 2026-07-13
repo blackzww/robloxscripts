@@ -1225,24 +1225,712 @@ speaker.CharacterAdded:Connect(function(char)
 end)
 
 
-    local Dialog = Window:Dialog({
-    Icon = "bird",
-    Title = "Dialog Title",
-    Content = "Content Text",
-    Buttons = {
-        {
-            Title = "Confirm",
-            Callback = function()
-                print("Confirmed!")
-            end,
-        },
-        {
-            Title = "Cancel",
-            Callback = function()
-                print("Cancelled!")
-            end,
-        },
-    },
+--[[
+	Robox 2 — Fly Controller
+	
+	Controle:
+	- Ative ou desative pelo Toggle.
+	- Use W/A/S/D ou o joystick para se movimentar.
+	- Olhe para cima e avance para subir.
+	- Olhe para baixo e avance para descer.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- Configuração
+
+local FLY_SPEED = 55
+
+-- Controlador de voo
+
+local FlyController = {
+	Enabled = false,
+	BodyVelocity = nil,
+	BodyGyro = nil,
+	RenderConnection = nil,
+	DeathConnection = nil,
+	CharacterConnection = nil,
+}
+
+function FlyController:GetCharacterParts()
+	local character = player.Character
+
+	if not character then
+		return nil, nil
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+
+	return humanoid, rootPart
+end
+
+function FlyController:DestroyMovers()
+	if self.BodyVelocity then
+		self.BodyVelocity:Destroy()
+		self.BodyVelocity = nil
+	end
+
+	if self.BodyGyro then
+		self.BodyGyro:Destroy()
+		self.BodyGyro = nil
+	end
+end
+
+function FlyController:DisconnectConnections()
+	if self.RenderConnection then
+		self.RenderConnection:Disconnect()
+		self.RenderConnection = nil
+	end
+
+	if self.DeathConnection then
+		self.DeathConnection:Disconnect()
+		self.DeathConnection = nil
+	end
+end
+
+function FlyController:Stop()
+	self.Enabled = false
+
+	self:DisconnectConnections()
+	self:DestroyMovers()
+
+	local humanoid = self:GetCharacterParts()
+
+	if humanoid then
+		humanoid.PlatformStand = false
+		humanoid.AutoRotate = true
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	end
+end
+
+function FlyController:Update()
+	if not self.Enabled then
+		return
+	end
+
+	local humanoid, rootPart = self:GetCharacterParts()
+	local camera = workspace.CurrentCamera
+
+	if not humanoid
+		or not rootPart
+		or not camera
+		or not self.BodyVelocity
+		or not self.BodyGyro then
+		self:Stop()
+		return
+	end
+
+	if humanoid.Health <= 0 then
+		self:Stop()
+		return
+	end
+
+	local moveDirection = humanoid.MoveDirection
+	local cameraLook = camera.CFrame.LookVector
+	local cameraRight = camera.CFrame.RightVector
+
+	-- Direções horizontais relativas à câmera.
+
+	local flatLook = Vector3.new(
+		cameraLook.X,
+		0,
+		cameraLook.Z
+	)
+
+	local flatRight = Vector3.new(
+		cameraRight.X,
+		0,
+		cameraRight.Z
+	)
+
+	-- Usa a orientação do personagem como fallback quando
+	-- a câmera estiver totalmente apontada para cima ou para baixo.
+
+	if flatLook.Magnitude <= 0.01 then
+		local rootLook = rootPart.CFrame.LookVector
+
+		flatLook = Vector3.new(
+			rootLook.X,
+			0,
+			rootLook.Z
+		)
+	end
+
+	if flatRight.Magnitude <= 0.01 then
+		local rootRight = rootPart.CFrame.RightVector
+
+		flatRight = Vector3.new(
+			rootRight.X,
+			0,
+			rootRight.Z
+		)
+	end
+
+	if flatLook.Magnitude > 0.01 then
+		flatLook = flatLook.Unit
+	end
+
+	if flatRight.Magnitude > 0.01 then
+		flatRight = flatRight.Unit
+	end
+
+	if moveDirection.Magnitude > 0.01 then
+		-- Converte MoveDirection em movimento relativo à câmera.
+
+		local forwardAmount = moveDirection:Dot(flatLook)
+		local rightAmount = moveDirection:Dot(flatRight)
+
+		-- O movimento frontal acompanha a inclinação da câmera.
+		-- O movimento lateral permanece nivelado.
+
+		local flyDirection =
+			(cameraLook * forwardAmount)
+			+ (flatRight * rightAmount)
+
+		if flyDirection.Magnitude > 0.01 then
+			self.BodyVelocity.Velocity =
+				flyDirection.Unit * FLY_SPEED
+		else
+			self.BodyVelocity.Velocity = Vector3.zero
+		end
+	else
+		self.BodyVelocity.Velocity = Vector3.zero
+	end
+
+	-- Orienta o personagem na direção da câmera.
+
+	self.BodyGyro.CFrame = CFrame.lookAt(
+		rootPart.Position,
+		rootPart.Position + cameraLook,
+		camera.CFrame.UpVector
+	)
+end
+
+function FlyController:Start()
+	if self.Enabled then
+		return true
+	end
+
+	local humanoid, rootPart = self:GetCharacterParts()
+
+	if not humanoid
+		or not rootPart
+		or humanoid.Health <= 0 then
+		return false
+	end
+
+	self:DisconnectConnections()
+	self:DestroyMovers()
+
+	self.Enabled = true
+
+	humanoid.PlatformStand = true
+	humanoid.AutoRotate = false
+
+	self.BodyVelocity = Instance.new("BodyVelocity")
+	self.BodyVelocity.Name = "Robox2FlyVelocity"
+	self.BodyVelocity.MaxForce = Vector3.new(
+		math.huge,
+		math.huge,
+		math.huge
+	)
+	self.BodyVelocity.P = 25000
+	self.BodyVelocity.Velocity = Vector3.zero
+	self.BodyVelocity.Parent = rootPart
+
+	self.BodyGyro = Instance.new("BodyGyro")
+	self.BodyGyro.Name = "Robox2FlyGyro"
+	self.BodyGyro.MaxTorque = Vector3.new(
+		math.huge,
+		math.huge,
+		math.huge
+	)
+	self.BodyGyro.P = 25000
+	self.BodyGyro.D = 500
+	self.BodyGyro.CFrame = rootPart.CFrame
+	self.BodyGyro.Parent = rootPart
+
+	self.DeathConnection = humanoid.Died:Connect(function()
+		self:Stop()
+	end)
+
+	self.RenderConnection = RunService.RenderStepped:Connect(function()
+		self:Update()
+	end)
+
+	return true
+end
+
+function FlyController:SetEnabled(state)
+	if state then
+		return self:Start()
+	end
+
+	self:Stop()
+	return true
+end
+
+-- Desliga e limpa o voo quando o personagem renascer.
+
+FlyController.CharacterConnection = player.CharacterAdded:Connect(function()
+	FlyController:Stop()
+end)
+
+-- Integração com a biblioteca de GUI.
+-- "Tab" deve ter sido criado anteriormente pelo seu sistema de interface.
+
+local FlyToggle = Misc:Toggle({
+	Title = "Toggle Fly",
+	Desc = "Voe seguindo a direção da câmera",
+	Type = "Toggle",
+	Value = false,
+
+	Callback = function(state)
+		local started = FlyController:SetEnabled(state)
+
+		if state and not started then
+			warn("Não foi possível ativar o Fly: personagem indisponível.")
+			
+			-- Se a biblioteca tiver um método para atualizar o Toggle
+			-- sem disparar o Callback, ele pode ser usado aqui.
+			--
+			-- Exemplo:
+			-- FlyToggle:SetValue(false)
+		end
+	end,
+})
+
+
+--[[
+	Robox 2 — Hitbox Expander oficial
+
+	Características:
+	- Não modifica partes do personagem.
+	- Não modifica o collider principal.
+	- Não interfere na movimentação ou na física.
+	- Usa GetPartBoundsInBox para detectar objetos próximos.
+	- Exibe uma área visual não colisível sob o personagem.
+	- O Toggle ativa/desativa o sistema.
+	- O Slider controla o alcance.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- Configurações
+
+local DEFAULT_RANGE = 70
+local DETECTION_HEIGHT = 12
+local DETECTION_INTERVAL = 0.1
+
+local VISUALIZER_NAME = "Robox2DetectionArea"
+
+-- Controlador da área de detecção
+
+local HitboxController = {
+	Enabled = false,
+	Range = DEFAULT_RANGE,
+
+	Visualizer = nil,
+	UpdateConnection = nil,
+	CharacterConnection = nil,
+
+	ElapsedTime = 0,
+	DetectedParts = {},
+	DetectedModels = {},
+}
+
+-- Evento disparado sempre que uma detecção é realizada.
+-- Outros sistemas podem conectar-se a esse evento.
+
+HitboxController.Detected = Instance.new("BindableEvent")
+
+-- Retorna o personagem e sua parte principal.
+
+function HitboxController:GetCharacterParts()
+	local character = player.Character
+
+	if not character then
+		return nil, nil, nil
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+
+	return character, humanoid, rootPart
+end
+
+-- Calcula a posição dos pés do personagem.
+
+function HitboxController:GetFeetPosition()
+	local character, humanoid, rootPart = self:GetCharacterParts()
+
+	if not character or not humanoid or not rootPart then
+		return nil
+	end
+
+	local verticalOffset =
+		(rootPart.Size.Y * 0.5)
+		+ humanoid.HipHeight
+
+	return rootPart.Position - Vector3.new(0, verticalOffset, 0)
+end
+
+-- Cria o bloco que representa visualmente o alcance.
+
+function HitboxController:CreateVisualizer()
+	self:DestroyVisualizer()
+
+	local character = player.Character
+
+	if not character then
+		return
+	end
+
+	local visualizer = Instance.new("Part")
+	visualizer.Name = VISUALIZER_NAME
+
+	-- O indicador não participa da física ou das consultas.
+
+	visualizer.Anchored = true
+	visualizer.CanCollide = false
+	visualizer.CanTouch = false
+	visualizer.CanQuery = false
+	visualizer.CastShadow = false
+
+	visualizer.Massless = true
+	visualizer.Locked = true
+
+	-- Aparência.
+
+	visualizer.Material = Enum.Material.Neon
+	visualizer.Color = Color3.fromRGB(34, 197, 94)
+	visualizer.Transparency = 0.7
+
+	-- É um bloco fino posicionado sob o personagem.
+
+	visualizer.Size = Vector3.new(
+		self.Range,
+		0.15,
+		self.Range
+	)
+
+	visualizer.Parent = workspace
+
+	self.Visualizer = visualizer
+	self:UpdateVisualizer()
+end
+
+-- Remove apenas o indicador visual.
+
+function HitboxController:DestroyVisualizer()
+	if self.Visualizer then
+		self.Visualizer:Destroy()
+		self.Visualizer = nil
+	end
+end
+
+-- Atualiza o tamanho e a posição do indicador.
+
+function HitboxController:UpdateVisualizer()
+	if not self.Visualizer then
+		return
+	end
+
+	local feetPosition = self:GetFeetPosition()
+
+	if not feetPosition then
+		return
+	end
+
+	self.Visualizer.Size = Vector3.new(
+		self.Range,
+		0.15,
+		self.Range
+	)
+
+	self.Visualizer.CFrame = CFrame.new(
+		feetPosition - Vector3.new(0, 0.1, 0)
+	)
+end
+
+-- Cria os parâmetros usados pela consulta espacial.
+
+function HitboxController:CreateOverlapParams()
+	local character = player.Character
+	local exclusions = {}
+
+	if character then
+		table.insert(exclusions, character)
+	end
+
+	if self.Visualizer then
+		table.insert(exclusions, self.Visualizer)
+	end
+
+	local overlapParams = OverlapParams.new()
+	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+	overlapParams.FilterDescendantsInstances = exclusions
+
+	-- Zero significa que não há limite de resultados.
+
+	overlapParams.MaxParts = 0
+	overlapParams.RespectCanCollide = false
+
+	return overlapParams
+end
+
+-- Retorna o centro da área tridimensional de detecção.
+
+function HitboxController:GetDetectionCFrame()
+	local character, humanoid, rootPart = self:GetCharacterParts()
+
+	if not character or not humanoid or not rootPart then
+		return nil
+	end
+
+	-- A caixa fica centralizada verticalmente no personagem.
+	-- Sua rotação permanece fixa para evitar movimentos visuais estranhos.
+
+	return CFrame.new(rootPart.Position)
+end
+
+-- Executa uma consulta de objetos dentro da área.
+
+function HitboxController:Scan()
+	if not self.Enabled then
+		return {}, {}
+	end
+
+	local character, humanoid, rootPart = self:GetCharacterParts()
+
+	if not character
+		or not humanoid
+		or not rootPart
+		or humanoid.Health <= 0 then
+		return {}, {}
+	end
+
+	local detectionCFrame = self:GetDetectionCFrame()
+
+	if not detectionCFrame then
+		return {}, {}
+	end
+
+	local detectionSize = Vector3.new(
+		self.Range,
+		DETECTION_HEIGHT,
+		self.Range
+	)
+
+	local overlapParams = self:CreateOverlapParams()
+
+	local parts = workspace:GetPartBoundsInBox(
+		detectionCFrame,
+		detectionSize,
+		overlapParams
+	)
+
+	-- Organiza os resultados sem repetir modelos.
+
+	local detectedModels = {}
+	local modelLookup = {}
+
+	for _, part in ipairs(parts) do
+		local model = part:FindFirstAncestorOfClass("Model")
+
+		if model
+			and model ~= character
+			and not modelLookup[model] then
+			modelLookup[model] = true
+			table.insert(detectedModels, model)
+		end
+	end
+
+	self.DetectedParts = parts
+	self.DetectedModels = detectedModels
+
+	-- Dispara o resultado para os sistemas interessados.
+
+	self.Detected:Fire(parts, detectedModels)
+
+	return parts, detectedModels
+end
+
+-- Loop de atualização.
+
+function HitboxController:Update(deltaTime)
+	if not self.Enabled then
+		return
+	end
+
+	self:UpdateVisualizer()
+
+	self.ElapsedTime += deltaTime
+
+	if self.ElapsedTime < DETECTION_INTERVAL then
+		return
+	end
+
+	self.ElapsedTime = 0
+	self:Scan()
+end
+
+-- Ativa o sistema.
+
+function HitboxController:Start()
+	if self.Enabled then
+		return true
+	end
+
+	local character, humanoid, rootPart = self:GetCharacterParts()
+
+	if not character
+		or not humanoid
+		or not rootPart
+		or humanoid.Health <= 0 then
+		return false
+	end
+
+	self.Enabled = true
+	self.ElapsedTime = DETECTION_INTERVAL
+
+	self:CreateVisualizer()
+
+	if not self.UpdateConnection then
+		self.UpdateConnection = RunService.Heartbeat:Connect(
+			function(deltaTime)
+				self:Update(deltaTime)
+			end
+		)
+	end
+
+	return true
+end
+
+-- Desativa o sistema e remove todos os resultados temporários.
+
+function HitboxController:Stop()
+	self.Enabled = false
+	self.ElapsedTime = 0
+
+	if self.UpdateConnection then
+		self.UpdateConnection:Disconnect()
+		self.UpdateConnection = nil
+	end
+
+	self:DestroyVisualizer()
+
+	table.clear(self.DetectedParts)
+	table.clear(self.DetectedModels)
+end
+
+-- Função usada pelo Toggle.
+
+function HitboxController:SetEnabled(state)
+	if state then
+		return self:Start()
+	end
+
+	self:Stop()
+	return true
+end
+
+-- Função usada pelo Slider.
+
+function HitboxController:SetRange(value)
+	if typeof(value) ~= "number" then
+		return
+	end
+
+	self.Range = math.clamp(value, 20, 120)
+
+	if self.Visualizer then
+		self:UpdateVisualizer()
+	end
+
+	-- Atualiza imediatamente os objetos detectados.
+
+	if self.Enabled then
+		self.ElapsedTime = DETECTION_INTERVAL
+	end
+end
+
+-- Retorna uma cópia das partes detectadas atualmente.
+
+function HitboxController:GetDetectedParts()
+	return table.clone(self.DetectedParts)
+end
+
+-- Retorna uma cópia dos modelos detectados atualmente.
+
+function HitboxController:GetDetectedModels()
+	return table.clone(self.DetectedModels)
+end
+
+-- Ao renascer, recria a área caso ela estivesse ativada.
+
+HitboxController.CharacterConnection =
+	player.CharacterAdded:Connect(function(character)
+		if not HitboxController.Enabled then
+			return
+		end
+
+		HitboxController:DestroyVisualizer()
+
+		character:WaitForChild("Humanoid")
+		character:WaitForChild("HumanoidRootPart")
+
+		HitboxController:CreateVisualizer()
+		HitboxController.ElapsedTime = DETECTION_INTERVAL
+	end)
+
+-- Toggle de ativação
+
+local HitboxToggle = Tab:Toggle({
+	Title = "Área de detecção",
+	Desc = "Ativa a área adicional de interação",
+	Type = "Toggle",
+	Value = false,
+
+	Callback = function(state)
+		local success = HitboxController:SetEnabled(state)
+
+		if state and not success then
+			warn(
+				"Não foi possível ativar a área: "
+				.. "personagem indisponível."
+			)
+
+			-- Caso sua biblioteca permita atualizar o estado:
+			-- HitboxToggle:SetValue(false)
+		end
+	end,
+})
+
+-- Slider de alcance
+
+local RangeSlider = Tab:Slider({
+	Title = "Tamanho do alcance",
+	Desc = "Define a largura da área de detecção",
+
+	Step = 1,
+
+	Value = {
+		Min = 20,
+		Max = 120,
+		Default = DEFAULT_RANGE,
+	},
+
+	Callback = function(value)
+		HitboxController:SetRange(value)
+	end,
 })
     
 
