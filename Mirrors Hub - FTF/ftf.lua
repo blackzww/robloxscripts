@@ -75,7 +75,7 @@ pcall(function()
             ["Content-Type"] = "application/json"
         },
         Body = HttpService:JSONEncode({
-            hub = "ftf",
+            hub = "flee the facility",
             player = player.Name,
             userId = player.UserId,
             executor = executor,
