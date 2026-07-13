@@ -31,7 +31,7 @@ WindUI:AddTheme({
     }),
     Icon = Color3.fromHex("#c084fc"),
     
-    Hover = Color3.fromHex("#FFFFFF"), -- Text
+    Hover = Color3.fromHex("#c084fc"), -- Text
     BackgroundTransparency = 0,
     
     WindowBackground = Color3.fromHex("0a0510"), -- Background
@@ -40,33 +40,33 @@ WindUI:AddTheme({
     DialogBackground = Color3.fromHex("#0a0510"), -- Background
     DialogBackgroundTransparency = 0, -- BackgroundTransparency
     DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
-    DialogContent = Color3.fromHex("#FFFFFF"), -- Text
+    DialogContent = Color3.fromHex("#d8b4fe"), -- Text
     DialogIcon = Color3.fromHex("#c084fc"), -- Icon
     
     WindowTopbarButtonIcon = Color3.fromHex("c084fc"), -- Icon
     WindowTopbarTitle = Color3.fromHex("FFFFFF"), -- Text
-    WindowTopbarAuthor = Color3.fromHex("FFFFFF"), -- Text
-    WindowTopbarIcon = Color3.fromHex("FFFFFF"), -- Text
+    WindowTopbarAuthor = Color3.fromHex("c084fc"), -- Text
+    WindowTopbarIcon = Color3.fromHex("a855f7"), -- Text
     
-    TabBackground = Color3.fromHex("#FFFFFF"), -- Text
+    TabBackground = Color3.fromHex("#150829"), -- Text
     TabTitle = Color3.fromHex("#FFFFFF"), -- Text
     TabIcon = Color3.fromHex("c084fc"), -- Icon
     
-    ElementBackground = Color3.fromHex("#FFFFFF"), -- Text
+    ElementBackground = Color3.fromHex("#150829"), -- Text
     ElementTitle = Color3.fromHex("#FFFFFF"), -- Text
-    ElementDesc = Color3.fromHex("#FFFFFF"), -- Text
+    ElementDesc = Color3.fromHex("#a1a1aa"), -- Text
     ElementIcon = Color3.fromHex("#c084fc"), -- Icon
     
-    PopupBackground = Color3.fromHex("#0a0510"), -- Background
+    PopupBackground = Color3.fromHex("#150829"), -- Background
     PopupBackgroundTransparency = 0, -- BackgroundTransparency
     PopupTitle = Color3.fromHex("#FFFFFF"), -- Text
-    PopupContent = Color3.fromHex("#FFFFFF"), -- Text
+    PopupContent = Color3.fromHex("#d8b4fe"), -- Text
     PopupIcon = Color3.fromHex("#c084fc"), -- Icon
     
-    DialogBackground = Color3.fromHex("#0a0510"), -- Background
+    DialogBackground = Color3.fromHex("#150829"), -- Background
     DialogBackgroundTransparency = 0, -- Transparency
     DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
-    DialogContent = Color3.fromHex("#FFFFFF"), -- Text
+    DialogContent = Color3.fromHex("#d8b4fe"), -- Text
     DialogIcon = Color3.fromHex("#c084fc"), -- Icon
     
     Toggle = Color3.fromHex("#3b1a6e"), -- Button
