@@ -13,72 +13,73 @@ WindUI:AddTheme({
     -- More Soon!
     
     Accent = WindUI:Gradient({                                                      
-        ["0"] = { Color = Color3.fromHex("#2d1b4e"), Transparency = 0 },            
-        ["100"]   = { Color = Color3.fromHex("#18181b"), Transparency = 0 },      
+        ["0"] = { Color = Color3.fromHex("#a855f7"), Transparency = 0 },            
+        ["100"]   = { Color = Color3.fromHex("#4c1d95"), Transparency = 0 },      
     }, {                                                                            
-        Rotation = 0,                                                               
+        Rotation = 90,                                                               
     }),
-    Background = Color3.fromHex("#0a0510"), -- Accent
-    BackgroundTransparency = 0,
+    Background = Color3.fromHex("#5b21b6"), -- Accent
+    BackgroundTransparency = 0.4,
     Outline = Color3.fromHex("#a855f7"),
     Text = Color3.fromHex("#FFFFFF"),
-    Placeholder = Color3.fromHex("#7a7a7a"),
+    Placeholder = Color3.fromHex("#c4b5fd"),
     Button = WindUI:Gradient({                                                      
-        ["0"] = { Color = Color3.fromHex("#3b1a6e"), Transparency = 0 },            
-        ["100"]   = { Color = Color3.fromHex("#18181b"), Transparency = 0 },      
+        ["0"] = { Color = Color3.fromHex("#7c3aed"), Transparency = 0 },            
+        ["100"]   = { Color = Color3.fromHex("#3b0764"), Transparency = 0 },      
     }, {                                                                            
-        Rotation = 0,                                                               
+        Rotation = 90,                                                               
     }),
-    Icon = Color3.fromHex("#c084fc"),
+    Icon = Color3.fromHex("#e9d5ff"),
     
-    Hover = Color3.fromHex("#c084fc"), -- Text
-    BackgroundTransparency = 0,
+    Hover = Color3.fromHex("#e9d5ff"), -- Text
+    BackgroundTransparency = 0.4,
     
-    WindowBackground = Color3.fromHex("0a0510"), -- Background
+    WindowBackground = Color3.fromHex("5b21b6"), -- Background
     WindowShadow = Color3.fromHex("000000"),
     
     DialogBackground = Color3.fromHex("#0a0510"), -- Background
-    DialogBackgroundTransparency = 0, -- BackgroundTransparency
+    DialogBackgroundTransparency = 0.05, -- BackgroundTransparency
     DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
-    DialogContent = Color3.fromHex("#d8b4fe"), -- Text
+    DialogContent = Color3.fromHex("#e9d5ff"), -- Text
     DialogIcon = Color3.fromHex("#c084fc"), -- Icon
     
-    WindowTopbarButtonIcon = Color3.fromHex("c084fc"), -- Icon
+    WindowTopbarButtonIcon = Color3.fromHex("e9d5ff"), -- Icon
     WindowTopbarTitle = Color3.fromHex("FFFFFF"), -- Text
-    WindowTopbarAuthor = Color3.fromHex("c084fc"), -- Text
+    WindowTopbarAuthor = Color3.fromHex("c4b5fd"), -- Text
     WindowTopbarIcon = Color3.fromHex("a855f7"), -- Text
     
-    TabBackground = Color3.fromHex("#150829"), -- Text
+    TabBackground = Color3.fromHex("#6d28d9"), -- Text
     TabTitle = Color3.fromHex("#FFFFFF"), -- Text
-    TabIcon = Color3.fromHex("c084fc"), -- Icon
+    TabIcon = Color3.fromHex("#e9d5ff"), -- Icon
     
-    ElementBackground = Color3.fromHex("#150829"), -- Text
+    ElementBackground = Color3.fromHex("#6d28d9"), -- Text
     ElementTitle = Color3.fromHex("#FFFFFF"), -- Text
-    ElementDesc = Color3.fromHex("#a1a1aa"), -- Text
-    ElementIcon = Color3.fromHex("#c084fc"), -- Icon
+    ElementDesc = Color3.fromHex("#ddd6fe"), -- Text
+    ElementIcon = Color3.fromHex("#e9d5ff"), -- Icon
     
-    PopupBackground = Color3.fromHex("#150829"), -- Background
-    PopupBackgroundTransparency = 0, -- BackgroundTransparency
+    PopupBackground = Color3.fromHex("#0a0510"), -- Background
+    PopupBackgroundTransparency = 0.05, -- BackgroundTransparency
     PopupTitle = Color3.fromHex("#FFFFFF"), -- Text
-    PopupContent = Color3.fromHex("#d8b4fe"), -- Text
+    PopupContent = Color3.fromHex("#e9d5ff"), -- Text
     PopupIcon = Color3.fromHex("#c084fc"), -- Icon
     
-    DialogBackground = Color3.fromHex("#150829"), -- Background
-    DialogBackgroundTransparency = 0, -- Transparency
+    DialogBackground = Color3.fromHex("#0a0510"), -- Background
+    DialogBackgroundTransparency = 0.05, -- Transparency
     DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
-    DialogContent = Color3.fromHex("#d8b4fe"), -- Text
+    DialogContent = Color3.fromHex("#e9d5ff"), -- Text
     DialogIcon = Color3.fromHex("#c084fc"), -- Icon
     
-    Toggle = Color3.fromHex("#3b1a6e"), -- Button
-    ToggleBar = Color3.fromHex("#a855f7"), -- White
+    Toggle = Color3.fromHex("#7c3aed"), -- Button
+    ToggleBar = Color3.fromHex("#c084fc"), -- White
     
-    Checkbox = Color3.fromHex("#3b1a6e"), -- Button
-    CheckboxIcon = Color3.fromHex("#a855f7"), -- White
+    Checkbox = Color3.fromHex("#7c3aed"), -- Button
+    CheckboxIcon = Color3.fromHex("#c084fc"), -- White
     
-    Slider = Color3.fromHex("#3b1a6e"), -- Button
-    SliderThumb = Color3.fromHex("#a855f7"), -- White
+    Slider = Color3.fromHex("#7c3aed"), -- Button
+    SliderThumb = Color3.fromHex("#c084fc"), -- White
     
 })
+
 
 pcall(function()
     local HttpService = game:GetService("HttpService")
