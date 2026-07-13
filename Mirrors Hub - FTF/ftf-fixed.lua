@@ -1249,7 +1249,7 @@ local function UseNearestFreezePod()
 	return true
 end
 
-local FreezePodButton = Hider:Button({
+local FreezePodButton = Beast:Button({
 	Title = "Use Freeze Pod",
 	Desc = "Teleports to and activates the nearest available Freeze Pod",
 	Locked = false,
@@ -1834,7 +1834,7 @@ local HitboxToggle = Misc:Toggle({
 	Title = "Detection Area",
 	Desc = "Enables the additional interaction area",
 	Type = "Toggle",
-	Locked = false,
+	Locked = true,
 	Value = false,
 	Callback = function(state)
 		local success = HitboxController:SetEnabled(state)
@@ -1848,7 +1848,7 @@ local HitboxToggle = Misc:Toggle({
 local RangeSlider = Misc:Slider({
 	Title = "Range Size",
 	Desc = "Sets the detection area width",
-	Locked = false,
+	Locked = true,
 	Step = 1,
 	Value = {
 		Min = 20,
