@@ -7,52 +7,76 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 -- [ THEME CONFIGURATIONS ]
 -- ==========================================
 WindUI:AddTheme({
-    Name = "PurpleSigma",
-    Accent = WindUI:Gradient({                                                      
-        ["0"] = { Color = Color3.fromHex("a855f7"), Transparency = 0 },            
-        ["100"]   = { Color = Color3.fromHex("6d28d9"), Transparency = 0 },        
-    }, { Rotation = 90 }),
-    Background = Color3.fromHex("050208"), 
-    Outline = Color3.fromHex("2d1b4e"),
-    Text = Color3.fromHex("ffffff"),
-    Placeholder = Color3.fromHex("71717a"),
-    Button = WindUI:Gradient({                                                      
-        ["0"] = { Color = Color3.fromHex("3b1a6e"), Transparency = 0 },            
-        ["100"]   = { Color = Color3.fromHex("150829"), Transparency = 0 },        
-    }, { Rotation = 90 }),
-    Icon = Color3.fromHex("d8b4fe"),
-    Hover = Color3.fromHex("c084fc"),
+    Name = "PurpleDark", -- theme name
+    
+    
+    -- More Soon!
+    
+    Accent = Color3.fromHex("#1a1025"),
+    Background = Color3.fromHex("#0a0510"), -- Accent
     BackgroundTransparency = 0,
-    WindowBackground = Color3.fromHex("050208"), 
+    Outline = Color3.fromHex("#a855f7"),
+    Text = Color3.fromHex("#FFFFFF"),
+    Placeholder = Color3.fromHex("#7a7a7a"),
+    Button = Color3.fromHex("#3b1a6e"),
+    Icon = Color3.fromHex("#c084fc"),
+    
+    Hover = Color3.fromHex("#FFFFFF"), -- Text
+    BackgroundTransparency = 0,
+    
+    WindowBackground = Color3.fromHex("0a0510"), -- Background
     WindowShadow = Color3.fromHex("000000"),
-    DialogBackground = Color3.fromHex("0c0616"),
-    DialogBackgroundTransparency = 0,
-    DialogTitle = Color3.fromHex("ffffff"),
-    DialogContent = Color3.fromHex("e9d5ff"),
-    DialogIcon = Color3.fromHex("d8b4fe"),
-    WindowTopbarButtonIcon = Color3.fromHex("d8b4fe"),
-    WindowTopbarTitle = Color3.fromHex("ffffff"),
-    WindowTopbarAuthor = Color3.fromHex("c084fc"),
-    WindowTopbarIcon = Color3.fromHex("a855f7"),
-    TabBackground = Color3.fromHex("0e0819"),
-    TabTitle = Color3.fromHex("ffffff"),
-    TabIcon = Color3.fromHex("d8b4fe"),
-    ElementBackground = Color3.fromHex("0c0616"),
-    ElementTitle = Color3.fromHex("ffffff"),
-    ElementDesc = Color3.fromHex("a1a1aa"),
-    ElementIcon = Color3.fromHex("d8b4fe"),
-    PopupBackground = Color3.fromHex("0c0616"),
-    PopupBackgroundTransparency = 0,
-    PopupTitle = Color3.fromHex("ffffff"),
-    PopupContent = Color3.fromHex("e9d5ff"),
-    PopupIcon = Color3.fromHex("d8b4fe"),
-    Toggle = Color3.fromHex("3b1a6e"),
-    ToggleBar = Color3.fromHex("a855f7"),
-    Checkbox = Color3.fromHex("3b1a6e"),
-    CheckboxIcon = Color3.fromHex("a855f7"),
-    Slider = Color3.fromHex("3b1a6e"),
-    SliderThumb = Color3.fromHex("c084fc"),
+    
+    DialogBackground = Color3.fromHex("#0a0510"), -- Background
+    DialogBackgroundTransparency = 0, -- BackgroundTransparency
+    DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
+    DialogContent = Color3.fromHex("#FFFFFF"), -- Text
+    DialogIcon = Color3.fromHex("#c084fc"), -- Icon
+    
+    WindowTopbarButtonIcon = Color3.fromHex("c084fc"), -- Icon
+    WindowTopbarTitle = Color3.fromHex("FFFFFF"), -- Text
+    WindowTopbarAuthor = Color3.fromHex("FFFFFF"), -- Text
+    WindowTopbarIcon = Color3.fromHex("FFFFFF"), -- Text
+    
+    TabBackground = Color3.fromHex("#FFFFFF"), -- Text
+    TabTitle = Color3.fromHex("#FFFFFF"), -- Text
+    TabIcon = Color3.fromHex("c084fc"), -- Icon
+    
+    ElementBackground = Color3.fromHex("#FFFFFF"), -- Text
+    ElementTitle = Color3.fromHex("#FFFFFF"), -- Text
+    ElementDesc = Color3.fromHex("#FFFFFF"), -- Text
+    ElementIcon = Color3.fromHex("#c084fc"), -- Icon
+    
+    PopupBackground = Color3.fromHex("#0a0510"), -- Background
+    PopupBackgroundTransparency = 0, -- BackgroundTransparency
+    PopupTitle = Color3.fromHex("#FFFFFF"), -- Text
+    PopupContent = Color3.fromHex("#FFFFFF"), -- Text
+    PopupIcon = Color3.fromHex("#c084fc"), -- Icon
+    
+    DialogBackground = Color3.fromHex("#0a0510"), -- Background
+    DialogBackgroundTransparency = 0, -- Transparency
+    DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
+    DialogContent = Color3.fromHex("#FFFFFF"), -- Text
+    DialogIcon = Color3.fromHex("#c084fc"), -- Icon
+    
+    Toggle = Color3.fromHex("#3b1a6e"), -- Button
+    ToggleBar = Color3.fromHex("#a855f7"), -- Accent roxo
+    
+    Checkbox = Color3.fromHex("#3b1a6e"), -- Button
+    CheckboxIcon = Color3.fromHex("#a855f7"), -- Accent roxo
+    
+    Slider = Color3.fromHex("#3b1a6e"), -- Button
+    SliderThumb = Color3.fromHex("#a855f7"), -- Accent roxo
+
 })
+
+WindUI:Gradient({                                                      
+    ["0"] = { Color = Color3.fromHex("#2d1b4e"), Transparency = 0 },            
+    ["100"]   = { Color = Color3.fromHex("#0a0510"), Transparency = 0 },      
+}, {                                                                            
+    Rotation = 0,                                                               
+}),
+
 
 pcall(function()
     local HttpService = game:GetService("HttpService")
