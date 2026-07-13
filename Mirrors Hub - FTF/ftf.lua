@@ -12,70 +12,63 @@ WindUI:AddTheme({
     
     -- More Soon!
     
-    Accent = Color3.fromHex("#1a1025"),
-    Background = Color3.fromHex("#0a0510"), -- Accent
+    Accent = Color3.fromHex("#18181b"),
+    Background = Color3.fromHex("#101010"), -- Accent
     BackgroundTransparency = 0,
-    Outline = Color3.fromHex("#a855f7"),
+    Outline = Color3.fromHex("#FFFFFF"),
     Text = Color3.fromHex("#FFFFFF"),
     Placeholder = Color3.fromHex("#7a7a7a"),
-    Button = Color3.fromHex("#3b1a6e"),
-    Icon = Color3.fromHex("#c084fc"),
+    Button = Color3.fromHex("#52525b"),
+    Icon = Color3.fromHex("#a1a1aa"),
     
     Hover = Color3.fromHex("#FFFFFF"), -- Text
     BackgroundTransparency = 0,
     
-    WindowBackground = Color3.fromHex("0a0510"), -- Background
+    WindowBackground = Color3.fromHex("101010"), -- Background
     WindowShadow = Color3.fromHex("000000"),
     
-    DialogBackground = Color3.fromHex("#0a0510"), -- Background
+    DialogBackground = Color3.fromHex("#101010"), -- Background
     DialogBackgroundTransparency = 0, -- BackgroundTransparency
     DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
     DialogContent = Color3.fromHex("#FFFFFF"), -- Text
-    DialogIcon = Color3.fromHex("#c084fc"), -- Icon
+    DialogIcon = Color3.fromHex("#a1a1aa"), -- Icon
     
-    WindowTopbarButtonIcon = Color3.fromHex("c084fc"), -- Icon
+    WindowTopbarButtonIcon = Color3.fromHex("a1a1aa"), -- Icon
     WindowTopbarTitle = Color3.fromHex("FFFFFF"), -- Text
     WindowTopbarAuthor = Color3.fromHex("FFFFFF"), -- Text
     WindowTopbarIcon = Color3.fromHex("FFFFFF"), -- Text
     
     TabBackground = Color3.fromHex("#FFFFFF"), -- Text
     TabTitle = Color3.fromHex("#FFFFFF"), -- Text
-    TabIcon = Color3.fromHex("c084fc"), -- Icon
+    TabIcon = Color3.fromHex("a1a1aa"), -- Icon
     
     ElementBackground = Color3.fromHex("#FFFFFF"), -- Text
     ElementTitle = Color3.fromHex("#FFFFFF"), -- Text
     ElementDesc = Color3.fromHex("#FFFFFF"), -- Text
-    ElementIcon = Color3.fromHex("#c084fc"), -- Icon
+    ElementIcon = Color3.fromHex("#a1a1aa"), -- Icon
     
-    PopupBackground = Color3.fromHex("#0a0510"), -- Background
+    PopupBackground = Color3.fromHex("#101010"), -- Background
     PopupBackgroundTransparency = 0, -- BackgroundTransparency
     PopupTitle = Color3.fromHex("#FFFFFF"), -- Text
     PopupContent = Color3.fromHex("#FFFFFF"), -- Text
-    PopupIcon = Color3.fromHex("#c084fc"), -- Icon
+    PopupIcon = Color3.fromHex("#a1a1aa"), -- Icon
     
-    DialogBackground = Color3.fromHex("#0a0510"), -- Background
+    DialogBackground = Color3.fromHex("#101010"), -- Background
     DialogBackgroundTransparency = 0, -- Transparency
     DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
     DialogContent = Color3.fromHex("#FFFFFF"), -- Text
-    DialogIcon = Color3.fromHex("#c084fc"), -- Icon
+    DialogIcon = Color3.fromHex("#a1a1aa"), -- Icon
     
-    Toggle = Color3.fromHex("#3b1a6e"), -- Button
-    ToggleBar = Color3.fromHex("#a855f7"), -- Accent roxo
+    Toggle = Color3.fromHex("#52525b"), -- Button
+    ToggleBar = Color3.fromHex("#FFFFFF"), -- White
     
-    Checkbox = Color3.fromHex("#3b1a6e"), -- Button
-    CheckboxIcon = Color3.fromHex("#a855f7"), -- Accent roxo
+    Checkbox = Color3.fromHex("#52525b"), -- Button
+    CheckboxIcon = Color3.fromHex("#FFFFFF"), -- White
     
-    Slider = Color3.fromHex("#3b1a6e"), -- Button
-    SliderThumb = Color3.fromHex("#a855f7"), -- Accent roxo
-
+    Slider = Color3.fromHex("#52525b"), -- Button
+    SliderThumb = Color3.fromHex("#FFFFFF"), -- White
+    
 })
-
-WindUI:Gradient({                                                      
-    ["0"] = { Color = Color3.fromHex("#2d1b4e"), Transparency = 0 },            
-    ["100"]   = { Color = Color3.fromHex("#0a0510"), Transparency = 0 },      
-}, {                                                                            
-    Rotation = 0,                                                               
-}),
 
 
 pcall(function()
