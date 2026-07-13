@@ -1031,6 +1031,227 @@ task.spawn(function()
     end
 end)
 
+	local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- FreezePodService deve ser inicializado conforme a API do Robox 2.
+-- Exemplo, caso seja um serviço registrado:
+-- local FreezePodService = game:GetService("FreezePodService")
+
+local function GetCharacter()
+	local Character = LocalPlayer.Character
+
+	if not Character then
+		return nil, nil
+	end
+
+	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+	local RootPart = Character:FindFirstChild("HumanoidRootPart")
+
+	if not Humanoid
+		or Humanoid.Health <= 0
+		or not RootPart then
+		return nil, nil
+	end
+
+	return Character, RootPart
+end
+
+-- Verifica se o PodTrigger está habilitado.
+
+local function IsTriggerEnabled(Trigger)
+	if not Trigger then
+		return false
+	end
+
+	-- Se PodTrigger for uma BasePart, considera o pod disponível.
+	if Trigger:IsA("BasePart") then
+		return true
+	end
+
+	-- ProximityPrompt e outros triggers podem possuir Enabled.
+	local Success, Enabled = pcall(function()
+		return Trigger.Enabled
+	end)
+
+	return Success and Enabled == true
+end
+
+-- Obtém a posição ou CFrame de um PodTrigger.
+
+local function GetTriggerCFrame(Trigger)
+	if not Trigger then
+		return nil
+	end
+
+	if Trigger:IsA("BasePart") then
+		return Trigger.CFrame
+	end
+
+	if Trigger:IsA("Attachment") then
+		return Trigger.WorldCFrame
+	end
+
+	-- Caso PodTrigger seja um ProximityPrompt.
+	if Trigger:IsA("ProximityPrompt") then
+		local Parent = Trigger.Parent
+
+		if Parent and Parent:IsA("Attachment") then
+			return Parent.WorldCFrame
+		end
+
+		if Parent and Parent:IsA("BasePart") then
+			return Parent.CFrame
+		end
+	end
+
+	return nil
+end
+
+-- Encontra o FreezePod disponível mais próximo do jogador.
+
+local function GetNearestAvailableFreezePod()
+	local CurrentMap = workspace:FindFirstChild("CurrentMap")
+	local _, RootPart = GetCharacter()
+
+	if not CurrentMap or not RootPart then
+		return nil
+	end
+
+	local NearestPod = nil
+	local NearestDistance = math.huge
+
+	-- GetDescendants permite encontrar FreezePods dentro de pastas.
+	for _, Object in ipairs(CurrentMap:GetDescendants()) do
+		if Object.Name == "FreezePod" then
+			local Trigger = Object:FindFirstChild(
+				"PodTrigger",
+				true
+			)
+
+			if IsTriggerEnabled(Trigger) then
+				local TriggerCFrame = GetTriggerCFrame(Trigger)
+
+				if TriggerCFrame then
+					local Distance = (
+						RootPart.Position
+						- TriggerCFrame.Position
+					).Magnitude
+
+					if Distance < NearestDistance then
+						NearestDistance = Distance
+						NearestPod = Object
+					end
+				end
+			end
+		end
+	end
+
+	return NearestPod, NearestDistance
+end
+
+-- Move o personagem para perto do FreezePod.
+
+local function MoveToFreezePod(Pod)
+	local Character = GetCharacter()
+
+	if not Character or not Pod then
+		return false
+	end
+
+	local Trigger = Pod:FindFirstChild("PodTrigger", true)
+	local TriggerCFrame = GetTriggerCFrame(Trigger)
+
+	if not TriggerCFrame then
+		return false
+	end
+
+	-- Coloca o jogador ligeiramente acima do trigger para evitar
+	-- que os pés atravessem o chão.
+	local TargetCFrame = TriggerCFrame + Vector3.new(0, 3, 0)
+
+	Character:PivotTo(TargetCFrame)
+
+	return true
+end
+
+-- Chama a interação oficial do Robox 2.
+
+local function InteractWithFreezePod(Pod)
+	if not Pod then
+		return false
+	end
+
+	local Trigger = Pod:FindFirstChild("PodTrigger", true)
+
+	if not IsTriggerEnabled(Trigger) then
+		return false
+	end
+
+	if not FreezePodService then
+		warn("FreezePodService não está disponível.")
+		return false
+	end
+
+	local Success, Result = pcall(function()
+		return FreezePodService:Interact(Pod)
+	end)
+
+	if not Success then
+		warn(
+			"Falha ao interagir com o FreezePod: "
+				.. tostring(Result)
+		)
+
+		return false
+	end
+
+	return true
+end
+
+-- Teleporta e ativa o FreezePod mais próximo.
+
+local function UseNearestFreezePod()
+	local Pod, Distance = GetNearestAvailableFreezePod()
+
+	if not Pod then
+		warn("Nenhum FreezePod disponível foi encontrado.")
+		return false
+	end
+
+	if not MoveToFreezePod(Pod) then
+		warn("Não foi possível mover o personagem até o FreezePod.")
+		return false
+	end
+
+	-- Aguarda um frame de física antes de executar a interação.
+	task.wait()
+
+	if not InteractWithFreezePod(Pod) then
+		warn("Não foi possível ativar o FreezePod.")
+		return false
+	end
+
+	print(
+		"FreezePod mais próximo ativado. Distância anterior: "
+			.. string.format("%.1f", Distance)
+	)
+
+	return true
+end
+
+-- Botão da biblioteca de interface.
+
+local FreezePodButton = Tab:Button({
+	Title = "Usar FreezePod",
+	Desc = "Teleporta e ativa o FreezePod disponível mais próximo",
+	Locked = false,
+	Callback = function()
+		UseNearestFreezePod()
+	end
+})
+
 -- ==========================================
 -- [ MISC BUTTONS ]
 -- ==========================================
@@ -1115,114 +1336,6 @@ local Toggle = Misc:Toggle({
         end
     end
 })
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local speaker = Players.LocalPlayer
-local nowe = false
-local tpwalking = false
-local speeds = 1 -- Velocidade padrão (pode ser controlada por outros botões do seu menu)
-
--- Função para alterar o comportamento de estados do Humanoid
-local function setHumanoidStates(state)
-    local character = speaker.Character
-    local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
-    
-    if humanoid then
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics, state)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, state)
-    end
-end
-
--- Estrutura do Toggle adaptada ao seu Menu
-local Toggle = Misc:Toggle({
-    Title = "Toggle Fly",
-    Desc = "Voa usando o analógico do Mobile e WASD do PC",
-    Type = "Toggle",
-    Value = false,
-    Callback = function(state) 
-        nowe = state
-        
-        local chr = speaker.Character
-        local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-        
-        if not nowe then
-            -- DESATIVAR VÔO
-            tpwalking = false
-            setHumanoidStates(true)
-            
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-            end
-            
-            if chr and chr:FindFirstChild("Animate") then
-                chr.Animate.Disabled = false
-            end
-            
-            -- Reajusta a velocidade das animações ao normal
-            if hum then
-                local animator = hum:FindFirstChildOfClass("Animator") or hum
-                for _, track in next, animator:GetPlayingAnimationTracks() do
-                    track:AdjustSpeed(1)
-                end
-            end
-        else
-            -- ATIVAR VÔO
-            tpwalking = true
-            
-            -- Cria a quantidade de loops baseado na velocidade 'speeds' (Lógica idêntica ao seu script)
-            for i = 1, speeds do
-                task.spawn(function() 
-                    local hb = RunService.Heartbeat
-                    while tpwalking and hb:Wait() and speaker.Character and speaker.Character:FindFirstChildWhichIsA("Humanoid") do
-                        local currentChr = speaker.Character
-                        local currentHum = currentChr:FindFirstChildWhichIsA("Humanoid")
-                        
-                        if currentHum and currentHum.MoveDirection.Magnitude > 0 then
-                            currentChr:TranslateBy(currentHum.MoveDirection)
-                        end
-                    end 
-                end)
-            end
-            
-            -- Congela animações nativas para não ficar travando o boneco
-            if chr and chr:FindFirstChild("Animate") then
-                chr.Animate.Disabled = true
-            end
-            
-            if hum then
-                local animator = hum:FindFirstChildOfClass("Animator") or hum
-                for _, track in next, animator:GetPlayingAnimationTracks() do
-                    track:AdjustSpeed(0)
-                end
-                
-                setHumanoidStates(false)
-                hum:ChangeState(Enum.HumanoidStateType.Swimming) -- Aplica o estado de natação infinita no ar
-            end
-        end
-    end
-})
-
--- Reseta os estados se o personagem morrer
-speaker.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    tpwalking = false
-    nowe = false
-end)
 
 
 --[[
@@ -1898,6 +2011,7 @@ local HitboxToggle = Misc:Toggle({
 	Title = "Área de detecção",
 	Desc = "Ativa a área adicional de interação",
 	Type = "Toggle",
+	Locked = true,
 	Value = false,
 	Callback = function(state)
 		local success = HitboxController:SetEnabled(state)
@@ -1913,6 +2027,7 @@ local HitboxToggle = Misc:Toggle({
 local RangeSlider = Misc:Slider({
 	Title = "Tamanho do alcance",
 	Desc = "Define a largura da área de detecção",
+	Locked = true,
 	Step = 1,
 	Value = {
 		Min = 20,
@@ -1922,7 +2037,7 @@ local RangeSlider = Misc:Slider({
 	Callback = function(value)
 		HitboxController:SetRange(value)
 	end
-})	
+})
 
 local ButtonBypass = Misc:Button({
     Title = "Bypass Anticheat",
