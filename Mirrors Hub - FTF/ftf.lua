@@ -1831,7 +1831,7 @@ HitboxController.CharacterConnection = player.CharacterAdded:Connect(function(ch
 end)
 
 local HitboxToggle = Misc:Toggle({
-	Title = "Detection Area",
+	Title = "Hitbox Expander (Beta)",
 	Desc = "Enables the additional interaction area",
 	Type = "Toggle",
 	Locked = true,
@@ -1858,6 +1858,38 @@ local RangeSlider = Misc:Slider({
 	Callback = function(value)
 		HitboxController:SetRange(value)
 	end,
+})
+
+local jogador = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+local Humanoid = jogador:WaitForChild("Humanoid")
+
+-- Criamos uma variável para guardar a velocidade que você quer
+local velocidadeDesejada = 20
+
+-- Esse é o "Vigia": Toda vez que a propriedade "WalkSpeed" mudar, ele roda o código abaixo
+Humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+    if Humanoid.WalkSpeed ~= velocidadeDesejada then
+        Humanoid.WalkSpeed = velocidadeDesejada
+    end
+end)
+
+local Slider = Tab:Slider({
+    Title = "Change Walkspeed",
+    Desc = "Change your own Walkspeed",
+    Step = 1,
+    Value = {
+        Min = 20,
+        Max = 120,
+        Default = 20,
+    },
+    Callback = function(value)
+        -- 1. Atualizamos a velocidade desejada na nossa variável
+        velocidadeDesejada = value
+        
+        -- 2. Mudamos a velocidade do humanoid para o novo valor
+        Humanoid.WalkSpeed = value
+        print("Velocidade travada em: " .. value)
+    end
 })
 
 local ButtonBypass = Misc:Button({
