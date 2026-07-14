@@ -1873,7 +1873,7 @@ Humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
     end
 end)
 
-local Slider = Tab:Slider({
+local Slider = Misc:Slider({
     Title = "Change Walkspeed",
     Desc = "Change your own Walkspeed",
     Step = 1,
