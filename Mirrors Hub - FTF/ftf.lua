@@ -1258,6 +1258,62 @@ local FreezePodButton = Beast:Button({
 	end,
 })
 
+local jogador = game.Players.LocalPlayer
+
+-- Função segura para pegar o Humanoid mesmo se você morrer e renascer
+local function obterHumanoid()
+    local personagem = jogador.Character or jogador.CharacterAdded:Wait()
+    return personagem:WaitForChild("Humanoid")
+end
+
+-- Criamos a variável para a velocidade desejada (começa em 70 igual o Default do seu Slider)
+local velocidadeDesejada = 70
+
+-- Criamos uma função para aplicar e travar a velocidade
+local conexao
+local function aplicarTrava()
+    local humanoid = obterHumanoid()
+    
+    -- Se já tiver um vigia ativo, desliga ele antes de criar um novo
+    if conexao then conexao:Disconnect() end
+    
+    -- Ativa o vigia no humanoid atual
+    conexao = humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if humanoid.WalkSpeed ~= velocidadeDesejada then
+            humanoid.WalkSpeed = velocidadeDesejada
+        end
+    end)
+    
+    -- Aplica a velocidade inicial
+    humanoid.WalkSpeed = velocidadeDesejada
+end
+
+-- Toda vez que você morrer e renascer, o script ativa a trava no novo corpo automaticamente!
+jogador.CharacterAdded:Connect(aplicarTrava)
+task.spawn(aplicarTrava) -- Ativa a primeira vez imediatamente
+
+-- O seu Slider usando a aba "Misc"
+local Slider = Misc:Slider({
+    Title = "Velocidade Travada",
+    Desc = "Ajuste e trave a sua velocidade de forma segura",
+    Step = 1,
+    Value = {
+        Min = 20,
+        Max = 120,
+        Default = 70, -- Atualizado para 70 igual à sua estrutura
+    },
+    Callback = function(value)
+        velocidadeDesejada = value
+        
+        -- Aplica a nova velocidade no humanoid atual
+        local humanoid = obterHumanoid()
+        if humanoid then
+            humanoid.WalkSpeed = value
+        end
+        print("Velocidade travada em: " .. value)
+    end
+})
+
 local ButtonFixCamera = Misc:Button({
 	Title = "Fix Camera",
 	Desc = "Unlocks the camera and focuses it back on your character",
@@ -1860,37 +1916,6 @@ local RangeSlider = Misc:Slider({
 	end,
 })
 
-local jogador = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-local Humanoid = jogador:WaitForChild("Humanoid")
-
--- Criamos uma variável para guardar a velocidade que você quer
-local velocidadeDesejada = 20
-
--- Esse é o "Vigia": Toda vez que a propriedade "WalkSpeed" mudar, ele roda o código abaixo
-Humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-    if Humanoid.WalkSpeed ~= velocidadeDesejada then
-        Humanoid.WalkSpeed = velocidadeDesejada
-    end
-end)
-
-local Slider = Misc:Slider({
-    Title = "Change Walkspeed",
-    Desc = "Change your own Walkspeed",
-    Step = 1,
-    Value = {
-        Min = 20,
-        Max = 120,
-        Default = 20,
-    },
-    Callback = function(value)
-        -- 1. Atualizamos a velocidade desejada na nossa variável
-        velocidadeDesejada = value
-        
-        -- 2. Mudamos a velocidade do humanoid para o novo valor
-        Humanoid.WalkSpeed = value
-        print("Velocidade travada em: " .. value)
-    end
-})
 
 local ButtonBypass = Misc:Button({
 	Title = "Bypass Anticheat",
