@@ -20,7 +20,7 @@ WindUI:AddTheme({
 	BackgroundTransparency = 0.35,
 	Outline = Color3.fromHex("#6d28d9"),
 	Text = Color3.fromHex("#FFFFFF"),
-	Placeholder = Color3.fromHex("#a78bfa"),
+	Placeholder = Color3.fromHex("#FFFFFF"),
 	Button = WindUI:Gradient({
 		["0"] = { Color = Color3.fromHex("#4c1d95"), Transparency = 0 },
 		["100"] = { Color = Color3.fromHex("#150829"), Transparency = 0 },
@@ -48,12 +48,12 @@ WindUI:AddTheme({
 	}),
 	DialogBackgroundTransparency = 0.05,
 	DialogTitle = Color3.fromHex("#FFFFFF"),
-	DialogContent = Color3.fromHex("#c4b5fd"),
+	DialogContent = Color3.fromHex("#FFFFFF"),
 	DialogIcon = Color3.fromHex("#a78bfa"),
 
 	WindowTopbarButtonIcon = Color3.fromHex("c4b5fd"),
 	WindowTopbarTitle = Color3.fromHex("FFFFFF"),
-	WindowTopbarAuthor = Color3.fromHex("a78bfa"),
+	WindowTopbarAuthor = Color3.fromHex("FFFFFF"),
 	WindowTopbarIcon = Color3.fromHex("7c3aed"),
 
 	TabBackground = WindUI:Gradient({
@@ -72,7 +72,7 @@ WindUI:AddTheme({
 		Rotation = 90,
 	}),
 	ElementTitle = Color3.fromHex("#FFFFFF"),
-	ElementDesc = Color3.fromHex("#a78bfa"),
+	ElementDesc = Color3.fromHex("#FFFFFF"),
 	ElementIcon = Color3.fromHex("#c4b5fd"),
 
 	PopupBackground = WindUI:Gradient({
@@ -83,7 +83,7 @@ WindUI:AddTheme({
 	}),
 	PopupBackgroundTransparency = 0.05,
 	PopupTitle = Color3.fromHex("#FFFFFF"),
-	PopupContent = Color3.fromHex("#c4b5fd"),
+	PopupContent = Color3.fromHex("#FFFFFF"),
 	PopupIcon = Color3.fromHex("#a78bfa"),
 
 	Toggle = Color3.fromHex("#52525b"),
@@ -226,9 +226,11 @@ task.spawn(function()
             totalComps
         )
 
-        -- 5. Atualiza a interface
+        -- 5. Atualiza a interface usando o método correto da WindUI
         pcall(function()
-            GameStatusPara:SetDesc(newText)
+            GameStatusPara:Set({
+                Desc = newText
+            })
         end)
     end
 end)
