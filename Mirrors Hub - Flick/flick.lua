@@ -451,16 +451,18 @@ local ToggleAutoFire = Main:Toggle({
 })
 
 -- =============================================================================
---                     MIRRORS HUB - SKIN CHANGER SYSTEM
+--             MIRRORS HUB - UNIVERSAL SKIN INJECTOR (ANY WEAPON)
 -- =============================================================================
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local players = game:GetService("Players")
+local runService = game:GetService("RunService")
 local localPlayer = players.LocalPlayer
 
 getgenv().SkinChangerEnabled = false
 getgenv().SelectedSkin = "RedDragon"
 
-local originalPartsStorage = {}
+local activeRenderConnections = {}
+local originalTransparencyData = {}
 
 local skinModels = {
     ["RedDragon"]  = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("NewA") and replicatedStorage.Models.NewA:FindFirstChild("RedDragon"),
@@ -471,31 +473,37 @@ local skinModels = {
     ["RedShot"]    = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("NewA") and replicatedStorage.Models.NewA:FindFirstChild("RedShot")
 }
 
--- Limpa clones anteriores e restaura o modelo original da arma
 local function cleanCustomSkin(weaponContainer)
     if not weaponContainer then return end
     
+    if activeRenderConnections[weaponContainer] then
+        activeRenderConnections[weaponContainer]:Disconnect()
+        activeRenderConnections[weaponContainer] = nil
+    end
+
     local customVisual = weaponContainer:FindFirstChild("MirrorsSkinVisual")
     if customVisual then customVisual:Destroy() end
     
     local originalModel = weaponContainer:FindFirstChild("Model")
-    if originalModel and originalPartsStorage[weaponContainer] then
-        for _, part in ipairs(originalPartsStorage[weaponContainer]) do
+    if originalModel and originalTransparencyData[weaponContainer] then
+        for part, textRef in pairs(originalTransparencyData[weaponContainer]) do
             if part and part.Parent then
-                part.Transparency = 0
+                part.Transparency = textRef
             end
         end
-        originalPartsStorage[weaponContainer] = nil
+        originalTransparencyData[weaponContainer] = nil
     end
 end
 
--- Aplica a skin selecionada na estrutura real identificada no dump
 local function applySkinToInstance(child)
-    if child:IsA("Model") and child:FindFirstChild("EquippedValue") and child:FindFirstChild("Model") then
+    -- FILTRO UNIVERSAL: Identifica qualquer arma pelo comportamento, não pelo nome
+    if child:IsA("Model") and (child:FindFirstChild("EquippedValue") or child:FindFirstChild("Model")) then
         local weaponContainer = child
-        local originalModel = weaponContainer.Model
+        local originalModel = weaponContainer:FindFirstChild("Model")
         
-        task.wait(0.2) -- Aguarda os componentes do jogo carregarem
+        if not originalModel then return end
+        
+        task.wait(0.15) -- Aguarda os componentes internos carregarem
         
         if not getgenv().SkinChangerEnabled then return end
         
@@ -504,58 +512,64 @@ local function applySkinToInstance(child)
         local targetModel = skinModels[getgenv().SelectedSkin]
         if not targetModel then return end
         
-        -- Fixação no BodyAttach conforme revelado no scanner
-        local bodyAttach = weaponContainer:FindFirstChild("BodyAttach") or originalModel:FindFirstChildOfClass("BasePart")
-        if not bodyAttach then return end
+        -- Busca automática de peças de referência (Universal)
+        local referencePart = originalModel:FindFirstChildOfClass("MeshPart") 
+            or originalModel:FindFirstChildOfClass("BasePart") 
+            or weaponContainer:FindFirstChild("BodyAttach")
+            
+        if not referencePart then return end
         
-        originalPartsStorage[weaponContainer] = {}
+        originalTransparencyData[weaponContainer] = {}
         
-        -- Esconde a malha visual original
+        -- Oculta absolutamente tudo do modelo original da arma atual
         for _, part in ipairs(originalModel:GetDescendants()) do
             if part:IsA("BasePart") or part:IsA("MeshPart") then
-                table.insert(originalPartsStorage[weaponContainer], part)
+                originalTransparencyData[weaponContainer][part] = part.Transparency
                 part.Transparency = 1
             end
         end
         
-        -- Clona e posiciona a skin personalizada
         local skinClone = targetModel:Clone()
         skinClone.Name = "MirrorsSkinVisual"
         
-        if skinClone:IsA("Model") then
-            local primary = skinClone.PrimaryPart or skinClone:FindFirstChildOfClass("BasePart")
-            if primary then
-                skinClone:SetPrimaryPartCFrame(bodyAttach.CFrame)
-            else
-                skinClone:MoveTo(bodyAttach.Position)
+        for _, sub in ipairs(skinClone:GetDescendants()) do
+            if sub:IsA("BasePart") then
+                sub.CanCollide = false
+                sub.Massless = true
             end
-        elseif skinClone:IsA("BasePart") then
-            skinClone.CFrame = bodyAttach.CFrame
         end
         
         skinClone.Parent = weaponContainer
         
-        -- Soldagem estável
-        local function weldInstances(base, current)
-            if current:IsA("BasePart") then
-                current.CanCollide = false
-                current.Massless = true
-                local weld = Instance.new("WeldConstraint")
-                weld.Name = "SkinWeld"
-                weld.Part0 = base
-                weld.Part1 = current
-                weld.Parent = current
-            end
-            for _, subChild in ipairs(current:GetChildren()) do
-                weldInstances(base, subChild)
-            end
-        end
+        local primary = skinClone:IsA("Model") and (skinClone.PrimaryPart or skinClone:FindFirstChildOfClass("BasePart")) or skinClone
         
-        weldInstances(bodyAttach, skinClone)
+        -- Loop de Renderização frame a frame para acompanhar o movimento de qualquer arma
+        activeRenderConnections[weaponContainer] = runService.RenderStepped:Connect(function()
+            if not weaponContainer or not weaponContainer.Parent or not getgenv().SkinChangerEnabled then
+                cleanCustomSkin(weaponContainer)
+                return
+            end
+            
+            -- Bloqueia o script do jogo se ele tentar forçar a arma padrão a reaparecer
+            for _, part in ipairs(originalModel:GetDescendants()) do
+                if (part:IsA("BasePart") or part:IsA("MeshPart")) and part.Transparency ~= 1 then
+                    part.Transparency = 1
+                end
+            end
+            
+            -- Cola a CFrame da skin por cima da arma atual equipada
+            if referencePart and primary then
+                if skinClone:IsA("Model") then
+                    skinClone:SetPrimaryPartCFrame(referencePart.CFrame)
+                else
+                    skinClone.CFrame = referencePart.CFrame
+                end
+            end
+        end)
     end
 end
 
--- Monitoramento do Personagem (ChildAdded do Workspace)
+-- Monitoramento do Personagem
 local function setupCharacterHook(char)
     if not char then return end
     
@@ -568,13 +582,8 @@ local function setupCharacterHook(char)
     end)
 end
 
-if localPlayer.Character then
-    setupCharacterHook(localPlayer.Character)
-end
-
-localPlayer.CharacterAdded:Connect(function(char)
-    setupCharacterHook(char)
-end)
+if localPlayer.Character then setupCharacterHook(localPlayer.Character) end
+localPlayer.CharacterAdded:Connect(function(char) setupCharacterHook(char) end)
 
 -- =============================================================================
 --                     INTERFACE - WINDUI ELEMENTS
@@ -587,9 +596,8 @@ local SkinDropdown = Visual:Dropdown({
     Value = "RedDragon",
     Callback = function(option) 
         getgenv().SelectedSkin = option
-        print("[Mirrors Hub] Skin changed to: " .. option) 
+        print("[Mirrors Hub] Universal skin target changed to: " .. option) 
         
-        -- Atualiza em tempo real se a troca for feita com a arma na mão
         if getgenv().SkinChangerEnabled and localPlayer.Character then
             for _, child in ipairs(localPlayer.Character:GetChildren()) do
                 applySkinToInstance(child)
@@ -604,13 +612,12 @@ local ButtonEnable = Visual:Button({
     Icon = "check",
     Callback = function()
         getgenv().SkinChangerEnabled = true
-        
         if localPlayer.Character then
             for _, child in ipairs(localPlayer.Character:GetChildren()) do
                 applySkinToInstance(child)
             end
         end
-        print("[Mirrors Hub] Skin Changer enabled.")
+        print("[Mirrors Hub] Universal Skin Changer Active!")
     end
 })
 
@@ -620,12 +627,11 @@ local ButtonReset = Visual:Button({
     Icon = "refresh-cw",
     Callback = function()
         getgenv().SkinChangerEnabled = false
-        
         if localPlayer.Character then
             for _, child in ipairs(localPlayer.Character:GetChildren()) do
                 cleanCustomSkin(child)
             end
         end
-        print("[Mirrors Hub] Skins successfully reset.")
+        print("[Mirrors Hub] Universal Skins Reset.")
     end
 })
