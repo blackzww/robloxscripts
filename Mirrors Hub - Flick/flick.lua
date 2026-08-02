@@ -695,7 +695,7 @@ end
 --                 WINDUI ELEMENTS
 -- =============================================================
 
-local Toggle = Tab:Toggle({
+local Toggle = Visual:Toggle({
     Title = "Weapon RGB Skin",
     Desc = "Ativa o efeito RGB dinâmico nas ferramentas equipadas",
     Value = false,
@@ -717,7 +717,7 @@ local Toggle = Tab:Toggle({
     end
 })
 
-local Slider = Tab:Slider({
+local Slider = Visual:Slider({
     Title = "RGB Speed",
     Desc = "Controla a velocidade da transição de cores",
     Value = {
