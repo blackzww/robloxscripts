@@ -451,187 +451,98 @@ local ToggleAutoFire = Main:Toggle({
 })
 
 -- =============================================================================
---             MIRRORS HUB - UNIVERSAL SKIN INJECTOR (ANY WEAPON)
+--          MIRRORS HUB - ADONIS BYPASS // GUN FRAMEWORK SKIN INJECTOR
 -- =============================================================================
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local players = game:GetService("Players")
-local runService = game:GetService("RunService")
 local localPlayer = players.LocalPlayer
 
 getgenv().SkinChangerEnabled = false
 getgenv().SelectedSkin = "RedDragon"
 
-local activeRenderConnections = {}
-local originalTransparencyData = {}
-
+-- Modelos mapeados dinamicamente com base na sua descoberta no Dex
+local modelsFolder = replicatedStorage:WaitForChild("Models")
 local skinModels = {
-    ["RedDragon"]  = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("NewA") and replicatedStorage.Models.NewA:FindFirstChild("RedDragon"),
-    ["Axe"]        = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("Axe"),
-    ["FlameAxe"]   = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("Season1Chal") and replicatedStorage.Models.Season1Chal:FindFirstChild("FlameAxe"),
-    ["DarkAxe"]    = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("Lim1") and replicatedStorage.Models.Lim1:FindFirstChild("DarkAxe"),
-    ["RedDagger"]  = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("NewA") and replicatedStorage.Models.NewA:FindFirstChild("RedDagger"),
-    ["RedShot"]    = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("NewA") and replicatedStorage.Models.NewA:FindFirstChild("RedShot")
+    ["RedDragon"]  = modelsFolder:FindFirstChild("NewA") and modelsFolder.NewA:FindFirstChild("RedDragon") or modelsFolder:FindFirstChild("RedDragon"),
+    ["Axe"]        = modelsFolder:FindFirstChild("Axe"),
+    ["FlameAxe"]   = modelsFolder:FindFirstChild("Season1Chal") and modelsFolder.Season1Chal:FindFirstChild("FlameAxe") or modelsFolder:FindFirstChild("FlameAxe"),
+    ["DarkAxe"]    = modelsFolder:FindFirstChild("Lim1") and modelsFolder.Lim1:FindFirstChild("DarkAxe") or modelsFolder:FindFirstChild("DarkAxe"),
+    ["RedDagger"]  = modelsFolder:FindFirstChild("NewA") and modelsFolder.NewA:FindFirstChild("RedDagger") or modelsFolder:FindFirstChild("RedDagger"),
+    ["RedShot"]    = modelsFolder:FindFirstChild("NewA") and modelsFolder.NewA:FindFirstChild("RedShot") or modelsFolder:FindFirstChild("RedShot")
 }
 
-local function cleanCustomSkin(weaponContainer)
-    if not weaponContainer then return end
-    
-    if activeRenderConnections[weaponContainer] then
-        activeRenderConnections[weaponContainer]:Disconnect()
-        activeRenderConnections[weaponContainer] = nil
-    end
+-- 1. CAPTURA DO MODULO E HOOK NATIVO DO CONSTRUTOR
+local gunModules = replicatedStorage:WaitForChild("ModuleScripts"):WaitForChild("GunModules")
+local gunFrameworkModule = gunModules:WaitForChild("GunFramework")
 
-    local customVisual = weaponContainer:FindFirstChild("MirrorsSkinVisual")
-    if customVisual then customVisual:Destroy() end
+local success, framework = pcall(require, gunFrameworkModule)
+if success and type(framework) == "table" and framework.new then
+    local originalNew = framework.new
     
-    local originalModel = weaponContainer:FindFirstChild("Model")
-    if originalModel and originalTransparencyData[weaponContainer] then
-        for part, textRef in pairs(originalTransparencyData[weaponContainer]) do
-            if part and part.Parent then
-                part.Transparency = textRef
-            end
-        end
-        originalTransparencyData[weaponContainer] = nil
-    end
-end
-
-local function applySkinToInstance(child)
-    -- FILTRO UNIVERSAL: Identifica qualquer arma pelo comportamento, não pelo nome
-    if child:IsA("Model") and (child:FindFirstChild("EquippedValue") or child:FindFirstChild("Model")) then
-        local weaponContainer = child
-        local originalModel = weaponContainer:FindFirstChild("Model")
-        
-        if not originalModel then return end
-        
-        task.wait(0.15) -- Aguarda os componentes internos carregarem
-        
-        if not getgenv().SkinChangerEnabled then return end
-        
-        cleanCustomSkin(weaponContainer)
-        
-        local targetModel = skinModels[getgenv().SelectedSkin]
-        if not targetModel then return end
-        
-        -- Busca automática de peças de referência (Universal)
-        local referencePart = originalModel:FindFirstChildOfClass("MeshPart") 
-            or originalModel:FindFirstChildOfClass("BasePart") 
-            or weaponContainer:FindFirstChild("BodyAttach")
+    -- Substituição limpa sem acionar a assinatura 0xC0BDO do Adonis
+    framework.new = function(weaponInstance)
+        if getgenv().SkinChangerEnabled and weaponInstance then
+            local originalModel = weaponInstance:FindFirstChild("Model")
+            local targetSkinModel = skinModels[getgenv().SelectedSkin]
             
-        if not referencePart then return end
-        
-        originalTransparencyData[weaponContainer] = {}
-        
-        -- Oculta absolutamente tudo do modelo original da arma atual
-        for _, part in ipairs(originalModel:GetDescendants()) do
-            if part:IsA("BasePart") or part:IsA("MeshPart") then
-                originalTransparencyData[weaponContainer][part] = part.Transparency
-                part.Transparency = 1
-            end
-        end
-        
-        local skinClone = targetModel:Clone()
-        skinClone.Name = "MirrorsSkinVisual"
-        
-        for _, sub in ipairs(skinClone:GetDescendants()) do
-            if sub:IsA("BasePart") then
-                sub.CanCollide = false
-                sub.Massless = true
-            end
-        end
-        
-        skinClone.Parent = weaponContainer
-        
-        local primary = skinClone:IsA("Model") and (skinClone.PrimaryPart or skinClone:FindFirstChildOfClass("BasePart")) or skinClone
-        
-        -- Loop de Renderização frame a frame para acompanhar o movimento de qualquer arma
-        activeRenderConnections[weaponContainer] = runService.RenderStepped:Connect(function()
-            if not weaponContainer or not weaponContainer.Parent or not getgenv().SkinChangerEnabled then
-                cleanCustomSkin(weaponContainer)
-                return
-            end
-            
-            -- Bloqueia o script do jogo se ele tentar forçar a arma padrão a reaparecer
-            for _, part in ipairs(originalModel:GetDescendants()) do
-                if (part:IsA("BasePart") or part:IsA("MeshPart")) and part.Transparency ~= 1 then
-                    part.Transparency = 1
+            if originalModel and targetSkinModel then
+                -- Clonamos a skin selecionada
+                local skinClone = targetSkinModel:Clone()
+                skinClone.Name = "Model"
+                
+                -- Copia sub-estruturas cruciais que o decompilador apontou ("Before" e "After")
+                local beforeFolder = originalModel:FindFirstChild("Before")
+                if beforeFolder then beforeFolder:Clone().Parent = skinClone end
+                
+                local afterFolder = originalModel:FindFirstChild("After")
+                if afterFolder then afterFolder:Clone().Parent = skinClone end
+                
+                -- Torna o modelo antigo invisível e inofensivo
+                for _, part in ipairs(originalModel:GetDescendants()) do
+                    if part:IsA("BasePart") then part.Transparency = 1 end
                 end
+                originalModel.Name = "OldModel"
+                
+                -- Injeta o novo modelo na hierarquia estrutural da arma antes do framework ler
+                skinClone.Parent = weaponInstance
             end
-            
-            -- Cola a CFrame da skin por cima da arma atual equipada
-            if referencePart and primary then
-                if skinClone:IsA("Model") then
-                    skinClone:SetPrimaryPartCFrame(referencePart.CFrame)
-                else
-                    skinClone.CFrame = referencePart.CFrame
-                end
-            end
-        end)
+        end
+        return originalNew(weaponInstance)
     end
+    print("[Mirrors Hub] Hook Estrutural injetado no GunFramework de forma camuflada!")
+else
+    print("[Mirrors Hub] Erro ao injetar no framework estático.")
 end
-
--- Monitoramento do Personagem
-local function setupCharacterHook(char)
-    if not char then return end
-    
-    for _, child in ipairs(char:GetChildren()) do
-        applySkinToInstance(child)
-    end
-    
-    char.ChildAdded:Connect(function(child)
-        applySkinToInstance(child)
-    end)
-end
-
-if localPlayer.Character then setupCharacterHook(localPlayer.Character) end
-localPlayer.CharacterAdded:Connect(function(char) setupCharacterHook(char) end)
 
 -- =============================================================================
---                     INTERFACE - WINDUI ELEMENTS
+--                     INTERFACE - WINDUI CONTROLS
 -- =============================================================================
 
 local SkinDropdown = Visual:Dropdown({
     Title = "Select Weapon Skin",
-    Desc = "Choose the skin model to be injected into your current weapon.",
+    Desc = "Escolha o modelo que será injetado estruturalmente na arma.",
     Values = { "RedDragon", "Axe", "FlameAxe", "DarkAxe", "RedDagger", "RedShot" },
     Value = "RedDragon",
     Callback = function(option) 
         getgenv().SelectedSkin = option
-        print("[Mirrors Hub] Universal skin target changed to: " .. option) 
-        
-        if getgenv().SkinChangerEnabled and localPlayer.Character then
-            for _, child in ipairs(localPlayer.Character:GetChildren()) do
-                applySkinToInstance(child)
-            end
-        end
     end
 })
 
 local ButtonEnable = Visual:Button({
     Title = "Enable Skins",
-    Desc = "Applies the chosen model from the dropdown to your equipped weapon.",
+    Desc = "Ativa o redirecionamento de Model no GunFramework.",
     Icon = "check",
     Callback = function()
         getgenv().SkinChangerEnabled = true
-        if localPlayer.Character then
-            for _, child in ipairs(localPlayer.Character:GetChildren()) do
-                applySkinToInstance(child)
-            end
-        end
-        print("[Mirrors Hub] Universal Skin Changer Active!")
+        print("[Mirrors Hub] Skin Changer ativo. Equipe ou resete a arma para aplicar.")
     end
 })
 
 local ButtonReset = Visual:Button({
     Title = "Reset Skins",
-    Desc = "Removes the customized skin and returns the weapon to its default look.",
+    Desc = "Desativa a injeção e retorna ao visual nativo do jogo.",
     Icon = "refresh-cw",
     Callback = function()
         getgenv().SkinChangerEnabled = false
-        if localPlayer.Character then
-            for _, child in ipairs(localPlayer.Character:GetChildren()) do
-                cleanCustomSkin(child)
-            end
-        end
-        print("[Mirrors Hub] Universal Skins Reset.")
     end
 })
