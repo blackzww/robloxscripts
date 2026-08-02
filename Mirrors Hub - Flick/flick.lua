@@ -599,225 +599,135 @@ local ButtonReset = Visual:Button({
 
 
 -- =============================================================
---  MIRRORS HUB - CHROMATIC ENGINE v5.0 (DYNAMIC RIG DIFFERENTIAL)
+--  MIRRORS HUB - DYNAMIC TOOL RGB (WINDUI INTEGRATED)
 -- =============================================================
 
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local localPlayer = players.LocalPlayer
 
-local ChromaticEngine = {
+local ToolRGBEngine = {
     Enabled = false,
-    Speed = 0.5,
-    TargetFPS = 60,
+    Speed = 0.5, -- Velocidade inicial controlada pelo Slider
     ApplyNeon = true,
-    
-    _cache = setmetatable({}, { __mode = "k" }),
-    _nativeBodyParts = setmetatable({}, { __mode = "k" }), -- Lista negra do seu corpo limpo
-    _heartbeatConnection = nil,
-    _characterConnections = {},
-    _lastRender = 0
+    _cache = {},
+    _connection = nil
 }
 
-local TARGET_PROPERTIES = {"Color", "Material", "Reflectance", "Transparency"}
-
-local function safelyGetProperty(instance, prop)
-    local success, value = pcall(function() return instance[prop] end)
-    return success and value or nil
-end
-
-local function safelySetProperty(instance, prop, value)
-    pcall(function() instance[prop] = value end)
-end
-
--- Mapeia o corpo nativo do personagem assim que ele spawna
-local function catalogNativeBody(character)
-    table.clear(ChromaticEngine._nativeBodyParts)
-    if not character then return end
-    
-    -- Espera um microsegundo para garantir que roupas e acessórios padrões carregaram
-    task.wait(0.1) 
-    
-    if not character.Parent then return end
-    
-    for _, desc in ipairs(character:GetDescendants()) do
-        if desc:IsA("BasePart") then
-            -- Guarda a referência de tudo que veio de fábrica no seu boneco
-            ChromaticEngine._nativeBodyParts[desc] = true
-        end
-    end
-end
-
-local function registerAndCachePart(part, character)
-    if not part or not part:IsA("BasePart") then return end
-    if part.Transparency >= 0.98 then return end
-    
-    -- REGRA DE OURO: Se a peça faz parte do seu corpo original ou de acessórios nativos, NUNCA pinta!
-    if ChromaticEngine._nativeBodyParts[part] then return end
-    
-    -- Proteção extra para o caso de acessórios que não foram pegos no spawn
-    local current = part.Parent
-    while current and current ~= game and current ~= character do
-        if current:IsA("Accessory") or current:IsA("Clothing") then
-            return false
-        end
-        current = current.Parent
-    end
-
-    -- Se já está cacheado, não faz nada
-    if ChromaticEngine._cache[part] then return end
-    
-    local originalState = {}
-    for _, prop in ipairs(TARGET_PROPERTIES) do
-        local val = safelyGetProperty(part, prop)
-        if val ~= nil then
-            originalState[prop] = val
-        end
-    end
-    
-    if originalState["Color"] then
-        ChromaticEngine._cache[part] = originalState
-    end
-end
-
-local function restorePartState(part, state)
-    if not part or not part.Parent then return end
-    for prop, originalValue in pairs(state) do
-        safelySetProperty(part, prop, originalValue)
-    end
-end
-
-local function cleanCharacterConnections()
-    for _, conn in ipairs(ChromaticEngine._characterConnections) do
-        if conn then conn:Disconnect() end
-    end
-    table.clear(ChromaticEngine._characterConnections)
-end
-
-local function monitorCharacter(character)
-    cleanCharacterConnections()
-    
-    -- Restaura estados antigos antes de limpar a mesa
-    for part, state in pairs(ChromaticEngine._cache) do
-        restorePartState(part, state)
-    end
-    table.clear(ChromaticEngine._cache)
-    
-    if not character then return end
-    
-    -- Catalogar o corpo limpo primeiro
-    catalogNativeBody(character)
-    
-    -- Varre para ver se já tinha alguma arma puxada antes de ligar o script
-    local descendants = character:GetDescendants()
-    for i = 1, #descendants do
-        registerAndCachePart(descendants[i], character)
-    end
-    
-    -- Captura qualquer Part ou Model dinâmico que entrar no personagem depois
-    local onAdded = character.DescendantAdded:Connect(function(desc)
-        -- Defer para dar tempo de setar propriedades de rede do objeto
-        task.defer(function()
-            if character.Parent then
-                registerAndCachePart(desc, character)
+local function clearCache()
+    for part, state in pairs(ToolRGBEngine._cache) do
+        pcall(function()
+            if part and part.Parent then
+                part.Color = state.Color
+                part.Material = state.Material
+                if part:IsA("UnionOperation") then
+                    part.UsePartColor = state.UsePartColor
+                end
             end
         end)
-    end)
-    
-    local onRemoving = character.DescendantRemoving:Connect(function(desc)
-        local state = ChromaticEngine._cache[desc]
-        if state then
-            restorePartState(desc, state)
-            ChromaticEngine._cache[desc] = nil
-        end
-        -- Remove do mapa do corpo caso a parte original suma (morte/reset)
-        ChromaticEngine._nativeBodyParts[desc] = nil
-    end)
-    
-    table.insert(ChromaticEngine._characterConnections, onAdded)
-    table.insert(ChromaticEngine._characterConnections, onRemoving)
+    end
+    table.clear(ToolRGBEngine._cache)
 end
 
-function ChromaticEngine:Start()
-    if self.Enabled then return end
-    self.Enabled = true
-    self._lastRender = os.clock()
-    
+local function getToolParts()
     local character = localPlayer.Character
-    if character then monitorCharacter(character) end
+    if not character then return end
     
-    local caConn = localPlayer.CharacterAdded:Connect(monitorCharacter)
-    local crConn = localPlayer.CharacterRemoving:Connect(function() 
-        monitorCharacter(nil) 
-    end)
-    table.insert(self._characterConnections, caConn)
-    table.insert(self._characterConnections, crConn)
+    local currentTool = character:FindFirstChildOfClass("Tool")
+    if not currentTool then 
+        if next(ToolRGBEngine._cache) ~= nil then clearCache() end
+        return 
+    end
     
-    local minFrameTime = 1 / math.max(self.TargetFPS, 1)
-    self._heartbeatConnection = runService.Heartbeat:Connect(function()
-        local now = os.clock()
-        if (now - self._lastRender) < minFrameTime then return end
-        self._lastRender = now
+    for _, desc in ipairs(currentTool:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            local name = desc.Name:lower()
+            if not (name:find("arm") or name:find("hand") or name:find("leg") or name:find("torso") or name:find("head") or name:find("root")) then
+                if not ToolRGBEngine._cache[desc] then
+                    local state = {
+                        Color = desc.Color,
+                        Material = desc.Material,
+                        UsePartColor = desc:IsA("UnionOperation") and desc.UsePartColor or nil
+                    }
+                    ToolRGBEngine._cache[desc] = state
+                end
+            end
+        end
+    end
+end
+
+-- Gerenciador do Loop Principal
+local function startEngineLoop()
+    if ToolRGBEngine._connection then 
+        ToolRGBEngine._connection:Disconnect() 
+        ToolRGBEngine._connection = nil
+    end
+    
+    ToolRGBEngine._connection = runService.Stepped:Connect(function()
+        if not ToolRGBEngine.Enabled then return end
         
-        local hue = (now * self.Speed) % 1
+        getToolParts()
+        
+        local now = os.clock()
+        local hue = (now * ToolRGBEngine.Speed) % 1
         local targetColor = Color3.fromHSV(hue, 1, 1)
         
-        for part, state in pairs(self._cache) do
+        for part, _ in pairs(ToolRGBEngine._cache) do
             if part and part.Parent then
-                if part.Color ~= targetColor then
+                pcall(function()
+                    if part:IsA("UnionOperation") and not part.UsePartColor then
+                        part.UsePartColor = true
+                    end
+                    
                     part.Color = targetColor
-                end
-                
-                if self.ApplyNeon then
-                    if part.Material ~= Enum.Material.Neon then
+                    if ToolRGBEngine.ApplyNeon and part.Material ~= Enum.Material.Neon then
                         part.Material = Enum.Material.Neon
                     end
-                else
-                    if part.Material ~= state.Material then
-                        part.Material = state.Material
-                    end
-                end
+                end)
             else
-                ChromaticEngine._cache[part] = nil
+                ToolRGBEngine._cache[part] = nil
             end
         end
     end)
 end
 
-function ChromaticEngine:Stop()
-    if not self.Enabled then return end
-    self.Enabled = false
-    
-    if self._heartbeatConnection then
-        self._heartbeatConnection:Disconnect()
-        self._heartbeatConnection = nil
-    end
-    
-    cleanCharacterConnections()
-    
-    for part, state in pairs(ChromaticEngine._cache) do
-        restorePartState(part, state)
-    end
-    table.clear(self._cache)
-    table.clear(self._nativeBodyParts)
-end
-
 -- =============================================================
---                 INTERFACE WINDUI CONECTADA
+--                 WINDUI ELEMENTS
 -- =============================================================
 
-local Toggle = Visual:Toggle({
+local Toggle = Tab:Toggle({
     Title = "Weapon RGB Skin",
-    Desc = "Aplica RGB dinâmico apenas em objetos injetados/armas",
-    Type = "Toggle",
+    Desc = "Ativa o efeito RGB dinâmico nas ferramentas equipadas",
     Value = false,
-    Callback = function(state) 
+    Type = "Toggle",
+    Flag = "weapon_rgb_toggle",
+    Callback = function(state)
+        ToolRGBEngine.Enabled = state
         if state then
-            ChromaticEngine:Start()
-            print("[Mirrors Hub] Mapeamento Diferencial Ativado!")
+            startEngineLoop()
+            print("[Mirrors Hub] RGB Ativado!")
         else
-            ChromaticEngine:Stop()
-            print("[Mirrors Hub] Motor Cromático Desativado.")
+            if ToolRGBEngine._connection then
+                ToolRGBEngine._connection:Disconnect()
+                ToolRGBEngine._connection = nil
+            end
+            clearCache()
+            print("[Mirrors Hub] RGB Desativado e limpo!")
         end
+    end
+})
+
+local Slider = Tab:Slider({
+    Title = "RGB Speed",
+    Desc = "Controla a velocidade da transição de cores",
+    Value = {
+        Min = 0.1,
+        Max = 3.0,
+        Default = 0.5
+    },
+    Step = 0.1,
+    Flag = "weapon_rgb_speed",
+    Callback = function(value)
+        ToolRGBEngine.Speed = value
     end
 })
