@@ -599,7 +599,7 @@ local ButtonReset = Visual:Button({
 
 
 -- =============================================================
---  MIRRORS HUB - DYNAMIC TOOL RGB (WINDUI INTEGRATED)
+--  MIRRORS HUB - DYNAMIC TOOL RGB (FIXED SAFE VERSION)
 -- =============================================================
 
 local players = game:GetService("Players")
@@ -608,7 +608,7 @@ local localPlayer = players.LocalPlayer
 
 local ToolRGBEngine = {
     Enabled = false,
-    Speed = 0.5, -- Velocidade inicial controlada pelo Slider
+    Speed = 0.5,
     ApplyNeon = true,
     _cache = {},
     _connection = nil
@@ -644,19 +644,17 @@ local function getToolParts()
             local name = desc.Name:lower()
             if not (name:find("arm") or name:find("hand") or name:find("leg") or name:find("torso") or name:find("head") or name:find("root")) then
                 if not ToolRGBEngine._cache[desc] then
-                    local state = {
+                    ToolRGBEngine._cache[desc] = {
                         Color = desc.Color,
                         Material = desc.Material,
                         UsePartColor = desc:IsA("UnionOperation") and desc.UsePartColor or nil
                     }
-                    ToolRGBEngine._cache[desc] = state
                 end
             end
         end
     end
 end
 
--- Gerenciador do Loop Principal
 local function startEngineLoop()
     if ToolRGBEngine._connection then 
         ToolRGBEngine._connection:Disconnect() 
@@ -678,7 +676,6 @@ local function startEngineLoop()
                     if part:IsA("UnionOperation") and not part.UsePartColor then
                         part.UsePartColor = true
                     end
-                    
                     part.Color = targetColor
                     if ToolRGBEngine.ApplyNeon and part.Material ~= Enum.Material.Neon then
                         part.Material = Enum.Material.Neon
@@ -691,43 +688,36 @@ local function startEngineLoop()
     end)
 end
 
--- =============================================================
---                 WINDUI ELEMENTS
--- =============================================================
-
-local Toggle = Visual:Toggle({
-    Title = "Weapon RGB Skin",
-    Desc = "Ativa o efeito RGB dinâmico nas ferramentas equipadas",
-    Value = false,
-    Type = "Toggle",
-    Flag = "weapon_rgb_toggle",
-    Callback = function(state)
-        ToolRGBEngine.Enabled = state
-        if state then
-            startEngineLoop()
-            print("[Mirrors Hub] RGB Ativado!")
-        else
-            if ToolRGBEngine._connection then
-                ToolRGBEngine._connection:Disconnect()
-                ToolRGBEngine._connection = nil
+-- EXEMPLO DE INTEGRAÇÃO COM A WINDUI (Certifique-se de que a variável 'Tab' existe)
+if Tab then
+    local Toggle = Visual:Toggle({
+        Title = "Weapon RGB Skin",
+        Desc = "Ativa o efeito RGB dinâmico nas ferramentas equipadas",
+        Value = false,
+        Type = "Toggle",
+        Flag = "weapon_rgb_toggle",
+        Callback = function(state)
+            ToolRGBEngine.Enabled = state
+            if state then
+                startEngineLoop()
+            else
+                if ToolRGBEngine._connection then
+                    ToolRGBEngine._connection:Disconnect()
+                    ToolRGBEngine._connection = nil
+                end
+                clearCache()
             end
-            clearCache()
-            print("[Mirrors Hub] RGB Desativado e limpo!")
         end
-    end
-})
+    })
 
-local Slider = Visual:Slider({
-    Title = "RGB Speed",
-    Desc = "Controla a velocidade da transição de cores",
-    Value = {
-        Min = 0.1,
-        Max = 3.0,
-        Default = 0.5
-    },
-    Step = 0.1,
-    Flag = "weapon_rgb_speed",
-    Callback = function(value)
-        ToolRGBEngine.Speed = value
-    end
-})
+    local Slider = Visual:Slider({
+        Title = "RGB Speed",
+        Desc = "Controla a velocidade da transição de cores",
+        Value = { Min = 0.1, Max = 3.0, Default = 0.5 },
+        Step = 0.1,
+        Flag = "weapon_rgb_speed",
+        Callback = function(value)
+            ToolRGBEngine.Speed = value
+        end
+    })
+end
