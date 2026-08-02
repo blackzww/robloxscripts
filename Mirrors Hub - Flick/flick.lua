@@ -152,13 +152,13 @@ local coreGui = game:GetService("CoreGui")
 local localPlayer = players.LocalPlayer
 local camera = workspace.CurrentCamera
 
+-- Variáveis Globais de Configuração
 getgenv().AimbotEnabled = false
 getgenv().ProximityMode = false
 getgenv().ViewMode = false
-getgenv().TriggerActive = false
 
 -- ==========================================
--- GERENCIAMENTO COMPARTILHADO DO BULLETHANDLER
+-- CAPTURA DO ALCANCE REAL DA ARMA (STUDS)
 -- ==========================================
 local bulletHandler = require(replicatedStorage.ModuleScripts.GunModules.BulletHandler)
 local originalFire = bulletHandler.Fire
@@ -170,27 +170,8 @@ local function getWeaponTrueRange()
     return success and range or 300
 end
 
--- Hook centralizado e único para evitar conflitos de recursão na memória
-pcall(function()
-    if make_writeable then make_writeable(bulletHandler) end
-end)
-
-bulletHandler.Fire = function(arg1)
-    if getgenv().AimbotEnabled and (getgenv().ProximityMode or getgenv().ViewMode) and (arg1 and arg1.Misc) then
-        local target = getTargetByMode()
-        if target then
-            local headPos = target.Position
-            arg1.Direction = (headPos - arg1.Origin).Unit
-            if arg1.Misc then
-                arg1.Misc.CamCFrame = CFrame.new(arg1.Origin, headPos)
-            end
-        end
-    end
-    return originalFire(arg1)
-end
-
 -- ==========================================
--- SISTEMA DE ESP
+-- SISTEMA DE ESP: CAIXA NOS JOGADORES (ESCALA FIXA DE 30 STUDS)
 -- ==========================================
 local boxCache = {}
 
@@ -227,7 +208,10 @@ end
 
 players.PlayerRemoving:Connect(removePlayerRangeBox)
 
-function getTargetByMode()
+-- ==========================================
+-- FUNÇÃO DE ALVO COM SUPORTE AOS DOIS MODOS (LOGICA ATUALIZADA)
+-- ==========================================
+local function getTargetByMode()
     local bestTarget = nil
     local currentMaxRange = getWeaponTrueRange()
     
@@ -235,6 +219,7 @@ function getTargetByMode()
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root then return nil end
 
+    -- MODO 1: PROXIMIDADE (Mais perto do seu corpo)
     if getgenv().ProximityMode then
         local shortestDistance = math.huge
         for _, player in ipairs(players:GetPlayers()) do
@@ -254,6 +239,7 @@ function getTargetByMode()
         end
         return bestTarget
 
+    -- MODO 2: MIRA / MOUSE (Mais perto da Crosshair)
     elseif getgenv().ViewMode then
         local closestDist = math.huge
         local mousePos = camera.ViewportSize / 2
@@ -281,9 +267,13 @@ function getTargetByMode()
         end
         return bestTarget
     end
+
     return nil
 end
 
+-- ==========================================
+-- ATUALIZAÇÃO DO ESP DOS JOGADORES EM TEMPO REAL
+-- ==========================================
 runService.RenderStepped:Connect(function()
     local char = localPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -297,7 +287,9 @@ runService.RenderStepped:Connect(function()
             local humanoid = character and character:FindFirstChildOfClass("Humanoid")
             
             if (getgenv().ProximityMode or getgenv().ViewMode) and getgenv().AimbotEnabled and root and targetRoot and humanoid and humanoid.Health > 0 then
-                if not boxCache[player] then createPlayerRangeBox(player) end
+                if not boxCache[player] then
+                    createPlayerRangeBox(player)
+                end
                 
                 local cacheData = boxCache[player]
                 if cacheData and cacheData.Box and cacheData.Part then
@@ -329,13 +321,91 @@ runService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- AUTO FIRE CORRIGIDO (PREVINE LOOP NULO)
+-- INTERCEPTAÇÃO DO TIRO (LOGICA DO PRIMEIRO SCRIPT)
 -- ==========================================
-local SignalManager = require(replicatedStorage:WaitForChild("SignalManager"))
+pcall(function()
+    if make_writeable then make_writeable(bulletHandler) end
+end)
+
+bulletHandler.Fire = function(arg1)
+    if getgenv().AimbotEnabled and (getgenv().ProximityMode or getgenv().ViewMode) and (arg1 and arg1.Misc) then
+        local target = getTargetByMode()
+        if target then
+            local headPos = target.Position
+            
+            arg1.Direction = (headPos - arg1.Origin).Unit
+            if arg1.Misc then
+                arg1.Misc.CamCFrame = CFrame.new(arg1.Origin, headPos)
+            end
+        end
+    end
+    return originalFire(arg1)
+end
+
+-- ==========================================
+-- INTERFACE - TOGGLES E DROPDOWNS
+-- ==========================================
+
+local ToggleMain = Main:Toggle({
+    Title = "Silent Aim + ESP (Kick Risk!)",
+    Desc = "Redirects your shots to targets within true weapon range and shows a 30-stud ESP box around them.",
+    Value = false,
+    Type = "Toggle",
+    Locked = false,
+    Flag = "range_esp_main",
+    Callback = function(state)
+        getgenv().AimbotEnabled = state
+        if not state then
+            for _, cacheData in pairs(boxCache) do
+                if cacheData.Box then
+                    cacheData.Box.Adornee = nil
+                end
+            end
+        end
+        print("Master Box ESP state:", state)
+    end
+})
+
+local PriorityDropdown = Main:Dropdown({
+    Title = "Target Priority Mode",
+    Values = {
+        "Proximity Priority",
+        "Crosshair Priority"
+    },
+    Callback = function(selected)
+        if selected == "Proximity Priority" then
+            getgenv().ProximityMode = true
+            getgenv().ViewMode = false
+        elseif selected == "Crosshair Priority" then
+            getgenv().ProximityMode = false
+            getgenv().ViewMode = true
+        else
+            getgenv().ProximityMode = false
+            getgenv().ViewMode = false
+        end
+        print("Priority changed to:", selected)
+    end
+})
+
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+local BulletHandler = require(ReplicatedStorage.ModuleScripts.GunModules:WaitForChild("BulletHandler"))
+local SignalManager = require(ReplicatedStorage:WaitForChild("SignalManager"))
+local oldFire = BulletHandler.Fire
+
 local maxDistance = 500
 
-local function getTriggerTarget()
-    if not getgenv().TriggerActive then return nil end
+-- Variável Global para controlar o estado do script através do Toggle
+getgenv().TriggerActive = false
+
+-- ==========================================
+-- FUNÇÃO DE DETECÇÃO (APENAS POR RAYCAST)
+-- ==========================================
+local function getTarget()
+    if not getgenv().TriggerActive then return nil end -- Interrompe se o toggle estiver desligado
     
     local target = nil
     local dist = maxDistance
@@ -343,12 +413,13 @@ local function getTriggerTarget()
     
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    if localPlayer.Character then
-        rayParams.FilterDescendantsInstances = {localPlayer.Character}
+    
+    if LocalPlayer.Character then
+        rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
     end
 
-    for _, v in ipairs(players:GetPlayers()) do
-        if v ~= localPlayer and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+    for _, v in ipairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
             local head = v.Character:FindFirstChild("Head")
             if head then
                 local d = (head.Position - cam.CFrame.Position).Magnitude
@@ -364,56 +435,55 @@ local function getTriggerTarget()
             end
         end
     end
+    
     return target
 end
 
+-- ==========================================
+-- INTERCEPTAÇÃO LÓGICA DO TIRO
+-- ==========================================
+BulletHandler.Fire = function(data)
+    -- Só redireciona o tiro se o Toggle estiver ativado
+    if getgenv().TriggerActive then
+        local head = getTarget()
+        if head and data and data.Origin and data.Misc then
+            data.Direction = (head.Position - data.Origin).Unit
+            data.Misc.CamCFrame = CFrame.new(data.Misc.CamCFrame.Position, head.Position)
+        end
+    end
+    return oldFire(data)
+end
+
+-- ==========================================
+-- DISPARO AUTOMÁTICO (TRIGGER)
+-- ==========================================
 task.spawn(function()
-    while task.wait(0.08) do -- Aumentado levemente para não dar choke em processadores mobile
-        if getgenv().TriggerActive and getTriggerTarget() then
+    while task.wait(0.05) do
+        -- Só envia o sinal de disparo se o Toggle estiver ativado e houver um alvo válido
+        if getgenv().TriggerActive and getTarget() then
             SignalManager.Fire("FireWeapon", Enum.UserInputState.Begin)
-            task.wait(0.03)
+            task.wait(0.05)
             SignalManager.Fire("FireWeapon", Enum.UserInputState.End)
         end
     end
 end)
 
--- CONTROLES DA ABA MAIN
-local ToggleMain = Main:Toggle({
-    Title = "Silent Aim + ESP (Kick Risk!)",
-    Desc = "Redirects your shots to targets within true weapon range.",
-    Value = false,
-    Callback = function(state)
-        getgenv().AimbotEnabled = state
-        if not state then
-            for _, cacheData in pairs(boxCache) do
-                if cacheData.Box then cacheData.Box.Adornee = nil end
-            end
-        end
-    end
-})
-
-local PriorityDropdown = Main:Dropdown({
-    Title = "Target Priority Mode",
-    Values = { "Proximity Priority", "Crosshair Priority" },
-    Callback = function(selected)
-        if selected == "Proximity Priority" then
-            getgenv().ProximityMode = true
-            getgenv().ViewMode = false
-        elseif selected == "Crosshair Priority" then
-            getgenv().ProximityMode = false
-            getgenv().ViewMode = true
-        end
-    end
-})
-
-local ToggleAutoFire = Main:Toggle({
+-- ==========================================
+-- CONFIGURAÇÃO DA SUA INTERFACE (TOGGLE)
+-- ==========================================
+local Toggle = Main:Toggle({
     Title = "Auto Fire",
-    Desc = "Auto-fires at targets in line of sight dynamically.",
+    Desc = "Redirects bullet direction and auto-fires at targets in line of sight.",
     Value = false,
+    Type = "Toggle",
+    Locked = false,
+    Flag = "silent_trigger_toggle",
     Callback = function(state)
         getgenv().TriggerActive = state
+        print("Feature state:", state)
     end
 })
+
 
 -- =============================================================================
 --     SISTEMA DE SKIN CHANGER HIERÁRQUICO NÃO-DESTRUTIVO (ANTI-INVISIBILIDADE)
