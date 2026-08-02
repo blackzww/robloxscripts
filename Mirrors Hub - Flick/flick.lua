@@ -450,13 +450,16 @@ local ToggleAutoFire = Main:Toggle({
     end
 })
 
--- ==========================================
--- LÓGICA REFORMULADA E BLINDADA DO SKIN CHANGER
--- ==========================================
+-- =============================================================================
+--                     MIRRORS HUB - SKIN CHANGER SYSTEM
+-- =============================================================================
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+
 getgenv().SkinChangerEnabled = false
 getgenv().SelectedSkin = "RedDragon"
 
--- Tabela para guardar os componentes originais e restaurá-los sem falhas no Reset
 local originalPartsStorage = {}
 
 local skinModels = {
@@ -468,127 +471,114 @@ local skinModels = {
     ["RedShot"]    = replicatedStorage:FindFirstChild("Models") and replicatedStorage.Models:FindFirstChild("NewA") and replicatedStorage.Models.NewA:FindFirstChild("RedShot")
 }
 
-local function cleanCustomSkin(tool)
-    local customVisual = tool:FindFirstChild("MirrorsSkinVisual")
+-- Limpa clones anteriores e restaura o modelo original da arma
+local function cleanCustomSkin(weaponContainer)
+    if not weaponContainer then return end
+    
+    local customVisual = weaponContainer:FindFirstChild("MirrorsSkinVisual")
     if customVisual then customVisual:Destroy() end
     
-    -- Restaura as partes originais da arma que foram guardadas
-    if originalPartsStorage[tool] then
-        for _, part in ipairs(originalPartsStorage[tool]) do
+    local originalModel = weaponContainer:FindFirstChild("Model")
+    if originalModel and originalPartsStorage[weaponContainer] then
+        for _, part in ipairs(originalPartsStorage[weaponContainer]) do
             if part and part.Parent then
                 part.Transparency = 0
-                pcall(function() part.CanCollide = true end)
             end
         end
-        originalPartsStorage[tool] = nil
+        originalPartsStorage[weaponContainer] = nil
     end
 end
 
-local function applySkin()
-    if not getgenv().SkinChangerEnabled then return end
-    local char = localPlayer.Character
+-- Aplica a skin selecionada na estrutura real identificada no dump
+local function applySkinToInstance(child)
+    if child:IsA("Model") and child:FindFirstChild("EquippedValue") and child:FindFirstChild("Model") then
+        local weaponContainer = child
+        local originalModel = weaponContainer.Model
+        
+        task.wait(0.2) -- Aguarda os componentes do jogo carregarem
+        
+        if not getgenv().SkinChangerEnabled then return end
+        
+        cleanCustomSkin(weaponContainer)
+        
+        local targetModel = skinModels[getgenv().SelectedSkin]
+        if not targetModel then return end
+        
+        -- Fixação no BodyAttach conforme revelado no scanner
+        local bodyAttach = weaponContainer:FindFirstChild("BodyAttach") or originalModel:FindFirstChildOfClass("BasePart")
+        if not bodyAttach then return end
+        
+        originalPartsStorage[weaponContainer] = {}
+        
+        -- Esconde a malha visual original
+        for _, part in ipairs(originalModel:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("MeshPart") then
+                table.insert(originalPartsStorage[weaponContainer], part)
+                part.Transparency = 1
+            end
+        end
+        
+        -- Clona e posiciona a skin personalizada
+        local skinClone = targetModel:Clone()
+        skinClone.Name = "MirrorsSkinVisual"
+        
+        if skinClone:IsA("Model") then
+            local primary = skinClone.PrimaryPart or skinClone:FindFirstChildOfClass("BasePart")
+            if primary then
+                skinClone:SetPrimaryPartCFrame(bodyAttach.CFrame)
+            else
+                skinClone:MoveTo(bodyAttach.Position)
+            end
+        elseif skinClone:IsA("BasePart") then
+            skinClone.CFrame = bodyAttach.CFrame
+        end
+        
+        skinClone.Parent = weaponContainer
+        
+        -- Soldagem estável
+        local function weldInstances(base, current)
+            if current:IsA("BasePart") then
+                current.CanCollide = false
+                current.Massless = true
+                local weld = Instance.new("WeldConstraint")
+                weld.Name = "SkinWeld"
+                weld.Part0 = base
+                weld.Part1 = current
+                weld.Parent = current
+            end
+            for _, subChild in ipairs(current:GetChildren()) do
+                weldInstances(base, subChild)
+            end
+        end
+        
+        weldInstances(bodyAttach, skinClone)
+    end
+end
+
+-- Monitoramento do Personagem (ChildAdded do Workspace)
+local function setupCharacterHook(char)
     if not char then return end
     
-    for _, tool in ipairs(char:GetChildren()) do
-        if tool:IsA("Tool") then
-            -- Limpa qualquer resquício ou bug de skin anterior antes de aplicar a nova
-            cleanCustomSkin(tool)
-
-            -- Atualiza referências caso tenham carregado atrasadas
-            local targetModel = skinModels[getgenv().SelectedSkin]
-            if not targetModel and replicatedStorage:FindFirstChild("Models") then
-                skinModels = {
-                    ["RedDragon"]  = replicatedStorage.Models.NewA:FindFirstChild("RedDragon"),
-                    ["Axe"]        = replicatedStorage.Models:FindFirstChild("Axe"),
-                    ["FlameAxe"]   = replicatedStorage.Models.Season1Chal:FindFirstChild("FlameAxe"),
-                    ["DarkAxe"]    = replicatedStorage.Models.Lim1:FindFirstChild("DarkAxe"),
-                    ["RedDagger"]  = replicatedStorage.Models.NewA:FindFirstChild("RedDagger"),
-                    ["RedShot"]    = replicatedStorage.Models.NewA:FindFirstChild("RedShot")
-                }
-                targetModel = skinModels[getgenv().SelectedSkin]
-            end
-
-            local handle = tool:FindFirstChild("Handle")
-            if targetModel and handle then
-                originalPartsStorage[tool] = {}
-                
-                -- Oculta os componentes originais com segurança
-                for _, child in ipairs(tool:GetChildren()) do
-                    if (child:IsA("BasePart") or child:IsA("MeshPart")) and child.Name ~= "Handle" then
-                        child.Transparency = 1
-                        child.CanCollide = false
-                        table.insert(originalPartsStorage[tool], child)
-                    end
-                end
-                
-                -- Se o Handle original tiver mesh visível, esconde também
-                if handle:IsA("MeshPart") or handle:FindFirstChildOfClass("SpecialMesh") then
-                    handle.Transparency = 1
-                    table.insert(originalPartsStorage[tool], handle)
-                end
-                
-                -- Prepara e injeta o clone da nova Skin
-                local skinClone = targetModel:Clone()
-                skinClone.Name = "MirrorsSkinVisual"
-                
-                -- FORÇA O ALINHAMENTO ZERANDO COORDENADAS GLOBAIS ANTES DA SOLDA
-                if skinClone:IsA("Model") then
-                    local primary = skinClone.PrimaryPart or skinClone:FindFirstChildOfClass("BasePart")
-                    if primary then
-                        skinClone:SetPrimaryPartCFrame(handle.CFrame)
-                    else
-                        skinClone:MoveTo(handle.Position)
-                    end
-                elseif skinClone:IsA("BasePart") then
-                    skinClone.CFrame = handle.CFrame
-                end
-                
-                skinClone.Parent = tool
-                
-                -- Cria ancoragem física estável (funciona para Part única ou Model composto)
-                local function weldInstances(base, current)
-                    if current:IsA("BasePart") then
-                        current.CanCollide = false
-                        current.Massless = true
-                        local weld = Instance.new("WeldConstraint")
-                        weld.Name = "SkinWeld"
-                        weld.Part0 = base
-                        weld.Part1 = current
-                        weld.Parent = current
-                    end
-                    for _, child in ipairs(current:GetChildren()) do
-                        weldInstances(base, child)
-                    end
-                end
-                
-                weldInstances(handle, skinClone)
-            end
-        end
+    for _, child in ipairs(char:GetChildren()) do
+        applySkinToInstance(child)
     end
-end
-
--- Ouvintes de eventos para troca de arma em tempo de execução
-localPlayer.CharacterAppearanceLoaded:Connect(function(char)
+    
     char.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") and getgenv().SkinChangerEnabled then
-            task.wait(0.1)
-            applySkin()
-        end
+        applySkinToInstance(child)
     end)
-end)
+end
 
 if localPlayer.Character then
-    localPlayer.Character.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") and getgenv().SkinChangerEnabled then
-            task.wait(0.1)
-            applySkin()
-        end
-    end)
+    setupCharacterHook(localPlayer.Character)
 end
 
--- ==========================================
--- INTERFACE - ABA DE SKINS ATUALIZADA (WINDUI)
--- ==========================================
+localPlayer.CharacterAdded:Connect(function(char)
+    setupCharacterHook(char)
+end)
+
+-- =============================================================================
+--                     INTERFACE - WINDUI ELEMENTS
+-- =============================================================================
 
 local SkinDropdown = Visual:Dropdown({
     Title = "Select Weapon Skin",
@@ -597,9 +587,13 @@ local SkinDropdown = Visual:Dropdown({
     Value = "RedDragon",
     Callback = function(option) 
         getgenv().SelectedSkin = option
-        print("[Mirrors Hub] Selected skin option changed to: " .. option) 
-        if getgenv().SkinChangerEnabled then
-            applySkin()
+        print("[Mirrors Hub] Skin changed to: " .. option) 
+        
+        -- Atualiza em tempo real se a troca for feita com a arma na mão
+        if getgenv().SkinChangerEnabled and localPlayer.Character then
+            for _, child in ipairs(localPlayer.Character:GetChildren()) do
+                applySkinToInstance(child)
+            end
         end
     end
 })
@@ -610,8 +604,13 @@ local ButtonEnable = Visual:Button({
     Icon = "check",
     Callback = function()
         getgenv().SkinChangerEnabled = true
-        applySkin()
-        print("[Mirrors Hub] Skin Changer successfully applied!")
+        
+        if localPlayer.Character then
+            for _, child in ipairs(localPlayer.Character:GetChildren()) do
+                applySkinToInstance(child)
+            end
+        end
+        print("[Mirrors Hub] Skin Changer enabled.")
     end
 })
 
@@ -622,24 +621,11 @@ local ButtonReset = Visual:Button({
     Callback = function()
         getgenv().SkinChangerEnabled = false
         
-        local char = localPlayer.Character
-        if char then
-            for _, tool in ipairs(char:GetChildren()) do
-                if tool:IsA("Tool") then
-                    cleanCustomSkin(tool)
-                end
-            end
-            
-            -- Também limpa a mochila (caso a arma não esteja na mão no momento do reset)
-            local backpack = localPlayer:FindFirstChild("Backpack")
-            if backpack then
-                for _, tool in ipairs(backpack:GetChildren()) do
-                    if tool:IsA("Tool") then
-                        cleanCustomSkin(tool)
-                    end
-                end
+        if localPlayer.Character then
+            for _, child in ipairs(localPlayer.Character:GetChildren()) do
+                cleanCustomSkin(child)
             end
         end
-        print("[Mirrors Hub] Skins successfully reset to original without glitches.")
+        print("[Mirrors Hub] Skins successfully reset.")
     end
 })
