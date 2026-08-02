@@ -2,7 +2,7 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 
 local Window = WindUI:CreateWindow({
     Title = "Mirrors Hub - [FPS] Flick",
-    Icon = "door-open", -- lucide icon
+    Icon = "door-open",
     Author = "by blackzw.mp3",
     Folder = "MirrorsHub/[FPS] Flick",
     
@@ -40,7 +40,7 @@ Window:EditOpenButton({
     Icon = "monitor",
     CornerRadius = UDim.new(0,16),
     StrokeThickness = 2,
-    Color = ColorSequence.new( -- gradient
+    Color = ColorSequence.new(
         Color3.fromHex("7B00FF"), 
         Color3.fromHex("3C007D")
     ),
@@ -71,7 +71,6 @@ Info:Paragraph({
             Icon = "message-circle",
             Callback = function()
                 setclipboard("https://discord.gg/YZEg6FyRSF")
-
                 WindUI:Notify({
                     Title = "Discord",
                     Content = "Convite copiado! Cola no navegador pra entrar.",
@@ -121,7 +120,7 @@ end)
 
 Info:Space()
 
-local Button = Info:Button({
+Info:Button({
     Title = "Copiar Job ID",
     Color = Color3.fromHex("#a2ff30"),
     Justify = "Center",
@@ -156,9 +155,10 @@ local camera = workspace.CurrentCamera
 getgenv().AimbotEnabled = false
 getgenv().ProximityMode = false
 getgenv().ViewMode = false
+getgenv().TriggerActive = false
 
 -- ==========================================
--- CAPTURA DO ALCANCE REAL DA ARMA (STUDS)
+-- GERENCIAMENTO COMPARTILHADO DO BULLETHANDLER
 -- ==========================================
 local bulletHandler = require(replicatedStorage.ModuleScripts.GunModules.BulletHandler)
 local originalFire = bulletHandler.Fire
@@ -170,8 +170,27 @@ local function getWeaponTrueRange()
     return success and range or 300
 end
 
+-- Hook centralizado e único para evitar conflitos de recursão na memória
+pcall(function()
+    if make_writeable then make_writeable(bulletHandler) end
+end)
+
+bulletHandler.Fire = function(arg1)
+    if getgenv().AimbotEnabled and (getgenv().ProximityMode or getgenv().ViewMode) and (arg1 and arg1.Misc) then
+        local target = getTargetByMode()
+        if target then
+            local headPos = target.Position
+            arg1.Direction = (headPos - arg1.Origin).Unit
+            if arg1.Misc then
+                arg1.Misc.CamCFrame = CFrame.new(arg1.Origin, headPos)
+            end
+        end
+    end
+    return originalFire(arg1)
+end
+
 -- ==========================================
--- SISTEMA DE ESP: CAIXA NOS JOGADORES (ESCALA FIXA DE 30 STUDS)
+-- SISTEMA DE ESP
 -- ==========================================
 local boxCache = {}
 
@@ -208,10 +227,7 @@ end
 
 players.PlayerRemoving:Connect(removePlayerRangeBox)
 
--- ==========================================
--- FUNÇÃO DE ALVO COM SUPORTE AOS DOIS MODOS
--- ==========================================
-local function getTargetByMode()
+function getTargetByMode()
     local bestTarget = nil
     local currentMaxRange = getWeaponTrueRange()
     
@@ -265,13 +281,9 @@ local function getTargetByMode()
         end
         return bestTarget
     end
-
     return nil
 end
 
--- ==========================================
--- ATUALIZAÇÃO DO ESP DOS JOGADORES EM TEMPO REAL
--- ==========================================
 runService.RenderStepped:Connect(function()
     local char = localPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -285,9 +297,7 @@ runService.RenderStepped:Connect(function()
             local humanoid = character and character:FindFirstChildOfClass("Humanoid")
             
             if (getgenv().ProximityMode or getgenv().ViewMode) and getgenv().AimbotEnabled and root and targetRoot and humanoid and humanoid.Health > 0 then
-                if not boxCache[player] then
-                    createPlayerRangeBox(player)
-                end
+                if not boxCache[player] then createPlayerRangeBox(player) end
                 
                 local cacheData = boxCache[player]
                 if cacheData and cacheData.Box and cacheData.Part then
@@ -319,82 +329,12 @@ runService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- INTERCEPTAÇÃO DO TIRO
--- ==========================================
-pcall(function()
-    if make_writeable then make_writeable(bulletHandler) end
-end)
-
-bulletHandler.Fire = function(arg1)
-    if getgenv().AimbotEnabled and (getgenv().ProximityMode or getgenv().ViewMode) and (arg1 and arg1.Misc) then
-        local target = getTargetByMode()
-        if target then
-            local headPos = target.Position
-            
-            arg1.Direction = (headPos - arg1.Origin).Unit
-            if arg1.Misc then
-                arg1.Misc.CamCFrame = CFrame.new(arg1.Origin, headPos)
-            end
-        end
-    end
-    return originalFire(arg1)
-end
-
--- ==========================================
--- INTERFACE - TOGGLES E DROPDOWNS MAIN
--- ==========================================
-
-local ToggleMain = Main:Toggle({
-    Title = "Silent Aim + ESP (Kick Risk!)",
-    Desc = "Redirects your shots to targets within true weapon range and shows a 30-stud ESP box around them.",
-    Value = false,
-    Type = "Toggle",
-    Locked = false,
-    Flag = "range_esp_main",
-    Callback = function(state)
-        getgenv().AimbotEnabled = state
-        if not state then
-            for _, cacheData in pairs(boxCache) do
-                if cacheData.Box then
-                    cacheData.Box.Adornee = nil
-                end
-            end
-        end
-        print("Master Box ESP state:", state)
-    end
-})
-
-local PriorityDropdown = Main:Dropdown({
-    Title = "Target Priority Mode",
-    Values = {
-        "Proximity Priority",
-        "Crosshair Priority"
-    },
-    Callback = function(selected)
-        if selected == "Proximity Priority" then
-            getgenv().ProximityMode = true
-            getgenv().ViewMode = false
-        elseif selected == "Crosshair Priority" then
-            getgenv().ProximityMode = false
-            getgenv().ViewMode = true
-        else
-            getgenv().ProximityMode = false
-            getgenv().ViewMode = false
-        end
-        print("Priority changed to:", selected)
-    end
-})
-
--- ==========================================
--- AUTO FIRE / TRIGGER BOT
+-- AUTO FIRE CORRIGIDO (PREVINE LOOP NULO)
 -- ==========================================
 local SignalManager = require(replicatedStorage:WaitForChild("SignalManager"))
-local oldFire = bulletHandler.Fire
 local maxDistance = 500
 
-getgenv().TriggerActive = false
-
-local function getTarget()
+local function getTriggerTarget()
     if not getgenv().TriggerActive then return nil end
     
     local target = nil
@@ -428,39 +368,59 @@ local function getTarget()
 end
 
 task.spawn(function()
-    while task.wait(0.05) do
-        if getgenv().TriggerActive and getTarget() then
+    while task.wait(0.08) do -- Aumentado levemente para não dar choke em processadores mobile
+        if getgenv().TriggerActive and getTriggerTarget() then
             SignalManager.Fire("FireWeapon", Enum.UserInputState.Begin)
-            task.wait(0.05)
+            task.wait(0.03)
             SignalManager.Fire("FireWeapon", Enum.UserInputState.End)
         end
     end
 end)
 
+-- CONTROLES DA ABA MAIN
+local ToggleMain = Main:Toggle({
+    Title = "Silent Aim + ESP (Kick Risk!)",
+    Desc = "Redirects your shots to targets within true weapon range.",
+    Value = false,
+    Callback = function(state)
+        getgenv().AimbotEnabled = state
+        if not state then
+            for _, cacheData in pairs(boxCache) do
+                if cacheData.Box then cacheData.Box.Adornee = nil end
+            end
+        end
+    end
+})
+
+local PriorityDropdown = Main:Dropdown({
+    Title = "Target Priority Mode",
+    Values = { "Proximity Priority", "Crosshair Priority" },
+    Callback = function(selected)
+        if selected == "Proximity Priority" then
+            getgenv().ProximityMode = true
+            getgenv().ViewMode = false
+        elseif selected == "Crosshair Priority" then
+            getgenv().ProximityMode = false
+            getgenv().ViewMode = true
+        end
+    end
+})
+
 local ToggleAutoFire = Main:Toggle({
     Title = "Auto Fire",
-    Desc = "Redirects bullet direction and auto-fires at targets in line of sight.",
+    Desc = "Auto-fires at targets in line of sight dynamically.",
     Value = false,
-    Type = "Toggle",
-    Locked = false,
-    Flag = "silent_trigger_toggle",
     Callback = function(state)
         getgenv().TriggerActive = state
-        print("Feature state:", state)
     end
 })
 
 -- =============================================================================
---          MIRRORS HUB - ADONIS BYPASS // GUN FRAMEWORK SKIN INJECTOR
+--     SISTEMA DE SKIN CHANGER HIERÁRQUICO NÃO-DESTRUTIVO (ANTI-INVISIBILIDADE)
 -- =============================================================================
-local replicatedStorage = game:GetService("ReplicatedStorage")
-local players = game:GetService("Players")
-local localPlayer = players.LocalPlayer
-
 getgenv().SkinChangerEnabled = false
 getgenv().SelectedSkin = "RedDragon"
 
--- Modelos mapeados dinamicamente com base na sua descoberta no Dex
 local modelsFolder = replicatedStorage:WaitForChild("Models")
 local skinModels = {
     ["RedDragon"]  = modelsFolder:FindFirstChild("NewA") and modelsFolder.NewA:FindFirstChild("RedDragon") or modelsFolder:FindFirstChild("RedDragon"),
@@ -471,56 +431,60 @@ local skinModels = {
     ["RedShot"]    = modelsFolder:FindFirstChild("NewA") and modelsFolder.NewA:FindFirstChild("RedShot") or modelsFolder:FindFirstChild("RedShot")
 }
 
--- 1. CAPTURA DO MODULO E HOOK NATIVO DO CONSTRUTOR
-local gunModules = replicatedStorage:WaitForChild("ModuleScripts"):WaitForChild("GunModules")
-local gunFrameworkModule = gunModules:WaitForChild("GunFramework")
-
+local gunFrameworkModule = replicatedStorage:WaitForChild("ModuleScripts"):WaitForChild("GunModules"):WaitForChild("GunFramework")
 local success, framework = pcall(require, gunFrameworkModule)
+
 if success and type(framework) == "table" and framework.new then
     local originalNew = framework.new
     
-    -- Substituição limpa sem acionar a assinatura 0xC0BDO do Adonis
     framework.new = function(weaponInstance)
+        local thread = originalNew(weaponInstance) -- Deixa o jogo criar o objeto nativo primeiro (Evita Arma Invisível!)
+        
         if getgenv().SkinChangerEnabled and weaponInstance then
-            local originalModel = weaponInstance:FindFirstChild("Model")
-            local targetSkinModel = skinModels[getgenv().SelectedSkin]
-            
-            if originalModel and targetSkinModel then
-                -- Clonamos a skin selecionada
-                local skinClone = targetSkinModel:Clone()
-                skinClone.Name = "Model"
+            task.spawn(function()
+                task.wait(0.1) -- Tempo seguro para a animação do braço assentar no mobile
+                local originalModel = weaponInstance:FindFirstChild("Model")
+                local targetSkinModel = skinModels[getgenv().SelectedSkin]
                 
-                -- Copia sub-estruturas cruciais que o decompilador apontou ("Before" e "After")
-                local beforeFolder = originalModel:FindFirstChild("Before")
-                if beforeFolder then beforeFolder:Clone().Parent = skinClone end
-                
-                local afterFolder = originalModel:FindFirstChild("After")
-                if afterFolder then afterFolder:Clone().Parent = skinClone end
-                
-                -- Torna o modelo antigo invisível e inofensivo
-                for _, part in ipairs(originalModel:GetDescendants()) do
-                    if part:IsA("BasePart") then part.Transparency = 1 end
+                if originalModel and targetSkinModel then
+                    -- Limpa injeções antigas do Mirrors na mesma arma
+                    local oldVisual = originalModel:FindFirstChild("MirrorsVisualSkin")
+                    if oldVisual then oldVisual:Destroy() end
+                    
+                    -- Em vez de deletar o modelo original (que quebrava o script), nós apenas deixamos as partes nativas transparentes
+                    for _, part in ipairs(originalModel:GetDescendants()) do
+                        if part:IsA("BasePart") or part:IsA("MeshPart") then
+                            part.Transparency = 1
+                        end
+                    end
+                    
+                    -- Clona e anexa a skin mantendo a raiz intacta para o Framework calcular o tiro perfeitamente
+                    local skinClone = targetSkinModel:Clone()
+                    skinClone.Name = "MirrorsVisualSkin"
+                    skinClone.Parent = originalModel
+                    
+                    local mainPart = skinClone:IsA("Model") and (skinClone.PrimaryPart or skinClone:FindFirstChildOfClass("BasePart")) or skinClone
+                    local referencePart = originalModel:FindFirstChild("Handle") or originalModel:FindFirstChildOfClass("BasePart")
+                    
+                    if mainPart and referencePart then
+                        local weld = Instance.new("Weld")
+                        weld.Name = "SkinWeld"
+                        weld.Part0 = referencePart
+                        weld.Part1 = mainPart
+                        weld.C0 = CFrame.new()
+                        weld.Parent = mainPart
+                    end
                 end
-                originalModel.Name = "OldModel"
-                
-                -- Injeta o novo modelo na hierarquia estrutural da arma antes do framework ler
-                skinClone.Parent = weaponInstance
-            end
+            end)
         end
-        return originalNew(weaponInstance)
+        return thread
     end
-    print("[Mirrors Hub] Hook Estrutural injetado no GunFramework de forma camuflada!")
-else
-    print("[Mirrors Hub] Erro ao injetar no framework estático.")
 end
 
--- =============================================================================
---                     INTERFACE - WINDUI CONTROLS
--- =============================================================================
-
+-- CONTROLES DA ABA VISUAL
 local SkinDropdown = Visual:Dropdown({
     Title = "Select Weapon Skin",
-    Desc = "Escolha o modelo que será injetado estruturalmente na arma.",
+    Desc = "Escolha o modelo visual para sobrepor no armamento.",
     Values = { "RedDragon", "Axe", "FlameAxe", "DarkAxe", "RedDagger", "RedShot" },
     Value = "RedDragon",
     Callback = function(option) 
@@ -530,19 +494,34 @@ local SkinDropdown = Visual:Dropdown({
 
 local ButtonEnable = Visual:Button({
     Title = "Enable Skins",
-    Desc = "Ativa o redirecionamento de Model no GunFramework.",
+    Desc = "Ativa a camuflagem visual sem corromper o GunFramework.",
     Icon = "check",
     Callback = function()
         getgenv().SkinChangerEnabled = true
-        print("[Mirrors Hub] Skin Changer ativo. Equipe ou resete a arma para aplicar.")
+        WindUI:Notify({Title = "Mirrors", Content = "Skin Changer habilitado! Reequipe a arma.", Duration = 2})
     end
 })
 
 local ButtonReset = Visual:Button({
     Title = "Reset Skins",
-    Desc = "Desativa a injeção e retorna ao visual nativo do jogo.",
+    Desc = "Remove a skin customizada e devolve a visibilidade original.",
     Icon = "refresh-cw",
     Callback = function()
         getgenv().SkinChangerEnabled = false
+        local char = localPlayer.Character
+        if char then
+            for _, item in ipairs(char:GetChildren()) do
+                local model = item:FindFirstChild("Model")
+                if model then
+                    local custom = model:FindFirstChild("MirrorsVisualSkin")
+                    if custom then custom:Destroy() end
+                    for _, part in ipairs(model:GetDescendants()) do
+                        if part:IsA("BasePart") or part:IsA("MeshPart") then
+                            part.Transparency = 0
+                        end
+                    end
+                end
+            end
+        end
     end
 })
