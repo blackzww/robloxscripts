@@ -599,27 +599,26 @@ local ButtonReset = Visual:Button({
 
 
 -- =============================================================
---  MIRRORS HUB - OPTIMIZED CHROMATIC ENGINE & WINDUI INTEGRATION
+--  MIRRORS HUB - CHROMATIC ENGINE v5.0 (DYNAMIC RIG DIFFERENTIAL)
 -- =============================================================
 
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local localPlayer = players.LocalPlayer
 
--- Engine encapsulada para evitar poluição de escopo global
 local ChromaticEngine = {
     Enabled = false,
     Speed = 0.5,
     TargetFPS = 60,
     ApplyNeon = true,
     
-    _cache = setmetatable({}, { __mode = "k" }), -- Weak keys puras (Erro 12)
+    _cache = setmetatable({}, { __mode = "k" }),
+    _nativeBodyParts = setmetatable({}, { __mode = "k" }), -- Lista negra do seu corpo limpo
     _heartbeatConnection = nil,
     _characterConnections = {},
     _lastRender = 0
 }
 
--- Mapeia propriedades visuais de forma segura (Erro 10, 11)
 local TARGET_PROPERTIES = {"Color", "Material", "Reflectance", "Transparency"}
 
 local function safelyGetProperty(instance, prop)
@@ -631,40 +630,42 @@ local function safelySetProperty(instance, prop, value)
     pcall(function() instance[prop] = value end)
 end
 
--- [DETECÇÃO VISUAL DE ALTA PRECISÃO - SEM HEURÍSTICA DE STRINGS]
-local function isRealWeaponPart(part, character)
-    if not part or not part:IsA("BasePart") then return false end
+-- Mapeia o corpo nativo do personagem assim que ele spawna
+local function catalogNativeBody(character)
+    table.clear(ChromaticEngine._nativeBodyParts)
+    if not character then return end
     
-    -- Verifica integridade física básica e visibilidade (Erro 9)
-    if part.Transparency >= 0.98 then return false end
+    -- Espera um microsegundo para garantir que roupas e acessórios padrões carregaram
+    task.wait(0.1) 
     
-    -- Se o pai imediato ou a peça sumiu da árvore, ignora (Erro 2, 4)
-    local parent = part.Parent
-    if not parent then return false end
+    if not character.Parent then return end
     
-    -- Ignora o Rig Base eliminando partes ligadas a componentes vitais de animação
-    if parent == character then
-        if part:FindFirstChildOfClass("Motor6D") or part:FindFirstChildOfClass("Bone") then
-            return false
+    for _, desc in ipairs(character:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            -- Guarda a referência de tudo que veio de fábrica no seu boneco
+            ChromaticEngine._nativeBodyParts[desc] = true
         end
     end
+end
+
+local function registerAndCachePart(part, character)
+    if not part or not part:IsA("BasePart") then return end
+    if part.Transparency >= 0.98 then return end
     
-    -- Filtro de Acessórios nativos avançado (Cabelos/Roupas 3D) (Erro 5, 6)
-    local current = parent
+    -- REGRA DE OURO: Se a peça faz parte do seu corpo original ou de acessórios nativos, NUNCA pinta!
+    if ChromaticEngine._nativeBodyParts[part] then return end
+    
+    -- Proteção extra para o caso de acessórios que não foram pegos no spawn
+    local current = part.Parent
     while current and current ~= game and current ~= character do
-        if current:IsA("Accessory") or current:IsA("Clothing") or current:IsA("BodyModifier") then
+        if current:IsA("Accessory") or current:IsA("Clothing") then
             return false
         end
         current = current.Parent
     end
-    
-    return true
-end
 
--- [PRESERVAÇÃO E BATChING DE ESTADO ATÔMICO]
-local function registerAndCachePart(part, character)
-    if not part or ChromaticEngine._cache[part] then return end
-    if not isRealWeaponPart(part, character) then return end
+    -- Se já está cacheado, não faz nada
+    if ChromaticEngine._cache[part] then return end
     
     local originalState = {}
     for _, prop in ipairs(TARGET_PROPERTIES) do
@@ -674,7 +675,6 @@ local function registerAndCachePart(part, character)
         end
     end
     
-    -- Só joga no cache se conseguir ler as propriedades visuais essenciais
     if originalState["Color"] then
         ChromaticEngine._cache[part] = originalState
     end
@@ -694,11 +694,10 @@ local function cleanCharacterConnections()
     table.clear(ChromaticEngine._characterConnections)
 end
 
--- [SISTEMA DE ESCUTA COMPATÍVEL COM STREAMINGENABLED]
 local function monitorCharacter(character)
     cleanCharacterConnections()
     
-    -- Antes de limpar o cache por troca de char, faz o rollback das peças antigas (Erro 1)
+    -- Restaura estados antigos antes de limpar a mesa
     for part, state in pairs(ChromaticEngine._cache) do
         restorePartState(part, state)
     end
@@ -706,15 +705,23 @@ local function monitorCharacter(character)
     
     if not character then return end
     
-    -- Varredura inicial O(N) controlada (Erro 13)
+    -- Catalogar o corpo limpo primeiro
+    catalogNativeBody(character)
+    
+    -- Varre para ver se já tinha alguma arma puxada antes de ligar o script
     local descendants = character:GetDescendants()
     for i = 1, #descendants do
         registerAndCachePart(descendants[i], character)
     end
     
-    -- Escuta mutações sem re-varrer a árvore (Erro 14, 33)
+    -- Captura qualquer Part ou Model dinâmico que entrar no personagem depois
     local onAdded = character.DescendantAdded:Connect(function(desc)
-        registerAndCachePart(desc, character)
+        -- Defer para dar tempo de setar propriedades de rede do objeto
+        task.defer(function()
+            if character.Parent then
+                registerAndCachePart(desc, character)
+            end
+        end)
     end)
     
     local onRemoving = character.DescendantRemoving:Connect(function(desc)
@@ -723,13 +730,14 @@ local function monitorCharacter(character)
             restorePartState(desc, state)
             ChromaticEngine._cache[desc] = nil
         end
+        -- Remove do mapa do corpo caso a parte original suma (morte/reset)
+        ChromaticEngine._nativeBodyParts[desc] = nil
     end)
     
     table.insert(ChromaticEngine._characterConnections, onAdded)
     table.insert(ChromaticEngine._characterConnections, onRemoving)
 end
 
--- [API DE CONTROLE]
 function ChromaticEngine:Start()
     if self.Enabled then return end
     self.Enabled = true
@@ -739,24 +747,23 @@ function ChromaticEngine:Start()
     if character then monitorCharacter(character) end
     
     local caConn = localPlayer.CharacterAdded:Connect(monitorCharacter)
-    local crConn = localPlayer.CharacterRemoving:Connect(function() monitorCharacter(nil) end)
+    local crConn = localPlayer.CharacterRemoving:Connect(function() 
+        monitorCharacter(nil) 
+    end)
     table.insert(self._characterConnections, caConn)
     table.insert(self._characterConnections, crConn)
     
-    -- Loop de Renderização por Mutações Dedutivas Reais (Erro 18, 20, 22)
     local minFrameTime = 1 / math.max(self.TargetFPS, 1)
     self._heartbeatConnection = runService.Heartbeat:Connect(function()
         local now = os.clock()
         if (now - self._lastRender) < minFrameTime then return end
         self._lastRender = now
         
-        -- Transição HSV Linear Perfeita para garantir o efeito RGB ativo
         local hue = (now * self.Speed) % 1
         local targetColor = Color3.fromHSV(hue, 1, 1)
         
         for part, state in pairs(self._cache) do
             if part and part.Parent then
-                -- Escrita Dedutiva Estrita (Só altera se houver delta real de cor/material)
                 if part.Color ~= targetColor then
                     part.Color = targetColor
                 end
@@ -788,29 +795,29 @@ function ChromaticEngine:Stop()
     
     cleanCharacterConnections()
     
-    -- Rollback total e imediato de estado original (Erro 16, 23)
-    for part, state in pairs(self._cache) do
+    for part, state in pairs(ChromaticEngine._cache) do
         restorePartState(part, state)
     end
     table.clear(self._cache)
+    table.clear(self._nativeBodyParts)
 end
 
 -- =============================================================
---        IMPLEMENTAÇÃO COMPLETA NO SEU TOGGLE WINDUI
+--                 INTERFACE WINDUI CONECTADA
 -- =============================================================
 
 local Toggle = Visual:Toggle({
     Title = "Weapon RGB Skin",
-    Desc = "Força um efeito RGB cromático em qualquer arma equipada",
+    Desc = "Aplica RGB dinâmico apenas em objetos injetados/armas",
     Type = "Toggle",
     Value = false,
     Callback = function(state) 
         if state then
             ChromaticEngine:Start()
-            print("[Mirrors Hub] Motor Cromático RGB Ativado.")
+            print("[Mirrors Hub] Mapeamento Diferencial Ativado!")
         else
             ChromaticEngine:Stop()
-            print("[Mirrors Hub] Motor Cromático RGB Desativado (Estados restaurados).")
+            print("[Mirrors Hub] Motor Cromático Desativado.")
         end
     end
 })
