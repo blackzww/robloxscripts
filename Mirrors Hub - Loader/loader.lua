@@ -1,15 +1,17 @@
 local scripts={
-	[12308344607]="URL_DO_DOORS",
-	[6516141723]="URL_DO_DOORS",
-	[6524124388]="URL_DO_DOORS",
+	[12308344607]="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Doors%20(Lobby)/doorsl.lua",
+	[6516141723]="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Doors%20(Lobby)/doorsl.lua",
+	[6524124388]="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Doors%20(Lobby)/doorsl.lua"
+}
 
-	
+local games={
+	[2440500124]="SEM SCRIPTS ATUALMENTE"
 }
 
 local universal="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Universal/universal.lua"
 
-local supported=scripts[game.PlaceId]
-local url=supported or universal
+local url=scripts[game.PlaceId] or games[game.GameId] or universal
+local supported=scripts[game.PlaceId]~=nil or games[game.GameId]~=nil
 
 pcall(function()
 	game:GetService("StarterGui"):SetCore("SendNotification",{
