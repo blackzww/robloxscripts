@@ -1,24 +1,36 @@
--- GAMES SUPPORTED
-local scripts = {
+local scripts={
+	[12308344607]="URL_DO_DOORS",
+	[6516141723]="URL_DO_DOORS",
+	[6524124388]="URL_DO_DOORS",
+
+	
 }
 
-local universal = "https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Universal/universal.lua"
+local universal="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Universal/universal.lua"
 
-local supported = scripts[game.PlaceId]
-local url = supported or universal
+local supported=scripts[game.PlaceId]
+local url=supported or universal
 
-if supported then
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Mirrors Hub",
-        Text = "Game Supported 🎮",
-        Duration = 5
-    })
-else
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Mirrors Hub",
-        Text = "Game not Supported ⚠️ | Loading Universal",
-        Duration = 5
-    })
+pcall(function()
+	game:GetService("StarterGui"):SetCore("SendNotification",{
+		Title="Mirrors Hub",
+		Text=supported and "Game Supported 🎮" or "Game not Supported ⚠️ | Loading Universal",
+		Duration=5
+	})
+end)
+
+local ok,source=pcall(game.HttpGet,game,url)
+
+if not ok or type(source)~="string" or source=="" then
+	warn("[MIRRORS] Failed to load script.")
+	return
 end
 
-loadstring(game:HttpGet(url))()
+local fn,err=loadstring(source)
+
+if not fn then
+	warn("[MIRRORS] Compile error: "..tostring(err))
+	return
+end
+
+fn()
