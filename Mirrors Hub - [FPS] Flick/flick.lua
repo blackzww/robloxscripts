@@ -1248,24 +1248,61 @@ Main:Toggle({
 --==================================================
 
 Esp:Toggle({
-	Title = "Player Boxes",
-
-	Desc =
-		"Show 30-stud boxes around targets inside weapon range.",
-
+	Title = "ESP",
+	Desc = "Enable player ESP",
 	Value = true,
-
 	Type = "Toggle",
-
-	Flag = "player_boxes",
+	Flag = "esp_enabled",
 
 	Callback = function(state)
-		Settings.ESPEnabled =
-			state
+		Settings.ESPEnabled = state
 
 		if not state then
 			HideESP()
 		end
+	end
+})
+
+Esp:Dropdown({
+	Title = "ESP Mode",
+	Desc = "Choose the player ESP style",
+
+	Values = {
+		"Box",
+		"Highlight"
+	},
+
+	Callback = function(selected)
+		Settings.ESPMode =
+			selected or "Box"
+	end
+})
+
+Esp:Toggle({
+	Title = "ESP Lines",
+	Desc = "Draw lines from the bottom of your screen to players",
+
+	Value = false,
+	Type = "Toggle",
+
+	Flag = "esp_lines",
+
+	Callback = function(state)
+		Settings.ESPLines = state
+	end
+})
+
+Esp:Toggle({
+	Title = "Name ESP",
+	Desc = "Show player name and distance",
+
+	Value = false,
+	Type = "Toggle",
+
+	Flag = "esp_names",
+
+	Callback = function(state)
+		Settings.ESPNames = state
 	end
 })
 
