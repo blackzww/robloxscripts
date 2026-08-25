@@ -2935,3 +2935,28 @@ Misc:Toggle({
 		if v then enable() else disable() end
 	end
 })
+
+local Players=game:GetService("Players")
+local UIS=game:GetService("UserInputService")
+
+local LP=Players.LocalPlayer
+local InfJump=false
+
+UIS.JumpRequest:Connect(function()
+	if not InfJump then return end
+
+	local char=LP.Character
+	local hum=char and char:FindFirstChildOfClass("Humanoid")
+
+	if hum then
+		hum:ChangeState(Enum.HumanoidStateType.Jumping)
+	end
+end)
+
+Misc:Toggle({
+	Title="Infinite Jump",
+	Value=false,
+	Callback=function(v)
+		InfJump=v
+	end
+})
