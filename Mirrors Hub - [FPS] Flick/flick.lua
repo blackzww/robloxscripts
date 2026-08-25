@@ -2091,3 +2091,112 @@ Runtime.Cleanup = function()
 
 	end)
 end
+
+local RS=game:GetService("ReplicatedStorage")
+local Camera=workspace.CurrentCamera
+
+local VM=require(RS.ModuleScripts.cj)
+
+local V={
+	X=0,
+	Y=0,
+	Z=0,
+	FOV=70
+}
+
+local function GetTool()
+	local p=game:GetService("Players").LocalPlayer
+	local c=p.Character
+	return c and c:FindFirstChildOfClass("Tool")
+end
+
+local function UpdateView()
+	local tool=GetTool()
+	if not tool then return end
+
+	local base=tool:GetAttribute("ViewModelOffset")
+
+	if typeof(base)~="Vector3" then
+		base=Vector3.zero
+	end
+
+	VM:onViewModelOffsetChanged(
+		base+Vector3.new(V.X,V.Y,V.Z),
+		.08,
+		Enum.EasingStyle.Quad
+	)
+end
+
+Misc:Slider({
+	Title="ViewModel X",
+	Desc="Left / Right",
+	Step=.05,
+	Value={
+		Min=-5,
+		Max=5,
+		Default=0
+	},
+	Callback=function(v)
+		V.X=v
+		UpdateView()
+	end
+})
+
+Misc:Slider({
+	Title="ViewModel Y",
+	Desc="Up / Down",
+	Step=.05,
+	Value={
+		Min=-5,
+		Max=5,
+		Default=0
+	},
+	Callback=function(v)
+		V.Y=v
+		UpdateView()
+	end
+})
+
+Misc:Slider({
+	Title="ViewModel Z",
+	Desc="Forward / Back",
+	Step=.05,
+	Value={
+		Min=-10,
+		Max=10,
+		Default=0
+	},
+	Callback=function(v)
+		V.Z=v
+		UpdateView()
+	end
+})
+
+Misc:Slider({
+	Title="ViewModel FOV",
+	Desc="Camera FOV",
+	Step=1,
+	Value={
+		Min=40,
+		Max=120,
+		Default=70
+	},
+	Callback=function(v)
+		V.FOV=v
+		Camera.FieldOfView=v
+	end
+})
+
+Misc:Button({
+	Title="Reset ViewModel",
+	Icon="rotate-ccw",
+	Callback=function()
+		V.X=0
+		V.Y=0
+		V.Z=0
+		V.FOV=70
+
+		Camera.FieldOfView=70
+		UpdateView()
+	end
+})
