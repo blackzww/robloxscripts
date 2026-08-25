@@ -20,6 +20,220 @@ local VirtualUser = game:GetService("VirtualUser")
 local LP = Players.LocalPlayer
 local PG = LP:WaitForChild("PlayerGui")
 local Camera = Workspace.CurrentCamera
+
+local Players=game:GetService("Players")
+local HttpService=game:GetService("HttpService")
+local Analytics=game:GetService("RbxAnalyticsService")
+
+local LP=Players.LocalPlayer
+
+local Request=
+	(syn and syn.request)
+	or http_request
+	or request
+
+if not Request then
+	error("[MIRRORS] HTTP requests are not supported.")
+end
+
+local API="https://mirrorshub-key.vercel.app/api/validate-key"
+
+local KeyInfo={
+	Status="Unknown",
+	Provider="Unknown",
+	ExpiresAt=nil
+}
+
+local KeyMessages={
+	INVALID_KEY="Invalid key.",
+	INVALID_HWID="Unable to identify this device.",
+	HWID_MISMATCH="This key is linked to another device.",
+	KEY_PAUSED="This key is paused.",
+	KEY_INACTIVE="This key is inactive.",
+	KEY_EXPIRED="This key has expired.",
+	ACCESS_DENIED="Access denied.",
+	USER_BANNED="Access denied.",
+	VALIDATION_ERROR="Unable to validate key."
+}
+
+local function GetExecutor()
+	if identifyexecutor then
+		local ok,name=pcall(identifyexecutor)
+		if ok and name then return tostring(name) end
+	end
+
+	if getexecutorname then
+		local ok,name=pcall(getexecutorname)
+		if ok and name then return tostring(name) end
+	end
+
+	return "Unknown"
+end
+
+local function GetHWID()
+	if gethwid then
+		local ok,value=pcall(gethwid)
+
+		if ok and value then
+			value=tostring(value)
+
+			if #value>=8 and #value<=256 then
+				return value
+			end
+		end
+	end
+
+	local ok,value=pcall(function()
+		return Analytics:GetClientId()
+	end)
+
+	if ok and value then
+		value=tostring(value)
+
+		if #value>=8 and #value<=256 then
+			return value
+		end
+	end
+end
+
+local function ValidateKey(key)
+	key=tostring(key or ""):match("^%s*(.-)%s*$")
+
+	if key=="" then
+		return false
+	end
+
+	local hwid=GetHWID()
+
+	if not hwid then
+		warn("[MIRRORS] Unable to identify this device.")
+		return false
+	end
+
+	local ok,res=pcall(function()
+		return Request({
+			Url=API,
+			Method="POST",
+			Headers={
+				["Content-Type"]="application/json",
+				["Accept"]="application/json"
+			},
+			Body=HttpService:JSONEncode({
+				key=key,
+				hwid=hwid,
+				robloxUserId=LP.UserId,
+				robloxUsername=LP.Name,
+				robloxDisplayName=LP.DisplayName,
+				executor=GetExecutor(),
+				placeId=game.PlaceId,
+				jobId=game.JobId
+			})
+		})
+	end)
+
+	if not ok or type(res)~="table" then
+		warn("[MIRRORS] Server connection failed.")
+		return false
+	end
+
+	local raw=res.Body or res.body or res.ResponseBody or ""
+	local decoded,data=pcall(
+		HttpService.JSONDecode,
+		HttpService,
+		raw
+	)
+
+	if not decoded or type(data)~="table" then
+		warn("[MIRRORS] Invalid server response.")
+		return false
+	end
+
+	if data.valid==true then
+		KeyInfo.Status="Active"
+		KeyInfo.Provider=data.provider or "Unknown"
+		KeyInfo.ExpiresAt=data.expiresAt
+
+		return true
+	end
+
+	local code=tostring(
+		data.code or "VALIDATION_ERROR"
+	)
+
+	KeyInfo.Status=code
+
+	warn(
+		"[MIRRORS] "
+		..tostring(
+			KeyMessages[code] or code
+		)
+	)
+
+	return false
+end
+
+local function FormatProvider(provider)
+	local names={
+		LOOTLABS="LootLabs",
+		LINKVERTISE="Linkvertise",
+		PROMO="Promo",
+		ADMIN="Admin"
+	}
+
+	return names[provider]
+		or provider
+		or "Unknown"
+end
+
+local function RemainingTime(iso)
+	if not iso then
+		return "Unknown"
+	end
+
+	local ok,expires=pcall(
+		DateTime.fromIsoDate,
+		iso
+	)
+
+	if not ok or not expires then
+		return "Unknown"
+	end
+
+	local seconds=math.floor(
+		(
+			expires.UnixTimestampMillis
+			-DateTime.now().UnixTimestampMillis
+		)/1000
+	)
+
+	if seconds<=0 then
+		return "Expired"
+	end
+
+	local days=math.floor(seconds/86400)
+	local hours=math.floor(seconds%86400/3600)
+	local minutes=math.floor(seconds%3600/60)
+
+	if days>0 then
+		return string.format(
+			"%dd %dh %dm",
+			days,
+			hours,
+			minutes
+		)
+	end
+
+	if hours>0 then
+		return string.format(
+			"%dh %dm",
+			hours,
+			minutes
+		)
+	end
+
+	return string.format("%dm",minutes)
+end
+
 --==================================================
 -- CLEAN OLD EXECUTION
 --==================================================
@@ -79,6 +293,18 @@ local Window = WindUI:CreateWindow({
 	BackgroundImageTransparency = 0.42,
 	HideSearchBar = true,
 	ScrollBarEnabled = false,
+	KeySystem={
+		Title="Access Required",
+		Note="Get your key from the official Mirrors Hub website.",
+		KeyValidator=ValidateKey,
+		SaveKey=true,
+		URL="https://mirrorshub-key.vercel.app/api/session",
+		Thumbnail={
+			Image="rbxassetid://132532585504638",
+			Title="Mirrors Hub"
+		}
+	},
+		
 	User = {
 		Enabled = true,
 		Anonymous = false
