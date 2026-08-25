@@ -1,7 +1,8 @@
 local scripts={
 	[12308344607]="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Doors%20(Lobby)/doorsl.lua",
 	[6516141723]="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Doors%20(Lobby)/doorsl.lua",
-	[6524124388]="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Doors%20(Lobby)/doorsl.lua"
+	[6524124388]="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20Doors%20(Lobby)/doorsl.lua",
+	[136801880565837]="https://raw.githubusercontent.com/blackzww/robloxscripts/refs/heads/main/Mirrors%20Hub%20-%20%5BFPS%5D%20Flick/flick.lua"
 }
 
 local games={
