@@ -2521,3 +2521,343 @@ LP.CharacterAdded:Connect(function()
 		start()
 	end
 end)
+
+
+local P=game:GetService("Players")
+local R=game:GetService("RunService")
+local LP=P.LocalPlayer
+local PG=LP:WaitForChild("PlayerGui")
+
+local C={ON=false,S="Cross",Size=10,Gap=5,T=2,Speed=1,Color=Color3.new(1,1,1),RGB=false}
+local Styles={"Cross","Cross + Dot","Dot","X","Rhombus","Circle","Dynamic Cross","Pulse","Spin","Orbit","RGB Ring","Sharingan","Manji","Tech","Corners","Nova","Halo","Flower","Radar","Helix"}
+local O,M={},{}
+local V
+
+local function original(v)
+	local g=PG:FindFirstChild("GunOverlay")
+	local s=g and g:FindFirstChild("ScreenSize")
+	local x=s and s:FindFirstChild("Cross")
+	if x then x.Visible=v end
+end
+
+local function clear()
+	for _,x in ipairs(O) do pcall(function()x:Destroy()end) end
+	table.clear(O)table.clear(M)
+end
+
+local function F(round,parent)
+	local x=Instance.new("Frame")
+	x.AnchorPoint=Vector2.new(.5,.5)
+	x.BorderSizePixel=0
+	x.BackgroundColor3=C.Color
+	x.ZIndex=999
+	x.Parent=parent or V
+	if round then
+		local u=Instance.new("UICorner",x)
+		u.CornerRadius=UDim.new(1,0)
+	end
+	O[#O+1]=x
+	return x
+end
+
+local function L(h,p,n)
+	local x=F(false,p)
+	x.Size=h and UDim2.fromOffset(n or C.Size,C.T) or UDim2.fromOffset(C.T,n or C.Size)
+	return x
+end
+
+local function D(sz,p)
+	local x=F(true,p)
+	sz=sz or C.T+3
+	x.Size=UDim2.fromOffset(sz,sz)
+	x.Position=UDim2.fromScale(.5,.5)
+	return x
+end
+
+local function Ring(sz,t,p)
+	local x=F(true,p)
+	x.Size=UDim2.fromOffset(sz,sz)
+	x.Position=UDim2.fromScale(.5,.5)
+	x.BackgroundTransparency=1
+	local st=Instance.new("UIStroke",x)
+	st.Thickness=t or C.T
+	st.Color=C.Color
+	return x,st
+end
+
+local function paint(col)
+	for _,x in ipairs(O) do
+		if x:IsA("Frame") then
+			if x.BackgroundTransparency<1 then x.BackgroundColor3=col end
+			local s=x:FindFirstChildOfClass("UIStroke")
+			if s then s.Color=col end
+		end
+	end
+end
+
+local function Cross()
+	local s,g=C.Size,C.Gap
+	local a={L(1),L(1),L(),L()}
+	a[1].Position=UDim2.new(.5,-g-s/2,.5,0)
+	a[2].Position=UDim2.new(.5,g+s/2,.5,0)
+	a[3].Position=UDim2.new(.5,0,.5,-g-s/2)
+	a[4].Position=UDim2.new(.5,0,.5,g+s/2)
+	return a
+end
+
+local function orbit(n,rad,len)
+	local a={}
+	for i=1,n do
+		local h=F(false)
+		h.Size=UDim2.fromOffset(1,1)
+		h.BackgroundTransparency=1
+		h.Position=UDim2.fromScale(.5,.5)
+		local x=L(true,h,len)
+		x.Position=UDim2.fromOffset(rad,0)
+		a[i]=h
+	end
+	return a
+end
+
+local function build()
+	clear()
+	if not C.ON then return end
+	local S,s,g=C.S,C.Size,C.Gap
+
+	if S=="Cross" or S=="Cross + Dot" then
+		M.L=Cross()
+		if S=="Cross + Dot" then D() end
+	elseif S=="Dot" then D(C.T+4)
+	elseif S=="X" then
+		M.X={L(1,nil,s*2),L(1,nil,s*2)}
+		for i,x in ipairs(M.X) do x.Position=UDim2.fromScale(.5,.5)x.Rotation=i==1 and 45 or -45 end
+	elseif S=="Rhombus" then
+		local d=(s+g)*.72
+		M.X={}
+		for i=1,4 do
+			local x=L(1,nil,s)
+			x.Position=UDim2.new(.5,({-d,d,0,0})[i],.5,({0,0,-d,d})[i])
+			x.Rotation=({45,-135,-45,135})[i]
+			M.X[i]=x
+		end
+	elseif S=="Circle" then Ring((s+g)*2)
+	elseif S=="Dynamic Cross" then M.L=Cross() M.Center=D()
+	elseif S=="Pulse" then M.R1=Ring((s+g)*2) M.R2=Ring((s+g)*2) M.Center=D()
+	elseif S=="Spin" then M.A=orbit(4,g+s+3,s) M.Center=D()
+	elseif S=="Orbit" then
+		M.R=Ring((s+g)*2)
+		M.D={}
+		for i=1,3 do M.D[i]=D(C.T+4) end
+		M.Center=D(C.T+2)
+	elseif S=="RGB Ring" then
+		M.R1=Ring((s+g)*2)
+		M.R2=Ring((s+g)*2.55,1)
+		M.D={}
+		for i=1,3 do M.D[i]=D(C.T+4) end
+	elseif S=="Sharingan" then
+		local d=(s+g)*2.7
+		M.I=F(true) M.I.Size=UDim2.fromOffset(d,d) M.I.Position=UDim2.fromScale(.5,.5) M.I.BackgroundTransparency=.55
+		local st=Instance.new("UIStroke",M.I) st.Thickness=2 st.Color=C.Color
+		M.R=Ring(d*.62,1.5)
+		M.P=D(math.max(5,C.T+4))
+		M.T={}
+		for i=1,3 do
+			local h=F(false) h.Size=UDim2.fromOffset(1,1) h.BackgroundTransparency=1
+			local q=D(6,h)
+			local tail=F(true,h) tail.Size=UDim2.fromOffset(3,8) tail.Position=UDim2.fromOffset(4,3) tail.Rotation=40
+			M.T[i]=h
+		end
+	elseif S=="Manji" then
+		M.A={}
+		for i=1,4 do
+			local h=F(false) h.Size=UDim2.fromOffset(1,1) h.Position=UDim2.fromScale(.5,.5) h.BackgroundTransparency=1
+			local a=L(1,h,s+g) a.AnchorPoint=Vector2.new(0,.5)
+			local b=L(false,h,s*.75) b.Position=UDim2.fromOffset(s+g,s*.32)
+			h.Rotation=(i-1)*90
+			M.A[i]=h
+		end
+	elseif S=="Tech" then M.R=Ring((s+g)*1.35,1) M.A=orbit(4,g+s+4,s) M.Center=D()
+	elseif S=="Corners" then
+		M.C={}
+		for i=1,8 do M.C[i]=F(false) end
+	elseif S=="Nova" then
+		M.A=orbit(8,g+s+2,s*.75)
+		M.R=Ring((s+g)*1.1,1)
+		M.Center=D()
+	elseif S=="Halo" then
+		M.R1=Ring((s+g)*2)
+		M.R2=Ring((s+g)*3,1)
+		M.R3=Ring((s+g)*4,.75)
+		M.Center=D()
+	elseif S=="Flower" then
+		M.D={}
+		for i=1,6 do M.D[i]=D(math.max(4,C.T+3)) end
+		M.Center=D(C.T+3)
+	elseif S=="Radar" then
+		M.R1=Ring((s+g)*2,1)
+		M.R2=Ring((s+g)*3,1)
+		M.A=orbit(1,0,(s+g)*3)
+	elseif S=="Helix" then
+		M.D={}
+		for i=1,8 do M.D[i]=D(math.max(3,C.T+2)) end
+	end
+	paint(C.Color)
+end
+
+local old=PG:FindFirstChild("MirrorsCustomCrosshair")
+if old then old:Destroy() end
+
+V=Instance.new("ScreenGui")
+V.Name="MirrorsCustomCrosshair"
+V.IgnoreGuiInset=true
+V.ResetOnSpawn=false
+V.DisplayOrder=999
+V.Parent=PG
+
+R.RenderStepped:Connect(function()
+	if not C.ON then return end
+	local t=os.clock()*C.Speed
+	local S,s,g=C.S,C.Size,C.Gap
+	local col=C.RGB and Color3.fromHSV((t*.16)%1,1,1) or C.Color
+	paint(col)
+
+	if S=="Dynamic Cross" and M.L then
+		local d=g+4+(math.sin(t*5)*.5+.5)*12
+		M.L[1].Position=UDim2.new(.5,-d-s/2,.5,0) M.L[2].Position=UDim2.new(.5,d+s/2,.5,0)
+		M.L[3].Position=UDim2.new(.5,0,.5,-d-s/2) M.L[4].Position=UDim2.new(.5,0,.5,d+s/2)
+
+	elseif S=="Pulse" and M.R1 then
+		local p=(s+g)*2 local q=1+math.sin(t*5)*.2
+		M.R1.Size=UDim2.fromOffset(p*q,p*q)
+		M.R2.Size=UDim2.fromOffset(p*(1.4-q*.2),p*(1.4-q*.2))
+
+	elseif (S=="Spin" or S=="Tech" or S=="Nova" or S=="Manji") and M.A then
+		local speed=S=="Nova" and 75 or S=="Spin" and 110 or 55
+		for i,x in ipairs(M.A) do x.Rotation=t*speed+(i-1)*(360/#M.A) end
+		if M.R then M.R.Rotation=-t*speed*.5 end
+
+	elseif (S=="Orbit" or S=="RGB Ring") and M.D then
+		local rad=g+s+5
+		for i,x in ipairs(M.D) do
+			local a=math.rad(t*120+(i-1)*120)
+			x.Position=UDim2.new(.5,math.cos(a)*rad,.5,math.sin(a)*rad)
+		end
+
+	elseif S=="Sharingan" and M.T then
+		local d=(s+g)*2.7 local rad=d*.31
+		for i,x in ipairs(M.T) do
+			local a=t*42+(i-1)*120 local q=math.rad(a)
+			x.Position=UDim2.new(.5,math.cos(q)*rad,.5,math.sin(q)*rad)
+			x.Rotation=a+55
+		end
+		M.R.Rotation=-t*18
+
+	elseif S=="Corners" and M.C then
+		local d=g+s+math.sin(t*4)*3
+		local q={{-d,-d,s,C.T},{-d,-d,C.T,s},{d,-d,s,C.T},{d,-d,C.T,s},{-d,d,s,C.T},{-d,d,C.T,s},{d,d,s,C.T},{d,d,C.T,s}}
+		for i,x in ipairs(M.C) do x.Size=UDim2.fromOffset(q[i][3],q[i][4]) x.Position=UDim2.new(.5,q[i][1],.5,q[i][2]) end
+
+	elseif S=="Halo" and M.R1 then
+		local a=math.sin(t*3)
+		M.R1.Rotation=t*50
+		M.R2.Rotation=-t*35
+		M.R3.Rotation=t*20
+		M.R1.Size=UDim2.fromOffset((s+g)*2*(1+a*.08),(s+g)*2*(1+a*.08))
+
+	elseif S=="Flower" and M.D then
+		local rad=g+s
+		for i,x in ipairs(M.D) do
+			local a=math.rad(t*65+(i-1)*60)
+			local q=rad+math.sin(t*4+i)*2
+			x.Position=UDim2.new(.5,math.cos(a)*q,.5,math.sin(a)*q)
+		end
+
+	elseif S=="Radar" and M.A then
+		M.A[1].Rotation=t*130
+
+	elseif S=="Helix" and M.D then
+		for i,x in ipairs(M.D) do
+			local a=t*3+(i-1)*.7
+			local rad=g+s+math.sin(a)*6
+			local q=a*55
+			x.Position=UDim2.new(.5,math.cos(math.rad(q))*rad,.5,math.sin(math.rad(q))*rad)
+		end
+	end
+end)
+
+Misc:Toggle({
+	Title="Custom Crosshair",
+	Desc="Replace Flick crosshair",
+	Value=false,
+	Callback=function(v)
+		C.ON=v
+		original(not v)
+		build()
+	end
+})
+
+Misc:Dropdown({
+	Title="Crosshair Style",
+	Values=Styles,
+	Value="Cross",
+	Callback=function(v)
+		if type(v)=="table" then v=v.Title or v.Value end
+		if v then C.S=v build() end
+	end
+})
+
+Misc:Colorpicker({
+	Title="Crosshair Color",
+	Desc="Crosshair base color",
+	Default=Color3.fromRGB(255,255,255),
+	Locked=false,
+	Flag="flick_crosshair_color",
+	Callback=function(v)
+		C.Color=v
+		if not C.RGB then paint(v) end
+	end
+})
+
+Misc:Toggle({
+	Title="Rainbow Crosshair",
+	Desc="Animated RGB color",
+	Value=false,
+	Callback=function(v)
+		C.RGB=v
+		if not v then paint(C.Color) end
+	end
+})
+
+Misc:Slider({
+	Title="Crosshair Size",
+	Step=1,
+	Value={Min=3,Max=35,Default=10},
+	Callback=function(v) C.Size=v build() end
+})
+
+Misc:Slider({
+	Title="Crosshair Gap",
+	Step=1,
+	Value={Min=0,Max=25,Default=5},
+	Callback=function(v) C.Gap=v build() end
+})
+
+Misc:Slider({
+	Title="Crosshair Thickness",
+	Step=1,
+	Value={Min=1,Max=7,Default=2},
+	Callback=function(v) C.T=v build() end
+})
+
+Misc:Slider({
+	Title="Animation Speed",
+	Step=.1,
+	Value={Min=.1,Max=4,Default=1},
+	Callback=function(v) C.Speed=v end
+})
+
+PG.ChildAdded:Connect(function(x)
+	if x.Name=="GunOverlay" and C.ON then
+		task.delay(.1,function()original(false)end)
+	end
+end)
