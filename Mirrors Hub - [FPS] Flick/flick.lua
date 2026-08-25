@@ -5,6 +5,96 @@
 local WindUI = loadstring(game:HttpGet(
 	"https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
 ))()
+
+WindUI:AddTheme({
+	Name="Mirrors Purple",
+
+	Accent=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#2A0145"),Transparency=0},
+		["100"]={Color=Color3.fromHex("#1C002E"),Transparency=0}
+	},{Rotation=90}),
+
+	Background=Color3.fromHex("#0B0B0F"),
+	BackgroundTransparency=0.08,
+
+	Outline=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#A855F7"),Transparency=0.15},
+		["100"]={Color=Color3.fromHex("#6B21A8"),Transparency=0.35}
+	},{Rotation=0}),
+
+	Text=Color3.fromHex("#F8F5FF"),
+	Placeholder=Color3.fromHex("#8F8799"),
+
+	Button=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#3B0764"),Transparency=0},
+		["100"]={Color=Color3.fromHex("#24003D"),Transparency=0}
+	},{Rotation=90}),
+
+	Icon=Color3.fromHex("#C084FC"),
+	Hover=Color3.fromHex("#E9D5FF"),
+
+	WindowBackground=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#120818"),Transparency=0},
+		["100"]={Color=Color3.fromHex("#08080B"),Transparency=0}
+	},{Rotation=90}),
+
+	WindowShadow=Color3.fromHex("#000000"),
+
+	DialogBackground=Color3.fromHex("#120B17"),
+	DialogBackgroundTransparency=0.03,
+	DialogTitle=Color3.fromHex("#FFFFFF"),
+	DialogContent=Color3.fromHex("#CFC7D8"),
+	DialogIcon=Color3.fromHex("#C084FC"),
+
+	WindowTopbarButtonIcon=Color3.fromHex("#C084FC"),
+	WindowTopbarTitle=Color3.fromHex("#FFFFFF"),
+	WindowTopbarAuthor=Color3.fromHex("#AFA6B8"),
+	WindowTopbarIcon=Color3.fromHex("#D8B4FE"),
+
+	TabBackground=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#32114D"),Transparency=0.2},
+		["100"]={Color=Color3.fromHex("#1A0B24"),Transparency=0.35}
+	},{Rotation=90}),
+
+	TabTitle=Color3.fromHex("#F5EFFF"),
+	TabIcon=Color3.fromHex("#C084FC"),
+
+	ElementBackground=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#1A111F"),Transparency=0.08},
+		["100"]={Color=Color3.fromHex("#100C13"),Transparency=0.08}
+	},{Rotation=90}),
+
+	ElementTitle=Color3.fromHex("#FFFFFF"),
+	ElementDesc=Color3.fromHex("#A79DAC"),
+	ElementIcon=Color3.fromHex("#C084FC"),
+
+	PopupBackground=Color3.fromHex("#120B17"),
+	PopupBackgroundTransparency=0.02,
+	PopupTitle=Color3.fromHex("#FFFFFF"),
+	PopupContent=Color3.fromHex("#BDB4C7"),
+	PopupIcon=Color3.fromHex("#C084FC"),
+
+	Toggle=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#9333EA"),Transparency=0},
+		["100"]={Color=Color3.fromHex("#6B21A8"),Transparency=0}
+	},{Rotation=0}),
+
+	ToggleBar=Color3.fromHex("#FFFFFF"),
+
+	Checkbox=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#9333EA"),Transparency=0},
+		["100"]={Color=Color3.fromHex("#6B21A8"),Transparency=0}
+	},{Rotation=0}),
+
+	CheckboxIcon=Color3.fromHex("#FFFFFF"),
+
+	Slider=WindUI:Gradient({
+		["0"]={Color=Color3.fromHex("#A855F7"),Transparency=0},
+		["100"]={Color=Color3.fromHex("#7E22CE"),Transparency=0}
+	},{Rotation=0}),
+
+	SliderThumb=Color3.fromHex("#F3E8FF")
+})
 --==================================================
 -- SERVICES
 --==================================================
@@ -287,11 +377,11 @@ local Window = WindUI:CreateWindow({
 	MaxSize = Vector2.new(850, 560),
 	ToggleKey = Enum.KeyCode.K,
 	Transparent = true,
-	Theme = "Violet",
+	Theme = "Mirrors Purple",
 	Resizable = true,
 	SideBarWidth = 200,
 	BackgroundImageTransparency = 0.42,
-	HideSearchBar = true,
+	HideSearchBar = false,
 	ScrollBarEnabled = false,
 	KeySystem={
 		Title="Access Required",
@@ -372,35 +462,6 @@ Info:Paragraph({
 	Thumbnail = "rbxassetid://91587269886962",
 	ThumbnailSize = 70
 })
-Info:Paragraph({
-	Title = "Community",
-	Desc =
-		"Updates • Support • Bugs • Suggestions",
-	Image = "message-circle",
-	ImageSize = 22,
-	Buttons = {
-		{
-			Title = "Copy Discord",
-			Icon = "copy",
-			Callback = function()
-				local Copy =
-					setclipboard
-					or toclipboard
-				if not Copy then
-					return
-				end
-				Copy(
-					"https://discord.gg/YZEg6FyRSF"
-				)
-				WindUI:Notify({
-					Title = "Mirrors Hub",
-					Content = "Discord link copied.",
-					Duration = 3
-				})
-			end
-		}
-	}
-})
 --==================================================
 -- SERVER STATUS
 --==================================================
@@ -447,6 +508,52 @@ local function GetPing()
 	end
 	return 0
 end
+
+Info:Paragraph({
+	Title = "Community",
+	Desc =
+		"Updates • Support • Bugs • Suggestions",
+	Image = "message-circle",
+	ImageSize = 22,
+	Buttons = {
+		{
+			Title = "Copy Discord",
+			Icon = "copy",
+			Callback = function()
+				local Copy =
+					setclipboard
+					or toclipboard
+				if not Copy then
+					return
+				end
+				Copy(
+					"https://discord.gg/YZEg6FyRSF"
+				)
+				WindUI:Notify({
+					Title = "Mirrors Hub",
+					Content = "Discord link copied.",
+					Duration = 3
+				})
+			end
+		}
+	}
+})
+
+local KeyParagraph=Info:Paragraph({
+	Title="Key Information",
+	Desc="Loading...",
+	Icon="key-round"
+})
+
+local function UpdateKeyInfo()
+	KeyParagraph:SetDesc(string.format(
+		"Status: %s\nProvider: %s\nExpires: %s",
+		tostring(KeyInfo.Status or "Unknown"),
+		FormatProvider(KeyInfo.Provider),
+		RemainingTime(KeyInfo.ExpiresAt)
+	))
+end
+
 --==================================================
 -- MODULES
 --==================================================
@@ -2117,15 +2224,42 @@ Misc:Button({Title="Unload Script",Icon="power",Color=Color3.fromHex("EF4444"),C
 AddCleanup(function() if AntiAFKConnection then AntiAFKConnection:Disconnect() AntiAFKConnection=nil end end)
 
 Config:Section({Title="Interface",TextSize=18})
+
 local Themes={}
-local okThemes,themeTable=pcall(function() return WindUI:GetThemes() end)
-if okThemes and type(themeTable)=="table" then for name in pairs(themeTable) do table.insert(Themes,name) end end
-if #Themes==0 then Themes={"Violet","Dark","Light"} end
+local okThemes,themeTable=pcall(function()
+	return WindUI:GetThemes()
+end)
+
+if okThemes and type(themeTable)=="table" then
+	for name in pairs(themeTable) do
+		table.insert(Themes,name)
+	end
+end
+
+if #Themes==0 then
+	Themes={"Mirrors Purple","Violet","Dark","Light"}
+end
+
 table.sort(Themes)
-Config:Dropdown({Title="Theme",Values=Themes,SearchBarEnabled=true,Value=table.find(Themes,"Violet") and "Violet" or Themes[1],Flag="gui_theme",Callback=function(v)
-	if type(v)=="table" then v=v.Value or v.Title or v[1] end
-	if v then pcall(function() WindUI:SetTheme(v) end) end
-end})
+
+Config:Dropdown({
+	Title="Theme",
+	Values=Themes,
+	SearchBarEnabled=true,
+	Value=table.find(Themes,"Mirrors Purple") and "Mirrors Purple" or Themes[1],
+	Flag="gui_theme",
+	Callback=function(v)
+		if type(v)=="table" then
+			v=v.Value or v.Title or v[1]
+		end
+
+		if v then
+			pcall(function()
+				WindUI:SetTheme(v)
+			end)
+		end
+	end
+})
 Config:Slider({Title="UI Scale",Step=.05,Value={Min=.65,Max=1.25,Default=1},Flag="gui_scale",Callback=function(v) pcall(function() Window:SetUIScale(tonumber(v) or 1) end) end})
 Config:Slider({Title="Background Transparency",Step=.05,Value={Min=0,Max=1,Default=.42},Flag="gui_transparency",Callback=function(v)
 	v=tonumber(v) or .42 pcall(function() Window:SetBackgroundTransparency(v) end) pcall(function() Window:SetBackgroundImageTransparency(v) end)
