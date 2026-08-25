@@ -2093,24 +2093,72 @@ Runtime.Cleanup = function()
 end
 
 local RS=game:GetService("ReplicatedStorage")
-local Camera=workspace.CurrentCamera
+local RunService=game:GetService("RunService")
 
 local VM=require(RS.ModuleScripts.cj)
+
+local ORIGINAL_FOV=Camera.FieldOfView
 
 local V={
 	X=0,
 	Y=0,
 	Z=0,
+
+	RX=0,
+	RY=0,
+	RZ=0,
+
 	FOV=70
 }
 
+local Locked=true
+local GripBases=setmetatable({},{__mode="k"})
+local ToolConnection
+
 local function GetTool()
-	local p=game:GetService("Players").LocalPlayer
-	local c=p.Character
+	local c=LP.Character
 	return c and c:FindFirstChildOfClass("Tool")
 end
 
+local function GetGrip(tool)
+	local c=LP.Character
+	if not c or not tool then return end
+
+	for _,v in ipairs(c:GetDescendants()) do
+		if v:IsA("Motor6D")
+		and v.Name=="ToolGrip"
+		and v.Part1
+		and v.Part1:IsDescendantOf(tool) then
+			return v
+		end
+	end
+end
+
+local function UpdateRotation()
+	if not Locked then return end
+
+	local tool=GetTool()
+	if not tool then return end
+
+	local grip=GetGrip(tool)
+	if not grip then return end
+
+	if not GripBases[grip] then
+		GripBases[grip]=grip.C0
+	end
+
+	grip.C0=
+		GripBases[grip]
+		*CFrame.Angles(
+			math.rad(V.RX),
+			math.rad(V.RY),
+			math.rad(V.RZ)
+		)
+end
+
 local function UpdateView()
+	if not Locked then return end
+
 	local tool=GetTool()
 	if not tool then return end
 
@@ -2125,17 +2173,69 @@ local function UpdateView()
 		.08,
 		Enum.EasingStyle.Quad
 	)
+
+	UpdateRotation()
 end
+
+local function SetupTool(tool)
+	if ToolConnection then
+		ToolConnection:Disconnect()
+		ToolConnection=nil
+	end
+
+	task.delay(.1,UpdateView)
+
+	if tool then
+		ToolConnection=tool.Activated:Connect(function()
+			-- deixa a animação acontecer e restaura nossa config
+			task.delay(.45,UpdateView)
+		end)
+	end
+end
+
+--==================================================
+-- LOCK
+--==================================================
+
+RunService.RenderStepped:Connect(function()
+	if not Locked then return end
+
+	-- FOV fica realmente travado
+	if Camera.FieldOfView~=V.FOV then
+		Camera.FieldOfView=V.FOV
+	end
+
+	-- rotação também fica travada
+	UpdateRotation()
+end)
+
+local function SetupCharacter(c)
+	local tool=c:FindFirstChildOfClass("Tool")
+	if tool then SetupTool(tool) end
+
+	c.ChildAdded:Connect(function(v)
+		if v:IsA("Tool") then
+			SetupTool(v)
+		end
+	end)
+end
+
+if LP.Character then
+	SetupCharacter(LP.Character)
+end
+
+LP.CharacterAdded:Connect(SetupCharacter)
+
+--==================================================
+-- POSITION
+--==================================================
 
 Misc:Slider({
 	Title="ViewModel X",
 	Desc="Left / Right",
 	Step=.05,
-	Value={
-		Min=-5,
-		Max=5,
-		Default=0
-	},
+	Value={Min=-5,Max=5,Default=0},
+
 	Callback=function(v)
 		V.X=v
 		UpdateView()
@@ -2146,11 +2246,8 @@ Misc:Slider({
 	Title="ViewModel Y",
 	Desc="Up / Down",
 	Step=.05,
-	Value={
-		Min=-5,
-		Max=5,
-		Default=0
-	},
+	Value={Min=-5,Max=5,Default=0},
+
 	Callback=function(v)
 		V.Y=v
 		UpdateView()
@@ -2161,42 +2258,112 @@ Misc:Slider({
 	Title="ViewModel Z",
 	Desc="Forward / Back",
 	Step=.05,
-	Value={
-		Min=-10,
-		Max=10,
-		Default=0
-	},
+	Value={Min=-10,Max=10,Default=0},
+
 	Callback=function(v)
 		V.Z=v
 		UpdateView()
 	end
 })
 
+--==================================================
+-- ROTATION
+--==================================================
+
+Misc:Slider({
+	Title="Rotation X",
+	Desc="Pitch",
+	Step=1,
+	Value={Min=-180,Max=180,Default=0},
+
+	Callback=function(v)
+		V.RX=v
+		UpdateRotation()
+	end
+})
+
+Misc:Slider({
+	Title="Rotation Y",
+	Desc="Yaw",
+	Step=1,
+	Value={Min=-180,Max=180,Default=0},
+
+	Callback=function(v)
+		V.RY=v
+		UpdateRotation()
+	end
+})
+
+Misc:Slider({
+	Title="Rotation Z",
+	Desc="Roll",
+	Step=1,
+	Value={Min=-180,Max=180,Default=0},
+
+	Callback=function(v)
+		V.RZ=v
+		UpdateRotation()
+	end
+})
+
+--==================================================
+-- FOV
+--==================================================
+
 Misc:Slider({
 	Title="ViewModel FOV",
-	Desc="Camera FOV",
+	Desc="Locked Camera FOV",
 	Step=1,
+
 	Value={
 		Min=40,
-		Max=120,
+		Max=200,
 		Default=70
 	},
+
 	Callback=function(v)
 		V.FOV=v
 		Camera.FieldOfView=v
 	end
 })
 
+--==================================================
+-- RESET
+--==================================================
+
 Misc:Button({
 	Title="Reset ViewModel",
 	Icon="rotate-ccw",
-	Callback=function()
-		V.X=0
-		V.Y=0
-		V.Z=0
-		V.FOV=70
 
-		Camera.FieldOfView=70
-		UpdateView()
+	Callback=function()
+		Locked=false
+
+		V.X,V.Y,V.Z=0,0,0
+		V.RX,V.RY,V.RZ=0,0,0
+		V.FOV=ORIGINAL_FOV
+
+		for grip,base in pairs(GripBases) do
+			if grip and grip.Parent then
+				grip.C0=base
+			end
+		end
+
+		Camera.FieldOfView=ORIGINAL_FOV
+
+		local tool=GetTool()
+
+		if tool then
+			local base=tool:GetAttribute("ViewModelOffset")
+
+			if typeof(base)~="Vector3" then
+				base=Vector3.zero
+			end
+
+			VM:onViewModelOffsetChanged(
+				base,
+				.12,
+				Enum.EasingStyle.Quad
+			)
+		end
 	end
 })
