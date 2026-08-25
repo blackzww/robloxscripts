@@ -2523,7 +2523,6 @@ LP.CharacterAdded:Connect(function()
 end)
 
 
-local P=game:GetService("Players")
 local R=game:GetService("RunService")
 local LP=P.LocalPlayer
 local PG=LP:WaitForChild("PlayerGui")
@@ -2861,3 +2860,78 @@ PG.ChildAdded:Connect(function(x)
 		task.delay(.1,function()original(false)end)
 	end
 end)
+
+local P,W=game:GetService("Players"),workspace
+local Saved,Removed,Con={},{}
+
+local function char(o)
+	for _,p in ipairs(P:GetPlayers()) do
+		if p.Character and o:IsDescendantOf(p.Character) then return true end
+	end
+end
+
+local function protected(o)
+	if char(o) then return true end
+	local p=o
+	while p do
+		if p:IsA("Tool") or p.Name=="_MirrorsVisual" or p==W:FindFirstChild("ViewModel") then return true end
+		p=p.Parent
+	end
+end
+
+local function set(o,k,v)
+	Saved[o]=Saved[o] or {}
+	if Saved[o][k]==nil then pcall(function() Saved[o][k]=o[k] end) end
+	pcall(function() o[k]=v end)
+end
+
+local function flat(o)
+	if protected(o) then return end
+	if o:IsA("BasePart") then
+		set(o,"Material",Enum.Material.SmoothPlastic)
+		set(o,"MaterialVariant","")
+		set(o,"Reflectance",0)
+		set(o,"CastShadow",false)
+		if o:IsA("MeshPart") then set(o,"TextureID","") end
+	elseif o:IsA("SpecialMesh") then
+		set(o,"TextureId","")
+	elseif o:IsA("Decal") or o:IsA("Texture") then
+		set(o,"Transparency",1)
+	elseif o:IsA("SurfaceAppearance") then
+		if not Removed[o] then Removed[o]=o.Parent o.Parent=nil end
+	elseif o:IsA("ParticleEmitter") or o:IsA("Trail") or o:IsA("Beam")
+	or o:IsA("Smoke") or o:IsA("Fire") or o:IsA("Sparkles") then
+		set(o,"Enabled",false)
+	end
+end
+
+local function enable()
+	for i,o in ipairs(W:GetDescendants()) do
+		flat(o)
+		if i%700==0 then task.wait() end
+	end
+	Con=W.DescendantAdded:Connect(function(o) task.defer(flat,o) end)
+end
+
+local function disable()
+	if Con then Con:Disconnect() Con=nil end
+	for o,parent in pairs(Removed) do
+		if o and parent and parent.Parent then pcall(function() o.Parent=parent end) end
+	end
+	for o,t in pairs(Saved) do
+		if o and o.Parent then
+			for k,v in pairs(t) do pcall(function() o[k]=v end) end
+		end
+	end
+	table.clear(Removed)
+	table.clear(Saved)
+end
+
+Misc:Toggle({
+	Title="Performance Mode",
+	Desc="Removes map textures and effects",
+	Value=false,
+	Callback=function(v)
+		if v then enable() else disable() end
+	end
+})
