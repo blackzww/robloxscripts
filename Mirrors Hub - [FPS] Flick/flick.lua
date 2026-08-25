@@ -2367,3 +2367,157 @@ Misc:Button({
 		end
 	end
 })
+
+
+local P=game:GetService("Players")
+local R=game:GetService("RunService")
+local LP=P.LocalPlayer
+local Cam=workspace.CurrentCamera
+
+local ON=false
+local DIST=5000
+local SPEED=.12
+
+local objs={}
+local con
+
+local function clear()
+	if con then con:Disconnect() con=nil end
+	for _,v in pairs(objs) do
+		pcall(function()v:Destroy()end)
+	end
+	table.clear(objs)
+end
+
+local function muzzle()
+	local c=LP.Character
+	local t=c and c:FindFirstChildOfClass("Tool")
+	local m=t and t:FindFirstChild("Muz",true)
+	return m and m:IsA("BasePart") and m
+end
+
+local function beam(a,b,w,tr)
+	local x=Instance.new("Beam")
+	x.Attachment0=a
+	x.Attachment1=b
+	x.Width0=w
+	x.Width1=w
+	x.FaceCamera=true
+	x.LightEmission=1
+	x.LightInfluence=0
+	x.Transparency=NumberSequence.new(tr)
+	x.Parent=a.Parent
+	return x
+end
+
+local function start()
+	clear()
+	if not ON then return end
+
+	local m=muzzle()
+	if not m then return end
+
+	local a0=Instance.new("Attachment",m)
+	a0.Name="MirrorsLaser"
+
+	local loc=m:FindFirstChild("LOC")
+	if loc and loc:IsA("Attachment") then
+		a0.CFrame=loc.CFrame
+	end
+
+	local ep=Instance.new("Part",workspace)
+	ep.Size=Vector3.one*.01
+	ep.Transparency=1
+	ep.Anchored=true
+	ep.CanCollide=false
+	ep.CanTouch=false
+	ep.CanQuery=false
+
+	local a1=Instance.new("Attachment",ep)
+
+	local glow=beam(a0,a1,.09,.65)
+	local mid=beam(a0,a1,.045,.18)
+	local core=beam(a0,a1,.02,0)
+
+	local dot=Instance.new("Part",workspace)
+	dot.Shape=Enum.PartType.Ball
+	dot.Size=Vector3.one*.14
+	dot.Material=Enum.Material.Neon
+	dot.Anchored=true
+	dot.CanCollide=false
+	dot.CanTouch=false
+	dot.CanQuery=false
+
+	local halo=dot:Clone()
+	halo.Size=Vector3.one*.28
+	halo.Transparency=.6
+	halo.Parent=workspace
+
+	local light=Instance.new("PointLight",dot)
+	light.Brightness=3
+	light.Range=6
+
+	objs={a0,ep,dot,halo}
+	local lastM=m
+
+	con=R.RenderStepped:Connect(function()
+		if not ON then return clear() end
+
+		local nm=muzzle()
+		if nm~=lastM then return start() end
+
+		local rgb=Color3.fromHSV((os.clock()*SPEED)%1,1,1)
+		local white=rgb:Lerp(Color3.new(1,1,1),.7)
+
+		glow.Color=ColorSequence.new(rgb)
+		mid.Color=ColorSequence.new(rgb)
+		core.Color=ColorSequence.new(white)
+
+		dot.Color=white
+		halo.Color=rgb
+		light.Color=rgb
+
+		local s=Cam.ViewportSize
+		local ray=Cam:ViewportPointToRay(s.X/2,s.Y/2)
+
+		local rp=RaycastParams.new()
+		rp.FilterType=Enum.RaycastFilterType.Exclude
+		rp.FilterDescendantsInstances={LP.Character,ep,dot,halo}
+
+		local hit=workspace:Raycast(ray.Origin,ray.Direction*DIST,rp)
+
+		local pos=hit
+			and hit.Position+hit.Normal*.02
+			or ray.Origin+ray.Direction*DIST
+
+		ep.Position=pos
+		dot.Position=pos
+		halo.Position=pos
+
+		dot.Transparency=hit and 0 or 1
+		halo.Transparency=hit and .6 or 1
+		light.Enabled=hit~=nil
+
+		local pulse=1+math.sin(os.clock()*8)*.05
+		core.Width0=.02*pulse core.Width1=core.Width0
+		mid.Width0=.045*pulse mid.Width1=mid.Width0
+		glow.Width0=.09*pulse glow.Width1=glow.Width0
+	end)
+end
+
+Misc:Toggle({
+	Title="RGB Weapon Laser",
+	Desc="3D laser pointer",
+	Value=false,
+	Callback=function(v)
+		ON=v
+		if v then start() else clear() end
+	end
+})
+
+LP.CharacterAdded:Connect(function()
+	if ON then
+		task.wait(1)
+		start()
+	end
+end)
