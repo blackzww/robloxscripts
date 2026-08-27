@@ -450,17 +450,12 @@ local Window = WindUI:CreateWindow({
 
 Runtime.Window = Window
 
--- botão mobile/abrir ui
+-- botão pra abrir a ui
 Window:EditOpenButton({
 	Title = "Open Mirrors Hub - MM2",
-
 	Icon = "monitor",
 
-	CornerRadius = UDim.new(
-		0,
-		16
-	),
-
+	CornerRadius = UDim.new(0, 16),
 	StrokeThickness = 2,
 
 	Color = ColorSequence.new(
@@ -469,47 +464,25 @@ Window:EditOpenButton({
 	),
 
 	OnlyMobile = false,
-
 	Enabled = true,
 	Draggable = true
 })
 
 --// TABS
-local InfoTab = Window:Tab({
-	Title = "Info",
-	Icon = "info"
-})
-
-local MainTab = Window:Tab({
-	Title = "Main",
-	Icon = "house"
-})
-
-local VisualsTab = Window:Tab({
-	Title = "Visuals",
-	Icon = "eye"
-})
-
-local CombatTab = Window:Tab({
-	Title = "Combat",
-	Icon = "crosshair"
-})
-
-local PlayerTab = Window:Tab({
-	Title = "Player",
-	Icon = "user"
-})
-
-local SettingsTab = Window:Tab({
-	Title = "Settings",
-	Icon = "settings"
-})
+local InfoTab = Window:Tab({Title = "Info", Icon = "info"})
+local MainTab = Window:Tab({Title = "Main", Icon = "house"})
+local VisualsTab = Window:Tab({Title = "Visuals", Icon = "eye"})
+local CombatTab = Window:Tab({Title = "Combat", Icon = "crosshair"})
+local PlayerTab = Window:Tab({Title = "Player", Icon = "user"})
+local SettingsTab = Window:Tab({Title = "Settings", Icon = "settings"})
 
 --==================================================
--- INFO
+-- ROUND DATA
 --==================================================
 
--- infos da rodada
+-- salva as infos reais da rodada
+local RoundData = {}
+
 local RoundInfo = {
 	Status = "Lobby",
 	Mode = "Unknown",
@@ -522,21 +495,35 @@ local RoundInfo = {
 	Total = 0
 }
 
--- dados reais da rodada q vem do jogo
-local RoundData = {}
-
--- atualiza quantos players tão vivos
+-- atualiza quantos tão vivos
 local function UpdateRoundPlayers()
 	local alive = 0
 	local total = 0
 
-	for _, player in ipairs(
-		Players:GetPlayers()
-	) do
-		total += 1
+	-- se tiver rodada usa só quem tá nela
+	if next(RoundData) then
+		for playerName in pairs(RoundData) do
+			local player =
+				Players:FindFirstChild(playerName)
 
-		if player:GetAttribute("Alive") == true then
-			alive += 1
+			if player then
+				total += 1
+
+				if player:GetAttribute("Alive") == true then
+					alive += 1
+				end
+			end
+		end
+	else
+		-- no lobby mostra o server todo
+		for _, player in ipairs(
+			Players:GetPlayers()
+		) do
+			total += 1
+
+			if player:GetAttribute("Alive") == true then
+				alive += 1
+			end
 		end
 	end
 
@@ -544,7 +531,11 @@ local function UpdateRoundPlayers()
 	RoundInfo.Total = total
 end
 
--- texto das informações do script
+--==================================================
+-- INFO
+--==================================================
+
+-- texto das infos gerais
 local function GetInformationText()
 	return
 		"Script: Mirrors Hub | Murder Mystery 2\n" ..
@@ -567,7 +558,7 @@ local function GetInformationText()
 		.. game.JobId
 end
 
--- texto das informações da key
+-- texto da key
 local function GetKeyInformationText()
 	return
 		"Status: "
@@ -655,7 +646,7 @@ local function GetAccountText()
 		)
 end
 
--- informações gerais
+-- infos gerais
 local InformationParagraph = InfoTab:Paragraph({
 	Title = "Information",
 
@@ -668,7 +659,7 @@ local InformationParagraph = InfoTab:Paragraph({
 	Desc = GetInformationText()
 })
 
--- informações da key
+-- infos da key
 local KeyInformationParagraph = InfoTab:Paragraph({
 	Title = "Key Information",
 
@@ -681,7 +672,7 @@ local KeyInformationParagraph = InfoTab:Paragraph({
 	Desc = GetKeyInformationText()
 })
 
--- informações da rodada
+-- infos da rodada
 local RoundParagraph = InfoTab:Paragraph({
 	Title = "Round Information",
 
@@ -694,7 +685,7 @@ local RoundParagraph = InfoTab:Paragraph({
 	Desc = GetRoundText()
 })
 
--- informações da conta
+-- infos da conta
 local AccountParagraph = InfoTab:Paragraph({
 	Title = "Account Information",
 
@@ -710,7 +701,7 @@ local AccountParagraph = InfoTab:Paragraph({
 InfoTab:Space()
 
 -- copia o job id
-local CopyJobIdButton = InfoTab:Button({
+InfoTab:Button({
 	Title = "Copy Job ID",
 
 	Icon = "copy",
@@ -763,70 +754,45 @@ end)
 --==================================================
 
 local ESPEnabled = false
-
 local ShowOnlyMurderer = false
 local ShowOnlySheriff = false
 
 local ESPObjects = {}
 
+-- cores
 local RoleColors = {
-	Murderer = Color3.fromRGB(
-		134,
-		0,
-		217
-	), -- roxo mirrors 💜
+	Murderer = Color3.fromRGB(134, 0, 217),
+	Sheriff = Color3.fromRGB(0, 140, 255),
+	Innocent = Color3.fromRGB(60, 220, 100),
 
-	Sheriff = Color3.fromRGB(
-		0,
-		140,
-		255
-	),
-
-	Innocent = Color3.fromRGB(
-		60,
-		255,
-		100
-	),
-
-	Unknown = Color3.fromRGB(
-		150,
-		150,
-		150
-	),
-
-	Dead = Color3.fromRGB(
-		100,
-		100,
-		100
-	)
+	Unknown = Color3.fromRGB(150, 150, 150),
+	Dead = Color3.fromRGB(100, 100, 100)
 }
 
--- pega o estado atual
-local function GetPlayerState(player)
+-- pega o role/estado
+local function GetESPState(player)
 	if player:GetAttribute("Alive") == false then
 		return "Dead"
 	end
 
-	local info = RoundData[player.Name]
+	local data =
+		RoundData[player.Name]
 
-	if not info then
-		return "Unknown"
-	end
-
-	return info.Role or "Unknown"
+	return data
+		and data.Role
+		or "Unknown"
 end
 
--- decide se o player aparece
-local function ShouldShowPlayer(player)
-	if player == LP then
+-- vê se deve aparecer
+local function ShouldShowESP(player)
+	if player == LP
+		or not ESPEnabled
+	then
 		return false
 	end
 
-	if not ESPEnabled then
-		return false
-	end
-
-	local state = GetPlayerState(player)
+	local state =
+		GetESPState(player)
 
 	if ShowOnlyMurderer then
 		return state == "Murderer"
@@ -839,95 +805,97 @@ local function ShouldShowPlayer(player)
 	return true
 end
 
--- remove o esp
+-- remove
 local function RemoveESP(player)
-	local data = ESPObjects[player]
+	local data =
+		ESPObjects[player]
 
 	if not data then
 		return
 	end
 
-	if data.Highlight then
-		pcall(function()
-			data.Highlight:Destroy()
-		end)
-	end
+	pcall(function()
+		data.Highlight:Destroy()
+	end)
 
-	if data.Billboard then
-		pcall(function()
-			data.Billboard:Destroy()
-		end)
-	end
+	pcall(function()
+		data.Gui:Destroy()
+	end)
 
 	ESPObjects[player] = nil
 end
 
--- cria o esp
+-- cria
 local function CreateESP(player)
-	if player == LP then
-		return
-	end
-
-	local character = player.Character
-
-	if not character then
-		return
-	end
+	local character =
+		player.Character
 
 	local head =
-		character:FindFirstChild("Head")
+		character
+		and character:FindFirstChild("Head")
 
-	if not head then
+	if not character
+		or not head
+	then
 		return
 	end
 
 	RemoveESP(player)
 
-	-- highlight
 	local highlight =
 		Instance.new("Highlight")
 
-	highlight.Name = "MirrorsESP"
+	highlight.Name =
+		"MirrorsESP"
 
-	highlight.Adornee = character
+	highlight.Adornee =
+		character
 
 	highlight.DepthMode =
 		Enum.HighlightDepthMode.AlwaysOnTop
 
-	highlight.FillTransparency = 0.72
-	highlight.OutlineTransparency = 0
+	highlight.FillTransparency =
+		0.88
 
-	highlight.Parent = character
+	highlight.OutlineTransparency =
+		0
 
-	-- nome + role
-	local billboard =
+	highlight.Parent =
+		character
+
+	local gui =
 		Instance.new("BillboardGui")
 
-	billboard.Name = "MirrorsESPInfo"
+	gui.Name =
+		"MirrorsESPInfo"
 
-	billboard.Adornee = head
+	gui.Adornee =
+		head
 
-	billboard.AlwaysOnTop = true
-
-	billboard.Size =
+	gui.Size =
 		UDim2.fromOffset(
-			180,
-			45
+			190,
+			36
 		)
 
-	billboard.StudsOffset =
+	gui.StudsOffset =
 		Vector3.new(
 			0,
 			2.8,
 			0
 		)
 
-	billboard.Parent = head
+	gui.AlwaysOnTop =
+		true
+
+	gui.MaxDistance =
+		500
+
+	gui.Parent =
+		head
 
 	local text =
 		Instance.new("TextLabel")
-
-	text.Name = "Info"
 
 	text.Size =
 		UDim2.fromScale(
@@ -935,72 +903,102 @@ local function CreateESP(player)
 			1
 		)
 
-	text.BackgroundTransparency = 1
+	text.BackgroundTransparency =
+		1
 
 	text.Font =
 		Enum.Font.GothamBold
 
-	text.TextSize = 14
+	text.TextSize =
+		13
 
-	text.TextStrokeTransparency = 0.4
-	text.TextWrapped = true
+	text.TextStrokeTransparency =
+		0.35
 
-	text.Parent = billboard
+	text.Parent =
+		gui
 
 	ESPObjects[player] = {
 		Highlight = highlight,
-		Billboard = billboard,
+		Gui = gui,
 		Text = text
 	}
 end
 
--- atualiza um player
+-- atualiza
 local function UpdateESP(player)
-	if not ShouldShowPlayer(player) then
+	if not ShouldShowESP(player) then
 		RemoveESP(player)
 		return
 	end
 
-	local character = player.Character
+	local character =
+		player.Character
 
-	if not character then
-		RemoveESP(player)
-		return
-	end
+	local root =
+		character
+		and character:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
 	local head =
-		character:FindFirstChild("Head")
+		character
+		and character:FindFirstChild(
+			"Head"
+		)
 
-	if not head then
+	if not character
+		or not root
+		or not head
+	then
+		RemoveESP(player)
 		return
+	end
+
+	if not ESPObjects[player] then
+		CreateESP(player)
 	end
 
 	local data =
 		ESPObjects[player]
 
 	if not data then
-		CreateESP(player)
-
-		data =
-			ESPObjects[player]
-	end
-
-	if not data then
 		return
 	end
 
 	local state =
-		GetPlayerState(player)
+		GetESPState(player)
 
 	local color =
 		RoleColors[state]
 		or RoleColors.Unknown
 
-	-- atualiza caso respawne
+	local distance =
+		nil
+
+	local myCharacter =
+		LP.Character
+
+	local myRoot =
+		myCharacter
+		and myCharacter:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if myRoot then
+		distance =
+			math.floor(
+				(
+					root.Position
+					- myRoot.Position
+				).Magnitude
+			)
+	end
+
 	data.Highlight.Adornee =
 		character
 
-	data.Billboard.Adornee =
+	data.Gui.Adornee =
 		head
 
 	data.Highlight.FillColor =
@@ -1012,38 +1010,41 @@ local function UpdateESP(player)
 	data.Text.TextColor3 =
 		color
 
-	-- texto
+	local distanceText =
+		distance
+		and (
+			tostring(distance)
+			.. " studs"
+		)
+		or "--"
+
 	if state == "Unknown" then
 		data.Text.Text =
 			player.DisplayName
-
-	elseif state == "Dead" then
-		data.Text.Text =
-			player.DisplayName
-			.. "\n[Dead]"
-
+			.. " • "
+			.. distanceText
 	else
 		data.Text.Text =
 			player.DisplayName
-			.. "\n["
+			.. " ["
 			.. state
-			.. "]"
+			.. "] • "
+			.. distanceText
 	end
 
 	-- morto fica mais apagado
 	if state == "Dead" then
 		data.Highlight.FillTransparency =
-			0.9
+			0.95
 
 		data.Highlight.OutlineTransparency =
 			0.45
 
 		data.Text.TextTransparency =
-			0.45
-
+			0.4
 	else
 		data.Highlight.FillTransparency =
-			0.72
+			0.88
 
 		data.Highlight.OutlineTransparency =
 			0
@@ -1062,13 +1063,41 @@ local function UpdateAllESP()
 	end
 end
 
---// ESP TOGGLES
+-- remove tudo
+local function RemoveAllESP()
+	local list = {}
 
--- liga/desliga tudo
-local ESPToggle = VisualsTab:Toggle({
+	for player in pairs(
+		ESPObjects
+	) do
+		table.insert(
+			list,
+			player
+		)
+	end
+
+	for _, player in ipairs(list) do
+		RemoveESP(player)
+	end
+end
+
+--// ESP UI
+
+VisualsTab:Paragraph({
 	Title = "Role ESP",
+	Desc = "Shows player roles and distance through walls.",
 
-	Desc = "Shows player roles through walls",
+	Color = Color3.fromRGB(
+		134,
+		0,
+		217
+	)
+})
+
+-- liga/desliga
+VisualsTab:Toggle({
+	Title = "Enable ESP",
+	Desc = "Shows players through walls",
 
 	Default = false,
 
@@ -1078,69 +1107,61 @@ local ESPToggle = VisualsTab:Toggle({
 		if value then
 			UpdateAllESP()
 		else
-			local playersToRemove = {}
-
-			for player in pairs(
-				ESPObjects
-			) do
-				table.insert(
-					playersToRemove,
-					player
-				)
-			end
-
-			for _, player in ipairs(
-				playersToRemove
-			) do
-				RemoveESP(player)
-			end
+			RemoveAllESP()
 		end
 	end
 })
 
--- mostra só murderer
-local MurdererOnlyToggle =
-	VisualsTab:Toggle({
-		Title = "Murderer Only",
+-- só murderer
+VisualsTab:Toggle({
+	Title = "Murderer Only",
+	Desc = "Only shows the Murderer",
 
-		Desc = "Shows only the Murderer",
+	Default = false,
 
-		Default = false,
+	Callback = function(value)
+		ShowOnlyMurderer = value
 
-		Callback = function(value)
-			ShowOnlyMurderer = value
-
-			if value then
-				ShowOnlySheriff = false
-			end
-
-			if ESPEnabled then
-				UpdateAllESP()
-			end
+		if value then
+			ShowOnlySheriff = false
 		end
-	})
 
--- mostra só sheriff
-local SheriffOnlyToggle =
-	VisualsTab:Toggle({
-		Title = "Sheriff Only",
-
-		Desc = "Shows only the Sheriff",
-
-		Default = false,
-
-		Callback = function(value)
-			ShowOnlySheriff = value
-
-			if value then
-				ShowOnlyMurderer = false
-			end
-
-			if ESPEnabled then
-				UpdateAllESP()
-			end
+		if ESPEnabled then
+			UpdateAllESP()
 		end
-	})
+	end
+})
+
+-- só sheriff
+VisualsTab:Toggle({
+	Title = "Sheriff Only",
+	Desc = "Only shows the Sheriff",
+
+	Default = false,
+
+	Callback = function(value)
+		ShowOnlySheriff = value
+
+		if value then
+			ShowOnlyMurderer = false
+		end
+
+		if ESPEnabled then
+			UpdateAllESP()
+		end
+	end
+})
+
+-- só atualiza distância/posição
+task.spawn(function()
+	while Runtime.Alive do
+		if ESPEnabled then
+			UpdateAllESP()
+		end
+
+		task.wait(0.25)
+	end
+end)
 
 --==================================================
 -- ROUND EVENTS
@@ -1150,7 +1171,8 @@ local SheriffOnlyToggle =
 AddConnection(
 	Gameplay.LoadingMap.OnClientEvent:Connect(
 		function(mode)
-			RoundInfo.Status = "Loading"
+			RoundInfo.Status =
+				"Loading"
 
 			RoundInfo.Mode =
 				tostring(
@@ -1158,11 +1180,18 @@ AddConnection(
 					or "Unknown"
 				)
 
-			RoundInfo.Murderer = "Unknown"
-			RoundInfo.Sheriff = "Unknown"
-			RoundInfo.YourRole = "Unknown"
+			RoundInfo.Murderer =
+				"Unknown"
 
-			table.clear(RoundData)
+			RoundInfo.Sheriff =
+				"Unknown"
+
+			RoundInfo.YourRole =
+				"Unknown"
+
+			table.clear(
+				RoundData
+			)
 
 			UpdateRoundPlayers()
 
@@ -1181,9 +1210,12 @@ AddConnection(
 				return
 			end
 
-			table.clear(RoundData)
+			table.clear(
+				RoundData
+			)
 
-			RoundInfo.Status = "Playing"
+			RoundInfo.Status =
+				"Playing"
 
 			RoundInfo.Murderer =
 				"Unknown"
@@ -1236,7 +1268,7 @@ AddConnection(
 	)
 )
 
--- pega seu role pelo roleselect tbm
+-- pega nosso role tbm
 AddConnection(
 	Gameplay.RoleSelect.OnClientEvent:Connect(
 		function(role)
@@ -1256,13 +1288,14 @@ AddConnection(
 			RoundInfo.Status =
 				"Finished"
 
-			table.clear(RoundData)
+			table.clear(
+				RoundData
+			)
 
 			if ESPEnabled then
 				UpdateAllESP()
 			end
 
-			-- volta pro estado de lobby dps
 			task.delay(3, function()
 				if not Runtime.Alive then
 					return
@@ -1297,10 +1330,9 @@ AddConnection(
 -- PLAYER EVENTS
 --==================================================
 
-
 -- configura cada player
 local function SetupPlayer(player)
-	-- atualiza quando morre/revive
+	-- morreu/reviveu
 	AddConnection(
 		player:GetAttributeChangedSignal(
 			"Alive"
@@ -1313,13 +1345,13 @@ local function SetupPlayer(player)
 		end)
 	)
 
-	-- atualiza quando respawna
+	-- respawn
 	AddConnection(
 		player.CharacterAdded:Connect(
 			function()
-				task.wait(0.25)
-
 				RemoveESP(player)
+
+				task.wait(0.2)
 
 				if ESPEnabled then
 					UpdateESP(player)
@@ -1336,7 +1368,7 @@ for _, player in ipairs(
 	SetupPlayer(player)
 end
 
--- player entrou
+-- entrou
 AddConnection(
 	Players.PlayerAdded:Connect(
 		function(player)
@@ -1344,7 +1376,7 @@ AddConnection(
 
 			UpdateRoundPlayers()
 
-			task.wait(0.25)
+			task.wait(0.2)
 
 			if ESPEnabled then
 				UpdateESP(player)
@@ -1353,11 +1385,12 @@ AddConnection(
 	)
 )
 
--- player saiu
+-- saiu
 AddConnection(
 	Players.PlayerRemoving:Connect(
 		function(player)
-			RoundData[player.Name] = nil
+			RoundData[player.Name] =
+				nil
 
 			RemoveESP(player)
 
@@ -1369,26 +1402,14 @@ AddConnection(
 )
 
 --==================================================
--- CLEANUP DO ESP
+-- CLEANUP
 --==================================================
 
 AddCleanup(function()
-	local playersToRemove = {}
+	RemoveAllESP()
 
-	for player in pairs(
-		ESPObjects
-	) do
-		table.insert(
-			playersToRemove,
-			player
-		)
-	end
-
-	for _, player in ipairs(
-		playersToRemove
-	) do
-		RemoveESP(player)
-	end
-
-	table.clear(RoundData)
+	table.clear(
+		RoundData
+	)
 end)
+
