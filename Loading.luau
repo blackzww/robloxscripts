@@ -9,70 +9,75 @@ local PG = P:WaitForChild("PlayerGui")
 -- CONFIG
 --==================================================
 
-local C = {
-	W = 633,
-	H = 368,
+local W,H = 633,368
+local LOAD_TIME = 15
+local FADE_IN = 1.3
+local FADE_OUT = 1
 
-	LoadTime = 15,
-	FadeIn = 1.35,
-	FadeOut = 1.05,
-
-	Purple = Color3.fromRGB(145,70,255),
-	Light = Color3.fromRGB(215,110,255),
-
-	Blur = 12
-}
-
+local PURPLE = Color3.fromRGB(145,70,255)
+local LIGHT = Color3.fromRGB(215,110,255)
 local STAR = utf8.char(0x2726) -- ✦
 
 --==================================================
 -- CLEAN
 --==================================================
 
-for _,v in ipairs({
+for _,o in ipairs({
 	PG:FindFirstChild("MirrorsWelcome"),
 	Lighting:FindFirstChild("MirrorsWelcomeBlur")
 }) do
-	if v then v:Destroy() end
+	if o then o:Destroy() end
 end
 
 --==================================================
 -- HELPERS
 --==================================================
 
-local function New(class,p,parent)
-	local o = Instance.new(class)
+local function New(c,p,parent)
+	local o = Instance.new(c)
+
 	for k,v in pairs(p or {}) do
-		pcall(function() o[k] = v end)
+		pcall(function()
+			o[k] = v
+		end)
 	end
+
 	o.Parent = parent
 	return o
 end
 
 local function Round(o,r)
 	return New("UICorner",{
-		CornerRadius = r == true and UDim.new(1,0) or UDim.new(0,r)
+		CornerRadius = r == true
+			and UDim.new(1,0)
+			or UDim.new(0,r)
 	},o)
 end
 
-local function Tween(o,t,p,style,dir,repeatCount)
-	local x = TweenService:Create(o,TweenInfo.new(
-		t,
-		style or Enum.EasingStyle.Quart,
-		dir or Enum.EasingDirection.Out,
-		repeatCount or 0
-	),p)
+local function Tw(o,t,p,style,dir,repeatCount,reverses)
+	local x = TweenService:Create(
+		o,
+		TweenInfo.new(
+			t,
+			style or Enum.EasingStyle.Quart,
+			dir or Enum.EasingDirection.Out,
+			repeatCount or 0,
+			reverses or false
+		),
+		p
+	)
 
 	x:Play()
 	return x
 end
 
-local function Gradient(o,colors,rot)
+local function Grad(o,colors,rot)
 	local k = {}
 
 	for i,c in ipairs(colors) do
 		k[i] = ColorSequenceKeypoint.new(
-			(i-1)/(#colors-1),c
+			(i-1)/(#colors-1),
+			c
 		)
 	end
 
@@ -98,7 +103,7 @@ pcall(function()
 end)
 
 --==================================================
--- GUI
+-- ROOT
 --==================================================
 
 local Blur = New("BlurEffect",{
@@ -121,29 +126,28 @@ local Overlay = New("Frame",{
 	BorderSizePixel = 0
 },Gui)
 
---==================================================
--- CONTAINER
---==================================================
-
 local Container = New("Frame",{
 	AnchorPoint = Vector2.new(.5,.5),
 	Position = UDim2.fromScale(.5,.5),
-	Size = UDim2.fromOffset(C.W,C.H),
+	Size = UDim2.fromOffset(W,H),
 	BackgroundTransparency = 1
 },Overlay)
 
-local Scale = New("UIScale",{Scale=1},Container)
+--==================================================
+-- RESPONSIVE
+--==================================================
 
+local Scale = New("UIScale",{Scale=1},Container)
 local Camera = workspace.CurrentCamera
 
 local function Resize()
 	if not Camera then return end
 
-	local s = Camera.ViewportSize
+	local v = Camera.ViewportSize
 
-	Scale.Scale = math.max(.45,math.min(
-		(s.X-26)/C.W,
-		(s.Y-26)/C.H,
+	Scale.Scale = math.max(.4,math.min(
+		(v.X-30)/W,
+		(v.Y-30)/H,
 		1
 	))
 end
@@ -153,55 +157,54 @@ Resize()
 local RC = Camera:GetPropertyChangedSignal("ViewportSize"):Connect(Resize)
 
 --==================================================
--- GLOW EXTERNO
---==================================================
-
-local Glow = New("Frame",{
-	AnchorPoint = Vector2.new(.5,.5),
-	Position = UDim2.fromScale(.5,.5),
-	Size = UDim2.new(1,10,1,10),
-
-	BackgroundTransparency = 1,
-	ZIndex = 1
-},Container)
-
-Round(Glow,27)
-
-local GlowStroke = New("UIStroke",{
-	Thickness = 12,
-	Color = C.Purple,
-	Transparency = .78
-},Glow)
-
--- glow respirando
-local GlowTween = Tween(
-	GlowStroke,
-	2.1,
-	{Transparency=.91},
-	Enum.EasingStyle.Sine,
-	Enum.EasingDirection.InOut,
-	-1
-)
-
-GlowTween.Reverses = true
-
---==================================================
 -- SHADOW
 --==================================================
 
 local Shadow = New("Frame",{
 	AnchorPoint = Vector2.new(.5,.5),
 	Position = UDim2.new(.5,0,.5,10),
-	Size = UDim2.new(1,6,1,6),
+	Size = UDim2.new(1,8,1,8),
 
 	BackgroundColor3 = Color3.new(),
-	BackgroundTransparency = .62,
+	BackgroundTransparency = .65,
 
 	BorderSizePixel = 0,
+	ZIndex = 1
+},Container)
+
+Round(Shadow,28)
+
+--==================================================
+-- GLOW EXTERNO
+--==================================================
+
+local Glow = New("Frame",{
+	AnchorPoint = Vector2.new(.5,.5),
+	Position = UDim2.fromScale(.5,.5),
+	Size = UDim2.new(1,7,1,7),
+
+	BackgroundTransparency = 1,
 	ZIndex = 2
 },Container)
 
-Round(Shadow,27)
+Round(Glow,27)
+
+local GlowStroke = New("UIStroke",{
+	Thickness = 11,
+	Color = PURPLE,
+	Transparency = .82
+},Glow)
+
+-- PULSO CORRETO
+Tw(
+	GlowStroke,
+	2.2,
+	{Transparency=.94},
+	Enum.EasingStyle.Sine,
+	Enum.EasingDirection.InOut,
+	-1,
+	true
+)
 
 --==================================================
 -- CARD
@@ -210,8 +213,8 @@ Round(Shadow,27)
 local Card = New("Frame",{
 	Size = UDim2.fromScale(1,1),
 
-	BackgroundColor3 = Color3.fromRGB(33,33,40),
-	BackgroundTransparency = .08,
+	BackgroundColor3 = Color3.fromRGB(32,32,39),
+	BackgroundTransparency = .07,
 
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
@@ -221,24 +224,24 @@ local Card = New("Frame",{
 
 Round(Card,24)
 
-Gradient(Card,{
-	Color3.fromRGB(57,57,66),
-	Color3.fromRGB(42,42,49),
+Grad(Card,{
+	Color3.fromRGB(56,56,65),
+	Color3.fromRGB(40,40,47),
 	Color3.fromRGB(27,27,33),
 	Color3.fromRGB(17,17,22)
 },135)
 
-local CardStroke = New("UIStroke",{
+local Border = New("UIStroke",{
 	Thickness = 4,
-	Color = C.Purple,
+	Color = PURPLE,
 	Transparency = .04
 },Card)
 
-Gradient(CardStroke,{
+Grad(Border,{
 	Color3.fromRGB(100,50,255),
-	C.Light,
-	Color3.fromRGB(115,55,255)
-},30)
+	LIGHT,
+	Color3.fromRGB(110,55,255)
+},35)
 
 --==================================================
 -- CÍRCULO DE BOLINHAS
@@ -248,20 +251,18 @@ local Ring = New("Frame",{
 	AnchorPoint = Vector2.new(.5,.5),
 	Position = UDim2.fromScale(.5,.5),
 
-	Size = UDim2.fromOffset(35,35),
+	Size = UDim2.fromOffset(30,30),
 
 	BackgroundTransparency = 1,
-	Rotation = 0,
-
 	ZIndex = 4
 },Card)
 
 local Dots = {}
 
-for i=1,36 do
-	local a = math.rad((i-1)*(360/36))
+for i=1,40 do
+	local a = math.rad((i-1)*9)
 
-	local dot = New("Frame",{
+	local Dot = New("Frame",{
 		AnchorPoint = Vector2.new(.5,.5),
 
 		Position = UDim2.fromScale(
@@ -272,57 +273,56 @@ for i=1,36 do
 		Size = UDim2.fromOffset(4,4),
 
 		BackgroundColor3 = Color3.new(1,1,1),
-		BackgroundTransparency = .67,
+		BackgroundTransparency = .68,
 
 		BorderSizePixel = 0,
-
 		ZIndex = 4
 	},Ring)
 
-	Round(dot,true)
-	table.insert(Dots,dot)
+	Round(Dot,true)
+
+	Dots[#Dots+1] = Dot
 end
 
 --==================================================
 -- AVATAR GLOW
 --==================================================
 
-local AvatarGlow = New("Frame",{
+local AG = New("Frame",{
 	AnchorPoint = Vector2.new(.5,.5),
 
 	Position = UDim2.fromOffset(104,102),
 
-	Size = UDim2.fromOffset(136,136),
+	Size = UDim2.fromOffset(137,137),
 
 	BackgroundTransparency = 1,
 
 	ZIndex = 5
 },Card)
 
-Round(AvatarGlow,true)
+Round(AG,true)
 
 local AGStroke = New("UIStroke",{
-	Thickness = 11,
-	Color = C.Purple,
-	Transparency = .76
-},AvatarGlow)
+	Thickness = 10,
+	Color = PURPLE,
+	Transparency = .78
+},AG)
 
-local AGTween = Tween(
+Tw(
 	AGStroke,
 	1.8,
-	{Transparency=.9},
+	{Transparency=.92},
 	Enum.EasingStyle.Sine,
 	Enum.EasingDirection.InOut,
-	-1
+	-1,
+	true
 )
-
-AGTween.Reverses = true
 
 --==================================================
 -- AVATAR
 --==================================================
 
-local AvatarHolder = New("Frame",{
+local AH = New("Frame",{
 	Position = UDim2.fromOffset(43,41),
 	Size = UDim2.fromOffset(122,122),
 
@@ -330,59 +330,56 @@ local AvatarHolder = New("Frame",{
 	BorderSizePixel = 0,
 
 	ClipsDescendants = true,
-
 	ZIndex = 7
 },Card)
 
-Round(AvatarHolder,true)
+Round(AH,true)
 
-local AvatarStroke = New("UIStroke",{
+local AS = New("UIStroke",{
 	Thickness = 4,
-	Color = C.Purple,
-	Transparency = 0
-},AvatarHolder)
+	Color = PURPLE
+},AH)
 
-Gradient(AvatarStroke,{
+Grad(AS,{
 	Color3.fromRGB(100,50,255),
-	C.Light,
+	LIGHT,
 	Color3.fromRGB(110,55,255)
 },45)
 
 local Fallback = New("TextLabel",{
 	Size = UDim2.fromScale(1,1),
-
 	BackgroundTransparency = 1,
 
 	Text = P.Name:sub(1,1):upper(),
 
-	TextColor3 = C.Light,
+	TextColor3 = LIGHT,
 
 	Font = Enum.Font.GothamBold,
-	TextSize = 45,
+	TextSize = 44,
 
 	ZIndex = 7
-},AvatarHolder)
+},AH)
 
 local Avatar = New("ImageLabel",{
 	AnchorPoint = Vector2.new(.5,.5),
 	Position = UDim2.fromScale(.5,.5),
 
-	-- padding garante personagem TODO dentro do aro
 	Size = UDim2.new(1,-12,1,-12),
 
 	BackgroundTransparency = 1,
 
 	Image = "",
+
+	-- personagem inteiro
 	ScaleType = Enum.ScaleType.Fit,
 
 	ZIndex = 8
-},AvatarHolder)
+},AH)
 
-Round(Avatar,true)
-
--- AvatarThumbnail = personagem INTEIRO
+-- personagem TODO dentro do aro
 task.spawn(function()
 	for i=1,5 do
+
 		if not Gui.Parent then return end
 
 		local ok,img,ready = pcall(function()
@@ -399,15 +396,15 @@ task.spawn(function()
 			return
 		end
 
-		task.wait(.3*i)
+		task.wait(.25*i)
 	end
 end)
 
 --==================================================
--- TEXTO
+-- TEXT
 --==================================================
 
-local function Text(pos,size,value,font,textSize,color,align,z)
+local function Text(pos,size,value,font,textSize,color,align,parent)
 	return New("TextLabel",{
 		Position = pos,
 		Size = size,
@@ -423,8 +420,8 @@ local function Text(pos,size,value,font,textSize,color,align,z)
 		Font = font,
 		TextSize = textSize,
 
-		ZIndex = z or 7
-	},Card)
+		ZIndex = 7
+	},parent or Card)
 end
 
 Text(
@@ -440,7 +437,7 @@ Text(
 	Enum.TextXAlignment.Left
 )
 
-local User = Text(
+local Username = Text(
 	UDim2.fromOffset(187,84),
 	UDim2.fromOffset(400,36),
 
@@ -449,11 +446,11 @@ local User = Text(
 	Enum.Font.GothamBold,
 	27,
 
-	C.Light,
+	LIGHT,
 	Enum.TextXAlignment.Left
 )
 
-User.TextTruncate = Enum.TextTruncate.AtEnd
+Username.TextTruncate = Enum.TextTruncate.AtEnd
 
 Text(
 	UDim2.fromOffset(187,122),
@@ -469,10 +466,10 @@ Text(
 )
 
 --==================================================
--- SEGUNDA ESTRELA
+-- ESTRELAS ✦
 --==================================================
 
-local function Star(parent,pos,size,z)
+local function Star(parent,pos,size)
 	local s = New("TextLabel",{
 		AnchorPoint = Vector2.new(.5,.5),
 		Position = pos,
@@ -482,17 +479,17 @@ local function Star(parent,pos,size,z)
 
 		Text = STAR,
 
-		TextColor3 = C.Light,
+		TextColor3 = LIGHT,
 
 		Font = Enum.Font.ArialBold,
 		TextSize = size,
 
-		ZIndex = z or 8
+		ZIndex = 9
 	},parent)
 
-	Tween(
+	Tw(
 		s,
-		9,
+		10,
 		{Rotation=360},
 		Enum.EasingStyle.Linear,
 		Enum.EasingDirection.Out,
@@ -504,9 +501,8 @@ end
 
 Star(
 	Card,
-	UDim2.new(1,-34,0,30),
-	18,
-	8
+	UDim2.new(1,-31,0,28),
+	17
 )
 
 --==================================================
@@ -517,11 +513,10 @@ New("Frame",{
 	Position = UDim2.fromOffset(31,180),
 	Size = UDim2.new(1,-62,0,1),
 
-	BackgroundColor3 = C.Purple,
-	BackgroundTransparency = .58,
+	BackgroundColor3 = PURPLE,
+	BackgroundTransparency = .6,
 
 	BorderSizePixel = 0,
-
 	ZIndex = 7
 },Card)
 
@@ -538,7 +533,7 @@ local Loading = Text(
 	Enum.Font.GothamMedium,
 	17,
 
-	C.Light
+	LIGHT
 )
 
 local Bar = New("Frame",{
@@ -549,7 +544,6 @@ local Bar = New("Frame",{
 	BorderSizePixel = 0,
 
 	ClipsDescendants = true,
-
 	ZIndex = 7
 },Card)
 
@@ -564,35 +558,33 @@ New("UIStroke",{
 local Fill = New("Frame",{
 	Size = UDim2.fromScale(0,1),
 
-	BackgroundColor3 = C.Purple,
+	BackgroundColor3 = PURPLE,
 	BorderSizePixel = 0,
 
 	ClipsDescendants = true,
-
 	ZIndex = 8
 },Bar)
 
 Round(Fill,true)
 
-Gradient(Fill,{
+Grad(Fill,{
 	Color3.fromRGB(90,40,255),
 	Color3.fromRGB(150,65,255),
 	Color3.fromRGB(230,110,255)
 })
 
 --==================================================
--- SHIMMER CLEAN
+-- SHIMMER
 --==================================================
 
 local Shimmer = New("Frame",{
 	AnchorPoint = Vector2.new(.5,.5),
 
 	Position = UDim2.new(-.2,0,.5,0),
-
 	Size = UDim2.fromOffset(45,50),
 
 	BackgroundColor3 = Color3.new(1,1,1),
-	BackgroundTransparency = .78,
+	BackgroundTransparency = .79,
 
 	BorderSizePixel = 0,
 	Rotation = 18,
@@ -600,7 +592,7 @@ local Shimmer = New("Frame",{
 	ZIndex = 9
 },Fill)
 
-local ShimmerTween = Tween(
+Tw(
 	Shimmer,
 	1.7,
 	{Position=UDim2.new(1.2,0,.5,0)},
@@ -618,7 +610,7 @@ local Percent = Text(
 	Enum.Font.GothamMedium,
 	18,
 
-	C.Light,
+	LIGHT,
 	Enum.TextXAlignment.Left
 )
 
@@ -626,150 +618,159 @@ local Percent = Text(
 -- MESSAGE BOX
 --==================================================
 
-local MessageBox = New("Frame",{
+local Box = New("Frame",{
 	Position = UDim2.fromOffset(74,294),
 	Size = UDim2.fromOffset(485,43),
 
-	BackgroundColor3 = Color3.fromRGB(26,26,32),
-	BackgroundTransparency = .23,
+	BackgroundColor3 = Color3.fromRGB(27,27,33),
+	BackgroundTransparency = .22,
 
 	BorderSizePixel = 0,
-
 	ZIndex = 7
 },Card)
 
-Round(MessageBox,12)
+Round(Box,12)
 
-Gradient(MessageBox,{
-	Color3.fromRGB(52,52,60),
+Grad(Box,{
+	Color3.fromRGB(49,49,57),
 	Color3.fromRGB(31,31,38),
-	Color3.fromRGB(20,20,25)
+	Color3.fromRGB(21,21,26)
 },115)
 
 New("UIStroke",{
 	Thickness = 1,
-	Color = C.Purple,
-	Transparency = .72
-},MessageBox)
+	Color = PURPLE,
+	Transparency = .7
+},Box)
 
-local MessageStar = Star(
-	MessageBox,
-	UDim2.fromOffset(27,21),
-	17,
-	9
+Star(
+	Box,
+	UDim2.fromOffset(25,21),
+	16
 )
 
-local Message = New("TextLabel",{
-	Position = UDim2.fromOffset(49,0),
-	Size = UDim2.new(1,-60,1,0),
+local Message = Text(
+	UDim2.fromOffset(47,0),
+	UDim2.new(1,-58,1,0),
 
-	BackgroundTransparency = 1,
+	"Obrigado por utilizar o meu script!",
 
-	Text = "Obrigado por utilizar o meu script!",
-	TextColor3 = Color3.fromRGB(215,215,223),
+	Enum.Font.Gotham,
+	16,
 
-	TextXAlignment = Enum.TextXAlignment.Left,
+	Color3.fromRGB(215,215,223),
+	Enum.TextXAlignment.Left,
 
-	Font = Enum.Font.Gotham,
-	TextSize = 16,
-
-	ZIndex = 8
-},MessageBox)
+	Box
+)
 
 local Messages = {
 	"Obrigado por utilizar o meu script!",
 	"Preparando a interface...",
 	"Carregando recursos...",
-	"Finalizando tudo..."
+	"Quase tudo pronto..."
 }
 
 --==================================================
--- FADE SYSTEM
+-- FADE
 --==================================================
 
-local FadeItems = {}
+local Fade = {}
 
-local function AddFade(o,prop)
-	local ok,v = pcall(function() return o[prop] end)
+local function Save(o,prop)
+	local ok,v = pcall(function()
+		return o[prop]
+	end)
 
 	if ok then
-		table.insert(FadeItems,{o,prop,v})
+		Fade[#Fade+1] = {o,prop,v}
 		o[prop] = 1
 	end
 end
 
-AddFade(Card,"BackgroundTransparency")
+Save(Card,"BackgroundTransparency")
 
 for _,o in ipairs(Card:GetDescendants()) do
+
 	if o:IsA("GuiObject") then
-		AddFade(o,"BackgroundTransparency")
+		Save(o,"BackgroundTransparency")
 	end
 
 	if o:IsA("TextLabel") then
-		AddFade(o,"TextTransparency")
+		Save(o,"TextTransparency")
 	elseif o:IsA("ImageLabel") then
-		AddFade(o,"ImageTransparency")
+		Save(o,"ImageTransparency")
 	elseif o:IsA("UIStroke") then
-		AddFade(o,"Transparency")
+		Save(o,"Transparency")
 	end
 end
 
-local function FadeIn()
-	for _,v in ipairs(FadeItems) do
+local function FadeTo(original)
+	for _,v in ipairs(Fade) do
 		if v[1].Parent then
-			Tween(v[1],C.FadeIn,{[v[2]]=v[3]})
-		end
-	end
-end
 
-local function FadeOut()
-	for _,v in ipairs(FadeItems) do
-		if v[1].Parent then
-			Tween(v[1],C.FadeOut,{[v[2]]=1})
+			Tw(
+				v[1],
+				original and FADE_IN or FADE_OUT,
+				{
+					[v[2]] =
+						original
+						and v[3]
+						or 1
+				},
+				Enum.EasingStyle.Sine
+			)
+
 		end
 	end
 end
 
 --==================================================
--- ENTRADA
+-- FADE IN
 --==================================================
 
-Tween(Overlay,C.FadeIn,{
+Tw(Overlay,FADE_IN,{
 	BackgroundTransparency=.62
-})
+},Enum.EasingStyle.Sine)
 
-Tween(Blur,C.FadeIn,{
-	Size=C.Blur
-})
+Tw(Blur,FADE_IN,{
+	Size=12
+},Enum.EasingStyle.Sine)
 
-FadeIn()
+FadeTo(true)
 
--- NÃO inicia loading antes do fade terminar
-task.wait(C.FadeIn+.05)
+-- loading só começa DEPOIS
+task.wait(FADE_IN+.05)
 
 --==================================================
--- CÍRCULO DE BOLINHAS — UMA VEZ
+-- CÍRCULO DE BOLINHAS
 --==================================================
 
-Tween(
+Tw(
 	Ring,
-	6.2,
+	6,
 	{
-		Size = UDim2.fromOffset(760,760),
-		Rotation = 65
+		Size=UDim2.fromOffset(760,760),
+		Rotation=50
 	},
-	Enum.EasingStyle.Sine,
-	Enum.EasingDirection.Out
+	Enum.EasingStyle.Sine
 )
 
-task.delay(5,function()
+task.delay(4.8,function()
+
 	for _,dot in ipairs(Dots) do
 		if dot.Parent then
-			Tween(dot,1.2,{
-				BackgroundTransparency=1
-			})
+
+			Tw(
+				dot,
+				1.2,
+				{BackgroundTransparency=1},
+				Enum.EasingStyle.Sine
+			)
+
 		end
 	end
+
 end)
 
 --==================================================
@@ -779,68 +780,66 @@ end)
 local Running = true
 
 task.spawn(function()
-	local i = 1
+
+	local index = 1
 
 	while Running and Gui.Parent do
-		Message.Text = Messages[i]
-		Message.TextTransparency = 1
-		MessageBox.BackgroundTransparency = .42
 
-		Tween(Message,.45,{
+		Message.Text = Messages[index]
+		Message.TextTransparency = 1
+
+		Tw(Message,.45,{
 			TextTransparency=0
 		})
 
-		Tween(MessageBox,.45,{
-			BackgroundTransparency=.23
-		})
-
-		task.wait(2.25)
+		task.wait(2.2)
 
 		if not Running then break end
 
-		Tween(Message,.4,{
+		Tw(Message,.4,{
 			TextTransparency=1
-		})
-
-		Tween(MessageBox,.4,{
-			BackgroundTransparency=.4
 		})
 
 		task.wait(.45)
 
-		i = i % #Messages + 1
+		index = index % #Messages + 1
+
 	end
+
 end)
 
 --==================================================
--- LOADING
+-- LOADING 0 -> 100
 --==================================================
 
-Tween(
+Tw(
 	Fill,
-	C.LoadTime,
+	LOAD_TIME,
 	{Size=UDim2.fromScale(1,1)},
 	Enum.EasingStyle.Linear
 )
 
-local Started = os.clock()
+local Start = os.clock()
 local Last = -1
 
 while Gui.Parent do
-	local p = math.clamp(
-		(os.clock()-Started)/C.LoadTime,
+
+	local progress = math.clamp(
+		(os.clock()-Start)/LOAD_TIME,
 		0,
 		1
 	)
 
-	local n = math.floor(p*100)
+	local value = math.floor(progress*100)
 
-	if n ~= Last then
-		Last = n
-		Percent.Text = n.."%"
+	if value ~= Last then
+		Last = value
+		Percent.Text = value.."%"
 	end
 
-	if p >= 1 then break end
+	if progress >= 1 then
+		break
+	end
 
 	task.wait(.1)
 end
@@ -853,12 +852,12 @@ Fill.Size = UDim2.fromScale(1,1)
 Percent.Text = "100%"
 Loading.Text = "Carregado!"
 
-Tween(Message,.3,{TextTransparency=1})
-
-task.wait(.3)
+Tw(Message,.25,{TextTransparency=1})
+task.wait(.25)
 
 Message.Text = "Tudo pronto. Aproveite!"
-Tween(Message,.4,{TextTransparency=0})
+
+Tw(Message,.4,{TextTransparency=0})
 
 task.wait(1)
 
@@ -866,21 +865,17 @@ task.wait(1)
 -- FADE OUT
 --==================================================
 
-GlowTween:Cancel()
-AGTween:Cancel()
-ShimmerTween:Cancel()
+FadeTo(false)
 
-FadeOut()
-
-Tween(Overlay,C.FadeOut,{
+Tw(Overlay,FADE_OUT,{
 	BackgroundTransparency=1
-})
+},Enum.EasingStyle.Sine)
 
-Tween(Blur,C.FadeOut,{
+Tw(Blur,FADE_OUT,{
 	Size=0
-})
+},Enum.EasingStyle.Sine)
 
-task.wait(C.FadeOut+.08)
+task.wait(FADE_OUT+.1)
 
 --==================================================
 -- CLEANUP
@@ -888,5 +883,10 @@ task.wait(C.FadeOut+.08)
 
 RC:Disconnect()
 
-if Blur.Parent then Blur:Destroy() end
-if Gui.Parent then Gui:Destroy() end
+if Blur.Parent then
+	Blur:Destroy()
+end
+
+if Gui.Parent then
+	Gui:Destroy()
+end
