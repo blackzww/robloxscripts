@@ -3629,3 +3629,724 @@ MurderTab:Button({
 })
 
 BindMurderThrowButton()
+
+local SheriffSettings = {
+    AutoShoot = false,
+    MurdererESP = false,
+    GunDropESP = false,
+    AutoEscape = false,
+
+    AutoShootCooldown = 0.85,
+    EscapeDistance = 5,
+    EscapeCooldown = 1.2
+}
+
+local SheriffMurderHighlight
+local SheriffGunDropHighlight
+
+local SheriffLastShot = 0
+local SheriffLastEscape = 0
+local SheriffLastRoleRefresh = 0
+local SheriffLastSafeCFrame
+
+local function GetSheriffGun()
+    local Character = LP.Character
+    local Backpack = LP:FindFirstChild("Backpack")
+
+    return
+        (Character and Character:FindFirstChild("Gun"))
+        or
+        (Backpack and Backpack:FindFirstChild("Gun"))
+end
+
+local function GetSheriffRoot()
+    local Character = LP.Character
+
+    if not Character then
+        return
+    end
+
+    local Humanoid =
+        Character:FindFirstChildOfClass("Humanoid")
+
+    local Root =
+        Character:FindFirstChild("HumanoidRootPart")
+
+    if not Humanoid
+    or not Root
+    or Humanoid.Health <= 0 then
+        return
+    end
+
+    return Root, Humanoid
+end
+
+local function IsSheriffPlayerAlive(Player)
+    if not Player
+    or Player == LP
+    or not Player.Parent then
+        return false
+    end
+
+    local Character = Player.Character
+
+    if not Character then
+        return false
+    end
+
+    local Humanoid =
+        Character:FindFirstChildOfClass("Humanoid")
+
+    if not Humanoid
+    or Humanoid.Health <= 0 then
+        return false
+    end
+
+    if Player:GetAttribute("Alive") == false then
+        return false
+    end
+
+    return true
+end
+
+local function GetSheriffTargetPart(Player)
+    if not IsSheriffPlayerAlive(Player) then
+        return
+    end
+
+    local Character = Player.Character
+
+    return
+        Character:FindFirstChild("HumanoidRootPart")
+        or Character:FindFirstChild("UpperTorso")
+        or Character:FindFirstChild("Torso")
+        or Character:FindFirstChild("Head")
+end
+
+local function RefreshSheriffRoles(Force)
+    local Now = os.clock()
+
+    if not Force
+    and Now - SheriffLastRoleRefresh < 0.75 then
+        return
+    end
+
+    SheriffLastRoleRefresh = Now
+
+    pcall(UpdateRoles)
+end
+
+local function GetSheriffMurderer()
+    RefreshSheriffRoles(false)
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= LP
+        and IsSheriffPlayerAlive(Player)
+        and GetRole(Player) == "Murderer" then
+            return Player
+        end
+    end
+end
+
+local function SheriffShootPlayer(Player)
+    local Root =
+        GetSheriffRoot()
+
+    if not Root then
+        return false
+    end
+
+    local Gun =
+        GetSheriffGun()
+
+    if not Gun then
+        return false
+    end
+
+    local Shoot =
+        Gun:FindFirstChild("Shoot")
+
+    if not Shoot
+    or not Shoot:IsA("RemoteEvent") then
+        return false
+    end
+
+    local TargetPart =
+        GetSheriffTargetPart(Player)
+
+    if not TargetPart then
+        return false
+    end
+
+    local Origin =
+        Root.CFrame
+        * CFrame.new(
+            1.400390625,
+            1.25,
+            -3.4501953125
+        )
+
+    local Success =
+        pcall(function()
+            Shoot:FireServer(
+                Origin,
+                CFrame.new(
+                    TargetPart.Position
+                )
+            )
+        end)
+
+    return Success
+end
+
+local function ShootSheriffMurderer()
+    RefreshSheriffRoles(true)
+
+    local Murderer =
+        GetSheriffMurderer()
+
+    if not Murderer then
+        return false
+    end
+
+    return SheriffShootPlayer(
+        Murderer
+    )
+end
+
+local function UpdateSheriffMurdererESP()
+    if not SheriffSettings.MurdererESP then
+        if SheriffMurderHighlight then
+            SheriffMurderHighlight:Destroy()
+            SheriffMurderHighlight = nil
+        end
+
+        return
+    end
+
+    local Murderer =
+        GetSheriffMurderer()
+
+    local Character =
+        Murderer
+        and Murderer.Character
+
+    if not Character then
+        if SheriffMurderHighlight then
+            SheriffMurderHighlight:Destroy()
+            SheriffMurderHighlight = nil
+        end
+
+        return
+    end
+
+    if SheriffMurderHighlight
+    and SheriffMurderHighlight.Adornee == Character
+    and SheriffMurderHighlight.Parent then
+        return
+    end
+
+    if SheriffMurderHighlight then
+        SheriffMurderHighlight:Destroy()
+        SheriffMurderHighlight = nil
+    end
+
+    local Highlight =
+        Instance.new("Highlight")
+
+    Highlight.Name =
+        "MirrorsSheriffMurderESP"
+
+    Highlight.Adornee =
+        Character
+
+    Highlight.DepthMode =
+        Enum.HighlightDepthMode.AlwaysOnTop
+
+    Highlight.FillColor =
+        Color3.fromRGB(
+            255,
+            65,
+            65
+        )
+
+    Highlight.OutlineColor =
+        Color3.fromRGB(
+            255,
+            255,
+            255
+        )
+
+    Highlight.FillTransparency =
+        0.55
+
+    Highlight.OutlineTransparency =
+        0
+
+    Highlight.Parent =
+        Character
+
+    SheriffMurderHighlight =
+        Highlight
+end
+
+local function GetSheriffGunDrop()
+    return Workspace:FindFirstChild(
+        "GunDrop",
+        true
+    )
+end
+
+local function UpdateSheriffGunDropESP()
+    if not SheriffSettings.GunDropESP then
+        if SheriffGunDropHighlight then
+            SheriffGunDropHighlight:Destroy()
+            SheriffGunDropHighlight = nil
+        end
+
+        return
+    end
+
+    local GunDrop =
+        GetSheriffGunDrop()
+
+    if not GunDrop then
+        if SheriffGunDropHighlight then
+            SheriffGunDropHighlight:Destroy()
+            SheriffGunDropHighlight = nil
+        end
+
+        return
+    end
+
+    if SheriffGunDropHighlight
+    and SheriffGunDropHighlight.Adornee == GunDrop
+    and SheriffGunDropHighlight.Parent then
+        return
+    end
+
+    if SheriffGunDropHighlight then
+        SheriffGunDropHighlight:Destroy()
+        SheriffGunDropHighlight = nil
+    end
+
+    local Highlight =
+        Instance.new("Highlight")
+
+    Highlight.Name =
+        "MirrorsSheriffGunDropESP"
+
+    Highlight.Adornee =
+        GunDrop
+
+    Highlight.DepthMode =
+        Enum.HighlightDepthMode.AlwaysOnTop
+
+    Highlight.FillColor =
+        Color3.fromRGB(
+            255,
+            210,
+            60
+        )
+
+    Highlight.OutlineColor =
+        Color3.fromRGB(
+            255,
+            255,
+            255
+        )
+
+    Highlight.FillTransparency =
+        0.35
+
+    Highlight.OutlineTransparency =
+        0
+
+    Highlight.Parent =
+        GunDrop
+
+    SheriffGunDropHighlight =
+        Highlight
+end
+
+local function UpdateSheriffSafePosition(
+    Root,
+    Humanoid,
+    Murderer
+)
+    local MurderPart =
+        GetSheriffTargetPart(Murderer)
+
+    if not MurderPart then
+        return
+    end
+
+    local Distance =
+        (
+            Root.Position
+            - MurderPart.Position
+        ).Magnitude
+
+    if Distance < 18 then
+        return
+    end
+
+    if Humanoid.FloorMaterial
+    == Enum.Material.Air then
+        return
+    end
+
+    SheriffLastSafeCFrame =
+        Root.CFrame
+end
+
+local function FindSheriffEscapeCFrame(
+    Root,
+    Murderer
+)
+    local MurderPart =
+        GetSheriffTargetPart(Murderer)
+
+    if not MurderPart then
+        return
+    end
+
+    if SheriffLastSafeCFrame then
+        local SafeDistance =
+            (
+                SheriffLastSafeCFrame.Position
+                - MurderPart.Position
+            ).Magnitude
+
+        if SafeDistance >= 15 then
+            return SheriffLastSafeCFrame
+        end
+    end
+
+    local Params =
+        RaycastParams.new()
+
+    Params.FilterType =
+        Enum.RaycastFilterType.Exclude
+
+    local Ignore = {}
+
+    if LP.Character then
+        table.insert(
+            Ignore,
+            LP.Character
+        )
+    end
+
+    if Murderer.Character then
+        table.insert(
+            Ignore,
+            Murderer.Character
+        )
+    end
+
+    Params.FilterDescendantsInstances =
+        Ignore
+
+    local BestPosition
+    local BestScore = -math.huge
+
+    local Radii = {
+        25,
+        35,
+        45
+    }
+
+    for _, Radius in ipairs(Radii) do
+        for Index = 0, 15 do
+            local Angle =
+                math.rad(
+                    Index * 22.5
+                )
+
+            local Offset =
+                Vector3.new(
+                    math.cos(Angle)
+                    * Radius,
+                    0,
+                    math.sin(Angle)
+                    * Radius
+                )
+
+            local Candidate =
+                Root.Position
+                + Offset
+
+            local Result =
+                Workspace:Raycast(
+                    Candidate
+                    + Vector3.new(
+                        0,
+                        25,
+                        0
+                    ),
+                    Vector3.new(
+                        0,
+                        -60,
+                        0
+                    ),
+                    Params
+                )
+
+            if Result
+            and Result.Instance
+            and Result.Instance.CanCollide then
+
+                local Position =
+                    Result.Position
+                    + Vector3.new(
+                        0,
+                        3,
+                        0
+                    )
+
+                local Score =
+                    (
+                        Position
+                        - MurderPart.Position
+                    ).Magnitude
+
+                if Score > BestScore then
+                    BestScore = Score
+                    BestPosition = Position
+                end
+            end
+        end
+    end
+
+    if BestPosition then
+        return
+            CFrame.new(
+                BestPosition
+            )
+            * Root.CFrame.Rotation
+    end
+end
+
+local function SheriffAutoEscape()
+    if not SheriffSettings.AutoEscape then
+        return
+    end
+
+    local Root, Humanoid =
+        GetSheriffRoot()
+
+    if not Root then
+        return
+    end
+
+    local Murderer =
+        GetSheriffMurderer()
+
+    if not Murderer then
+        return
+    end
+
+    local MurderPart =
+        GetSheriffTargetPart(
+            Murderer
+        )
+
+    if not MurderPart then
+        return
+    end
+
+    UpdateSheriffSafePosition(
+        Root,
+        Humanoid,
+        Murderer
+    )
+
+    local Distance =
+        (
+            Root.Position
+            - MurderPart.Position
+        ).Magnitude
+
+    if Distance
+    > SheriffSettings.EscapeDistance then
+        return
+    end
+
+    local Now = os.clock()
+
+    if Now - SheriffLastEscape
+    < SheriffSettings.EscapeCooldown then
+        return
+    end
+
+    local EscapeCFrame =
+        FindSheriffEscapeCFrame(
+            Root,
+            Murderer
+        )
+
+    if not EscapeCFrame then
+        return
+    end
+
+    SheriffLastEscape =
+        Now
+
+    Root.CFrame =
+        EscapeCFrame
+
+    ResetRootPhysics(
+        Root
+    )
+end
+
+local function FlingSheriffMurderer()
+    RefreshSheriffRoles(true)
+
+    local Murderer =
+        GetSheriffMurderer()
+
+    if not Murderer then
+        return
+    end
+
+    FollowAndFlingPlayer(
+        Murderer
+    )
+end
+
+RunService.Heartbeat:Connect(function()
+    RefreshSheriffRoles(false)
+
+    UpdateSheriffMurdererESP()
+    UpdateSheriffGunDropESP()
+
+    if SheriffSettings.AutoShoot then
+        local Now =
+            os.clock()
+
+        if Now - SheriffLastShot
+        >= SheriffSettings.AutoShootCooldown then
+
+            local Murderer =
+                GetSheriffMurderer()
+
+            if Murderer
+            and SheriffShootPlayer(
+                Murderer
+            ) then
+                SheriffLastShot =
+                    Now
+            end
+        end
+    end
+
+    SheriffAutoEscape()
+end)
+
+Players.PlayerRemoving:Connect(function(Player)
+    if SheriffMurderHighlight
+    and SheriffMurderHighlight.Adornee
+    == Player.Character then
+
+        SheriffMurderHighlight:Destroy()
+        SheriffMurderHighlight = nil
+    end
+end)
+
+LP.CharacterRemoving:Connect(function()
+    SheriffLastSafeCFrame = nil
+    SheriffLastShot = 0
+    SheriffLastEscape = 0
+
+    if SheriffMurderHighlight then
+        SheriffMurderHighlight:Destroy()
+        SheriffMurderHighlight = nil
+    end
+end)
+
+SheriffTab:Toggle({
+    Title = "Auto Shoot Murderer",
+    Desc = "Automatically shoots the current Murderer",
+    Value = false,
+
+    Callback = function(Value)
+        SheriffSettings.AutoShoot =
+            Value
+
+        SheriffLastShot = 0
+    end
+})
+
+SheriffTab:Button({
+    Title = "Shoot Murderer",
+    Desc = "Shoot the Murderer directly, even without aiming at them",
+    Icon = "crosshair",
+
+    Callback = function()
+        ShootSheriffMurderer()
+    end
+})
+
+SheriffTab:Toggle({
+    Title = "Murderer ESP",
+    Desc = "Highlights the current Murderer through walls",
+    Value = false,
+
+    Callback = function(Value)
+        SheriffSettings.MurdererESP =
+            Value
+
+        if not Value
+        and SheriffMurderHighlight then
+            SheriffMurderHighlight:Destroy()
+            SheriffMurderHighlight = nil
+        end
+    end
+})
+
+SheriffTab:Toggle({
+    Title = "Gun Drop ESP",
+    Desc = "Highlights the dropped gun",
+    Value = false,
+
+    Callback = function(Value)
+        SheriffSettings.GunDropESP =
+            Value
+
+        if not Value
+        and SheriffGunDropHighlight then
+            SheriffGunDropHighlight:Destroy()
+            SheriffGunDropHighlight = nil
+        end
+    end
+})
+
+SheriffTab:Toggle({
+    Title = "Auto Escape Murderer",
+    Desc = "Teleports to a safer position when the Murderer gets within 5 studs",
+    Value = false,
+
+    Callback = function(Value)
+        SheriffSettings.AutoEscape =
+            Value
+
+        SheriffLastEscape = 0
+
+        if not Value then
+            SheriffLastSafeCFrame =
+                nil
+        end
+    end
+})
+
+SheriffTab:Button({
+    Title = "Fling Murderer",
+    Desc = "Fling the current Murderer",
+    Icon = "zap",
+
+    Callback = function()
+        FlingSheriffMurderer()
+    end
+})
