@@ -4350,3 +4350,1009 @@ SheriffTab:Button({
         FlingSheriffMurderer()
     end
 })
+
+local InnocentSettings = {
+    AutoGun = false,
+    GunDropESP = false,
+    MurdererESP = false,
+    SheriffESP = false,
+    AutoEscape = false,
+
+    EscapeDistance = 5,
+    EscapeCooldown = 1.2,
+    AutoGunCooldown = 1.5
+}
+
+local InnocentGettingGun = false
+
+local InnocentLastGunTry = 0
+local InnocentLastEscape = 0
+local InnocentLastRoleRefresh = 0
+
+local InnocentLastSafeCFrame
+
+local InnocentGunDropHighlight
+local InnocentMurderHighlight
+local InnocentSheriffHighlight
+
+local function GetInnocentRoot()
+    local Character = LP.Character
+
+    if not Character then
+        return
+    end
+
+    local Humanoid =
+        Character:FindFirstChildOfClass("Humanoid")
+
+    local Root =
+        Character:FindFirstChild("HumanoidRootPart")
+
+    if not Root
+    or not Humanoid
+    or Humanoid.Health <= 0 then
+        return
+    end
+
+    return Root, Humanoid
+end
+
+local function HasInnocentGun()
+    local Character = LP.Character
+    local Backpack = LP:FindFirstChild("Backpack")
+
+    return (
+        Character
+        and Character:FindFirstChild("Gun")
+    ) ~= nil
+    or (
+        Backpack
+        and Backpack:FindFirstChild("Gun")
+    ) ~= nil
+end
+
+local function IsInnocentPlayerAlive(Player)
+    if not Player
+    or Player == LP
+    or not Player.Parent then
+        return false
+    end
+
+    local Character =
+        Player.Character
+
+    if not Character then
+        return false
+    end
+
+    local Humanoid =
+        Character:FindFirstChildOfClass("Humanoid")
+
+    if not Humanoid
+    or Humanoid.Health <= 0 then
+        return false
+    end
+
+    if Player:GetAttribute("Alive") == false then
+        return false
+    end
+
+    return true
+end
+
+local function GetInnocentTargetPart(Player)
+    if not IsInnocentPlayerAlive(Player) then
+        return
+    end
+
+    local Character =
+        Player.Character
+
+    return
+        Character:FindFirstChild("HumanoidRootPart")
+        or Character:FindFirstChild("UpperTorso")
+        or Character:FindFirstChild("Torso")
+        or Character:FindFirstChild("Head")
+end
+
+local function RefreshInnocentRoles(Force)
+    local Now =
+        os.clock()
+
+    if not Force
+    and Now - InnocentLastRoleRefresh < 0.75 then
+        return
+    end
+
+    InnocentLastRoleRefresh =
+        Now
+
+    pcall(UpdateRoles)
+end
+
+local function GetInnocentMurderer()
+    RefreshInnocentRoles(false)
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= LP
+        and IsInnocentPlayerAlive(Player)
+        and GetRole(Player) == "Murderer" then
+            return Player
+        end
+    end
+end
+
+local function GetInnocentSheriff()
+    RefreshInnocentRoles(false)
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= LP
+        and IsInnocentPlayerAlive(Player) then
+            local Role =
+                GetRole(Player)
+
+            if Role == "Sheriff"
+            or Role == "Hero" then
+                return Player
+            end
+        end
+    end
+end
+
+local function GetInnocentGunDrop()
+    return Workspace:FindFirstChild(
+        "GunDrop",
+        true
+    )
+end
+
+local function GetInnocentObjectCFrame(Object)
+    if not Object
+    or not Object.Parent then
+        return
+    end
+
+    if Object:IsA("BasePart") then
+        return Object.CFrame
+    end
+
+    if Object:IsA("Model") then
+        return Object:GetPivot()
+    end
+
+    local Part =
+        Object:FindFirstChildWhichIsA(
+            "BasePart",
+            true
+        )
+
+    return Part and Part.CFrame
+end
+
+local function TeleportInnocentGunDrop()
+    local Root =
+        GetInnocentRoot()
+
+    local GunDrop =
+        GetInnocentGunDrop()
+
+    local GunCFrame =
+        GetInnocentObjectCFrame(
+            GunDrop
+        )
+
+    if not Root
+    or not GunCFrame then
+        return
+    end
+
+    Root.CFrame =
+        CFrame.new(
+            GunCFrame.Position
+            + Vector3.new(
+                0,
+                2,
+                0
+            )
+        )
+        * Root.CFrame.Rotation
+
+    ResetRootPhysics(
+        Root
+    )
+end
+
+local function GrabInnocentGun()
+    if InnocentGettingGun
+    or HasInnocentGun() then
+        return
+    end
+
+    local Root =
+        GetInnocentRoot()
+
+    local GunDrop =
+        GetInnocentGunDrop()
+
+    local GunCFrame =
+        GetInnocentObjectCFrame(
+            GunDrop
+        )
+
+    if not Root
+    or not GunCFrame then
+        return
+    end
+
+    InnocentGettingGun =
+        true
+
+    local OriginalCFrame =
+        Root.CFrame
+
+    local Deadline =
+        os.clock() + 1.6
+
+    while Root.Parent
+    and not HasInnocentGun()
+    and os.clock() < Deadline do
+        local CurrentDrop =
+            GetInnocentGunDrop()
+
+        local CurrentCFrame =
+            GetInnocentObjectCFrame(
+                CurrentDrop
+            )
+
+        if not CurrentCFrame then
+            break
+        end
+
+        Root.CFrame =
+            CFrame.new(
+                CurrentCFrame.Position
+                + Vector3.new(
+                    0,
+                    1.5,
+                    0
+                )
+            )
+            * Root.CFrame.Rotation
+
+        ResetRootPhysics(
+            Root
+        )
+
+        task.wait(0.08)
+    end
+
+    task.wait(0.05)
+
+    if Root.Parent then
+        Root.CFrame =
+            OriginalCFrame
+
+        ResetRootPhysics(
+            Root
+        )
+    end
+
+    InnocentGettingGun =
+        false
+end
+
+local function UpdateInnocentGunDropESP()
+    if not InnocentSettings.GunDropESP then
+        if InnocentGunDropHighlight then
+            InnocentGunDropHighlight:Destroy()
+            InnocentGunDropHighlight = nil
+        end
+
+        return
+    end
+
+    local GunDrop =
+        GetInnocentGunDrop()
+
+    if not GunDrop then
+        if InnocentGunDropHighlight then
+            InnocentGunDropHighlight:Destroy()
+            InnocentGunDropHighlight = nil
+        end
+
+        return
+    end
+
+    if InnocentGunDropHighlight
+    and InnocentGunDropHighlight.Parent
+    and InnocentGunDropHighlight.Adornee == GunDrop then
+        return
+    end
+
+    if InnocentGunDropHighlight then
+        InnocentGunDropHighlight:Destroy()
+    end
+
+    local Highlight =
+        Instance.new("Highlight")
+
+    Highlight.Name =
+        "MirrorsInnocentGunDropESP"
+
+    Highlight.Adornee =
+        GunDrop
+
+    Highlight.DepthMode =
+        Enum.HighlightDepthMode.AlwaysOnTop
+
+    Highlight.FillColor =
+        Color3.fromRGB(
+            255,
+            215,
+            70
+        )
+
+    Highlight.OutlineColor =
+        Color3.fromRGB(
+            255,
+            255,
+            255
+        )
+
+    Highlight.FillTransparency =
+        0.35
+
+    Highlight.OutlineTransparency =
+        0
+
+    Highlight.Parent =
+        GunDrop
+
+    InnocentGunDropHighlight =
+        Highlight
+end
+
+local function UpdateInnocentMurderESP()
+    if not InnocentSettings.MurdererESP then
+        if InnocentMurderHighlight then
+            InnocentMurderHighlight:Destroy()
+            InnocentMurderHighlight = nil
+        end
+
+        return
+    end
+
+    local Murderer =
+        GetInnocentMurderer()
+
+    local Character =
+        Murderer
+        and Murderer.Character
+
+    if not Character then
+        if InnocentMurderHighlight then
+            InnocentMurderHighlight:Destroy()
+            InnocentMurderHighlight = nil
+        end
+
+        return
+    end
+
+    if InnocentMurderHighlight
+    and InnocentMurderHighlight.Parent
+    and InnocentMurderHighlight.Adornee == Character then
+        return
+    end
+
+    if InnocentMurderHighlight then
+        InnocentMurderHighlight:Destroy()
+    end
+
+    local Highlight =
+        Instance.new("Highlight")
+
+    Highlight.Name =
+        "MirrorsInnocentMurderESP"
+
+    Highlight.Adornee =
+        Character
+
+    Highlight.DepthMode =
+        Enum.HighlightDepthMode.AlwaysOnTop
+
+    Highlight.FillColor =
+        Color3.fromRGB(
+            255,
+            65,
+            65
+        )
+
+    Highlight.OutlineColor =
+        Color3.fromRGB(
+            255,
+            255,
+            255
+        )
+
+    Highlight.FillTransparency =
+        0.55
+
+    Highlight.OutlineTransparency =
+        0
+
+    Highlight.Parent =
+        Character
+
+    InnocentMurderHighlight =
+        Highlight
+end
+
+local function UpdateInnocentSheriffESP()
+    if not InnocentSettings.SheriffESP then
+        if InnocentSheriffHighlight then
+            InnocentSheriffHighlight:Destroy()
+            InnocentSheriffHighlight = nil
+        end
+
+        return
+    end
+
+    local Sheriff =
+        GetInnocentSheriff()
+
+    local Character =
+        Sheriff
+        and Sheriff.Character
+
+    if not Character then
+        if InnocentSheriffHighlight then
+            InnocentSheriffHighlight:Destroy()
+            InnocentSheriffHighlight = nil
+        end
+
+        return
+    end
+
+    if InnocentSheriffHighlight
+    and InnocentSheriffHighlight.Parent
+    and InnocentSheriffHighlight.Adornee == Character then
+        return
+    end
+
+    if InnocentSheriffHighlight then
+        InnocentSheriffHighlight:Destroy()
+    end
+
+    local Highlight =
+        Instance.new("Highlight")
+
+    Highlight.Name =
+        "MirrorsInnocentSheriffESP"
+
+    Highlight.Adornee =
+        Character
+
+    Highlight.DepthMode =
+        Enum.HighlightDepthMode.AlwaysOnTop
+
+    Highlight.FillColor =
+        Color3.fromRGB(
+            70,
+            150,
+            255
+        )
+
+    Highlight.OutlineColor =
+        Color3.fromRGB(
+            255,
+            255,
+            255
+        )
+
+    Highlight.FillTransparency =
+        0.55
+
+    Highlight.OutlineTransparency =
+        0
+
+    Highlight.Parent =
+        Character
+
+    InnocentSheriffHighlight =
+        Highlight
+end
+
+local function UpdateInnocentSafePosition(
+    Root,
+    Humanoid,
+    Murderer
+)
+    local MurderPart =
+        GetInnocentTargetPart(
+            Murderer
+        )
+
+    if not MurderPart then
+        return
+    end
+
+    local Distance =
+        (
+            Root.Position
+            - MurderPart.Position
+        ).Magnitude
+
+    if Distance < 18 then
+        return
+    end
+
+    if Humanoid.FloorMaterial
+    == Enum.Material.Air then
+        return
+    end
+
+    InnocentLastSafeCFrame =
+        Root.CFrame
+end
+
+local function FindInnocentEscapeCFrame(
+    Root,
+    Murderer
+)
+    local MurderPart =
+        GetInnocentTargetPart(
+            Murderer
+        )
+
+    if not MurderPart then
+        return
+    end
+
+    if InnocentLastSafeCFrame then
+        local Distance =
+            (
+                InnocentLastSafeCFrame.Position
+                - MurderPart.Position
+            ).Magnitude
+
+        if Distance >= 15 then
+            return InnocentLastSafeCFrame
+        end
+    end
+
+    local Params =
+        RaycastParams.new()
+
+    Params.FilterType =
+        Enum.RaycastFilterType.Exclude
+
+    local Ignore = {}
+
+    if LP.Character then
+        table.insert(
+            Ignore,
+            LP.Character
+        )
+    end
+
+    if Murderer.Character then
+        table.insert(
+            Ignore,
+            Murderer.Character
+        )
+    end
+
+    Params.FilterDescendantsInstances =
+        Ignore
+
+    local BestPosition
+    local BestScore = -math.huge
+
+    local Radii = {
+        25,
+        35,
+        45
+    }
+
+    for _, Radius in ipairs(Radii) do
+        for Index = 0, 15 do
+            local Angle =
+                math.rad(
+                    Index * 22.5
+                )
+
+            local Candidate =
+                Root.Position
+                + Vector3.new(
+                    math.cos(Angle)
+                    * Radius,
+                    0,
+                    math.sin(Angle)
+                    * Radius
+                )
+
+            local Result =
+                Workspace:Raycast(
+                    Candidate
+                    + Vector3.new(
+                        0,
+                        25,
+                        0
+                    ),
+                    Vector3.new(
+                        0,
+                        -60,
+                        0
+                    ),
+                    Params
+                )
+
+            if Result
+            and Result.Instance
+            and Result.Instance.CanCollide then
+                local Position =
+                    Result.Position
+                    + Vector3.new(
+                        0,
+                        3,
+                        0
+                    )
+
+                local Score =
+                    (
+                        Position
+                        - MurderPart.Position
+                    ).Magnitude
+
+                if Score > BestScore then
+                    BestScore =
+                        Score
+
+                    BestPosition =
+                        Position
+                end
+            end
+        end
+    end
+
+    if BestPosition then
+        return
+            CFrame.new(
+                BestPosition
+            )
+            * Root.CFrame.Rotation
+    end
+end
+
+local function InnocentAutoEscape()
+    if not InnocentSettings.AutoEscape
+    or InnocentGettingGun then
+        return
+    end
+
+    local Root, Humanoid =
+        GetInnocentRoot()
+
+    if not Root then
+        return
+    end
+
+    local Murderer =
+        GetInnocentMurderer()
+
+    if not Murderer then
+        return
+    end
+
+    local MurderPart =
+        GetInnocentTargetPart(
+            Murderer
+        )
+
+    if not MurderPart then
+        return
+    end
+
+    UpdateInnocentSafePosition(
+        Root,
+        Humanoid,
+        Murderer
+    )
+
+    local Distance =
+        (
+            Root.Position
+            - MurderPart.Position
+        ).Magnitude
+
+    if Distance
+    > InnocentSettings.EscapeDistance then
+        return
+    end
+
+    local Now =
+        os.clock()
+
+    if Now - InnocentLastEscape
+    < InnocentSettings.EscapeCooldown then
+        return
+    end
+
+    local EscapeCFrame =
+        FindInnocentEscapeCFrame(
+            Root,
+            Murderer
+        )
+
+    if not EscapeCFrame then
+        return
+    end
+
+    InnocentLastEscape =
+        Now
+
+    Root.CFrame =
+        EscapeCFrame
+
+    ResetRootPhysics(
+        Root
+    )
+end
+
+local function TeleportInnocentSheriff()
+    RefreshInnocentRoles(true)
+
+    local Sheriff =
+        GetInnocentSheriff()
+
+    local TargetRoot =
+        Sheriff
+        and GetInnocentTargetPart(
+            Sheriff
+        )
+
+    local Root =
+        GetInnocentRoot()
+
+    if not Sheriff
+    or not TargetRoot
+    or not Root then
+        return
+    end
+
+    Root.CFrame =
+        TargetRoot.CFrame
+        * CFrame.new(
+            0,
+            0,
+            3
+        )
+
+    ResetRootPhysics(
+        Root
+    )
+end
+
+local function FlingInnocentMurderer()
+    RefreshInnocentRoles(true)
+
+    local Murderer =
+        GetInnocentMurderer()
+
+    if not Murderer then
+        return
+    end
+
+    FollowAndFlingPlayer(
+        Murderer
+    )
+end
+
+local function FlingInnocentSheriff()
+    RefreshInnocentRoles(true)
+
+    local Sheriff =
+        GetInnocentSheriff()
+
+    if not Sheriff then
+        return
+    end
+
+    FollowAndFlingPlayer(
+        Sheriff
+    )
+end
+
+RunService.Heartbeat:Connect(function()
+    UpdateInnocentGunDropESP()
+    UpdateInnocentMurderESP()
+    UpdateInnocentSheriffESP()
+
+    if InnocentSettings.AutoGun
+    and not InnocentGettingGun
+    and not HasInnocentGun() then
+        local GunDrop =
+            GetInnocentGunDrop()
+
+        local Now =
+            os.clock()
+
+        if GunDrop
+        and Now - InnocentLastGunTry
+        >= InnocentSettings.AutoGunCooldown then
+
+            InnocentLastGunTry =
+                Now
+
+            task.spawn(
+                GrabInnocentGun
+            )
+        end
+    end
+
+    InnocentAutoEscape()
+end)
+
+Players.PlayerRemoving:Connect(function(Player)
+    if InnocentMurderHighlight
+    and InnocentMurderHighlight.Adornee
+    == Player.Character then
+        InnocentMurderHighlight:Destroy()
+        InnocentMurderHighlight = nil
+    end
+
+    if InnocentSheriffHighlight
+    and InnocentSheriffHighlight.Adornee
+    == Player.Character then
+        InnocentSheriffHighlight:Destroy()
+        InnocentSheriffHighlight = nil
+    end
+end)
+
+LP.CharacterRemoving:Connect(function()
+    InnocentGettingGun =
+        false
+
+    InnocentLastSafeCFrame =
+        nil
+
+    InnocentLastEscape =
+        0
+
+    InnocentLastGunTry =
+        0
+
+    if InnocentMurderHighlight then
+        InnocentMurderHighlight:Destroy()
+        InnocentMurderHighlight = nil
+    end
+
+    if InnocentSheriffHighlight then
+        InnocentSheriffHighlight:Destroy()
+        InnocentSheriffHighlight = nil
+    end
+end)
+
+InnocentTab:Toggle({
+    Title = "Auto Gun",
+    Desc = "Automatically grabs the dropped gun and returns to your previous position",
+    Value = false,
+
+    Callback = function(Value)
+        InnocentSettings.AutoGun =
+            Value
+
+        InnocentLastGunTry =
+            0
+    end
+})
+
+InnocentTab:Button({
+    Title = "Teleport Gun Drop",
+    Desc = "Teleport directly to the dropped gun",
+    Icon = "zap",
+
+    Callback = function()
+        TeleportInnocentGunDrop()
+    end
+})
+
+InnocentTab:Toggle({
+    Title = "Gun Drop ESP",
+    Desc = "Highlights the dropped gun through walls",
+    Value = false,
+
+    Callback = function(Value)
+        InnocentSettings.GunDropESP =
+            Value
+
+        if not Value
+        and InnocentGunDropHighlight then
+            InnocentGunDropHighlight:Destroy()
+            InnocentGunDropHighlight = nil
+        end
+    end
+})
+
+InnocentTab:Toggle({
+    Title = "Murderer ESP",
+    Desc = "Highlights the current Murderer",
+    Value = false,
+
+    Callback = function(Value)
+        InnocentSettings.MurdererESP =
+            Value
+
+        if not Value
+        and InnocentMurderHighlight then
+            InnocentMurderHighlight:Destroy()
+            InnocentMurderHighlight = nil
+        end
+    end
+})
+
+InnocentTab:Toggle({
+    Title = "Sheriff ESP",
+    Desc = "Highlights the current Sheriff or Hero",
+    Value = false,
+
+    Callback = function(Value)
+        InnocentSettings.SheriffESP =
+            Value
+
+        if not Value
+        and InnocentSheriffHighlight then
+            InnocentSheriffHighlight:Destroy()
+            InnocentSheriffHighlight = nil
+        end
+    end
+})
+
+InnocentTab:Toggle({
+    Title = "Auto Escape Murderer",
+    Desc = "Teleports to a safer position when the Murderer gets within 5 studs",
+    Value = false,
+
+    Callback = function(Value)
+        InnocentSettings.AutoEscape =
+            Value
+
+        InnocentLastEscape =
+            0
+
+        if not Value then
+            InnocentLastSafeCFrame =
+                nil
+        end
+    end
+})
+
+InnocentTab:Button({
+    Title = "Fling Murderer",
+    Desc = "Fling the current Murderer",
+    Icon = "zap",
+
+    Callback = function()
+        FlingInnocentMurderer()
+    end
+})
+
+InnocentTab:Button({
+    Title = "Teleport Sheriff",
+    Desc = "Teleport to the current Sheriff or Hero",
+    Icon = "map-pin",
+
+    Callback = function()
+        TeleportInnocentSheriff()
+    end
+})
+
+InnocentTab:Button({
+    Title = "Fling Sheriff",
+    Desc = "Fling the current Sheriff or Hero",
+    Icon = "zap",
+
+    Callback = function()
+        FlingInnocentSheriff()
+    end
+})
