@@ -5356,3 +5356,2233 @@ InnocentTab:Button({
         FlingInnocentSheriff()
     end
 })
+
+local UserInputService = game:GetService("UserInputService")
+
+local GlobalEnv = getgenv and getgenv() or _G
+
+if GlobalEnv.MirrorsMM2ShortcutsCleanup then
+    pcall(GlobalEnv.MirrorsMM2ShortcutsCleanup)
+end
+
+local ShortcutConnections = {}
+local ShortcutButtons = {}
+
+local ShortcutDestroyed = false
+local ShortcutRoleUpdate = 0
+
+local ShortcutFlingMode = nil
+local ShortcutFlingSession = 0
+
+local ShortcutCooldown = {
+    ShootMurder = false,
+    ThrowKnife = false
+}
+
+local SHORTCUT_COOLDOWN = 3
+local SHORTCUT_PREDICTION = 0.12
+
+local function ShortcutConnect(Signal, Callback)
+    local Connection = Signal:Connect(Callback)
+
+    table.insert(
+        ShortcutConnections,
+        Connection
+    )
+
+    return Connection
+end
+
+local function ShortcutNotify(Title, Content)
+    pcall(function()
+        WindUI:Notify({
+            Title = Title,
+            Content = Content,
+            Duration = 3
+        })
+    end)
+end
+
+local function ShortcutGetCharacter()
+    local Character = LP.Character
+
+    if not Character then
+        return
+    end
+
+    local Humanoid =
+        Character:FindFirstChildOfClass("Humanoid")
+
+    local Root =
+        Character:FindFirstChild("HumanoidRootPart")
+
+    if not Humanoid
+    or not Root
+    or Humanoid.Health <= 0 then
+        return
+    end
+
+    return Character, Humanoid, Root
+end
+
+local function ShortcutAlive(Player)
+    if not Player
+    or Player == LP
+    or not Player.Parent then
+        return false
+    end
+
+    local Character =
+        Player.Character
+
+    if not Character then
+        return false
+    end
+
+    local Humanoid =
+        Character:FindFirstChildOfClass("Humanoid")
+
+    if not Humanoid
+    or Humanoid.Health <= 0 then
+        return false
+    end
+
+    if Player:GetAttribute("Alive") == false then
+        return false
+    end
+
+    return true
+end
+
+local function ShortcutGetTargetPart(Player)
+    if not ShortcutAlive(Player) then
+        return
+    end
+
+    local Character =
+        Player.Character
+
+    return
+        Character:FindFirstChild("HumanoidRootPart")
+        or Character:FindFirstChild("UpperTorso")
+        or Character:FindFirstChild("Torso")
+        or Character:FindFirstChild("Head")
+end
+
+local function ShortcutRefreshRoles(Force)
+    local Now =
+        os.clock()
+
+    if not Force
+    and Now - ShortcutRoleUpdate < 0.7 then
+        return
+    end
+
+    ShortcutRoleUpdate =
+        Now
+
+    pcall(UpdateRoles)
+end
+
+local function ShortcutGetMurderer(Force)
+    ShortcutRefreshRoles(
+        Force == true
+    )
+
+    for _, Player in ipairs(
+        Players:GetPlayers()
+    ) do
+        if Player ~= LP
+        and ShortcutAlive(Player)
+        and GetRole(Player) == "Murderer" then
+            return Player
+        end
+    end
+end
+
+local function ShortcutGetSheriff(Force)
+    ShortcutRefreshRoles(
+        Force == true
+    )
+
+    for _, Player in ipairs(
+        Players:GetPlayers()
+    ) do
+        if Player ~= LP
+        and ShortcutAlive(Player) then
+
+            local Role =
+                GetRole(Player)
+
+            if Role == "Sheriff"
+            or Role == "Hero" then
+                return Player
+            end
+        end
+    end
+end
+
+local function ShortcutGetAlivePlayers()
+    local Result = {}
+
+    for _, Player in ipairs(
+        Players:GetPlayers()
+    ) do
+        if Player ~= LP
+        and ShortcutAlive(Player) then
+
+            table.insert(
+                Result,
+                Player
+            )
+        end
+    end
+
+    return Result
+end
+
+local function ShortcutEquipTool(Name)
+    local Character, Humanoid =
+        ShortcutGetCharacter()
+
+    if not Character
+    or not Humanoid then
+        return
+    end
+
+    local Equipped =
+        Character:FindFirstChild(Name)
+
+    if Equipped
+    and Equipped:IsA("Tool") then
+        return Equipped
+    end
+
+    local Backpack =
+        LP:FindFirstChild("Backpack")
+
+    local Tool =
+        Backpack
+        and Backpack:FindFirstChild(Name)
+
+    if not Tool
+    or not Tool:IsA("Tool") then
+        return
+    end
+
+    pcall(function()
+        Humanoid:EquipTool(
+            Tool
+        )
+    end)
+
+    local Deadline =
+        os.clock() + 0.6
+
+    repeat
+        task.wait()
+
+        Equipped =
+            Character:FindFirstChild(Name)
+
+    until Equipped
+    or os.clock() >= Deadline
+
+    return Equipped
+end
+
+local function ShortcutGetGun()
+    local Gun =
+        ShortcutEquipTool("Gun")
+
+    if not Gun then
+        ShortcutNotify(
+            "Missing Gun",
+            "You don't have the Gun."
+        )
+
+        return
+    end
+
+    return Gun
+end
+
+local function ShortcutGetKnife()
+    local Knife =
+        ShortcutEquipTool("Knife")
+
+    if not Knife then
+        ShortcutNotify(
+            "Missing Knife",
+            "You don't have the Knife."
+        )
+
+        return
+    end
+
+    return Knife
+end
+
+local function ShortcutGetGunDrop()
+    return Workspace:FindFirstChild(
+        "GunDrop",
+        true
+    )
+end
+
+local function ShortcutGetObjectCFrame(Object)
+    if not Object
+    or not Object.Parent then
+        return
+    end
+
+    if Object:IsA("BasePart") then
+        return Object.CFrame
+    end
+
+    if Object:IsA("Model") then
+        return Object:GetPivot()
+    end
+
+    local Part =
+        Object:FindFirstChildWhichIsA(
+            "BasePart",
+            true
+        )
+
+    return Part and Part.CFrame
+end
+
+local function ShortcutShootMurder()
+    local Murderer =
+        ShortcutGetMurderer(true)
+
+    if not Murderer then
+        ShortcutNotify(
+            "No Murderer",
+            "No Murderer was found."
+        )
+
+        return false
+    end
+
+    local Gun =
+        ShortcutGetGun()
+
+    if not Gun then
+        return false
+    end
+
+    local Character, _, Root =
+        ShortcutGetCharacter()
+
+    local TargetPart =
+        ShortcutGetTargetPart(
+            Murderer
+        )
+
+    if not Character
+    or not Root
+    or not TargetPart then
+        ShortcutNotify(
+            "Shoot Failed",
+            "The Murderer is not a valid target."
+        )
+
+        return false
+    end
+
+    local Shoot =
+        Gun:FindFirstChild("Shoot")
+
+    if not Shoot
+    or not Shoot:IsA("RemoteEvent") then
+        ShortcutNotify(
+            "Shoot Failed",
+            "Gun Shoot remote was not found."
+        )
+
+        return false
+    end
+
+    local Success =
+        pcall(function()
+            Shoot:FireServer(
+                Root.CFrame
+                * CFrame.new(
+                    1.400390625,
+                    1.25,
+                    -3.4501953125
+                ),
+                CFrame.new(
+                    TargetPart.Position
+                )
+            )
+        end)
+
+    if not Success then
+        ShortcutNotify(
+            "Shoot Failed",
+            "Could not shoot the Murderer."
+        )
+
+        return false
+    end
+
+    return true
+end
+
+local function ShortcutTPGun()
+    local _, _, Root =
+        ShortcutGetCharacter()
+
+    if not Root then
+        return
+    end
+
+    local GunDrop =
+        ShortcutGetGunDrop()
+
+    local GunCFrame =
+        ShortcutGetObjectCFrame(
+            GunDrop
+        )
+
+    if not GunCFrame then
+        ShortcutNotify(
+            "Gun Drop",
+            "No dropped Gun was found."
+        )
+
+        return
+    end
+
+    Root.CFrame =
+        CFrame.new(
+            GunCFrame.Position
+            + Vector3.new(
+                0,
+                2,
+                0
+            )
+        )
+        * Root.CFrame.Rotation
+
+    ResetRootPhysics(
+        Root
+    )
+end
+
+local function ShortcutTPMurder()
+    local Murderer =
+        ShortcutGetMurderer(true)
+
+    if not Murderer then
+        ShortcutNotify(
+            "No Murderer",
+            "No Murderer was found."
+        )
+
+        return
+    end
+
+    local TargetRoot =
+        ShortcutGetTargetPart(
+            Murderer
+        )
+
+    local _, _, Root =
+        ShortcutGetCharacter()
+
+    if not TargetRoot
+    or not Root then
+        return
+    end
+
+    Root.CFrame =
+        TargetRoot.CFrame
+        * CFrame.new(
+            0,
+            0,
+            3
+        )
+
+    ResetRootPhysics(
+        Root
+    )
+end
+
+local function ShortcutTPSheriff()
+    local Sheriff =
+        ShortcutGetSheriff(true)
+
+    if not Sheriff then
+        ShortcutNotify(
+            "No Sheriff",
+            "No Sheriff or Hero was found."
+        )
+
+        return
+    end
+
+    local TargetRoot =
+        ShortcutGetTargetPart(
+            Sheriff
+        )
+
+    local _, _, Root =
+        ShortcutGetCharacter()
+
+    if not TargetRoot
+    or not Root then
+        return
+    end
+
+    Root.CFrame =
+        TargetRoot.CFrame
+        * CFrame.new(
+            0,
+            0,
+            3
+        )
+
+    ResetRootPhysics(
+        Root
+    )
+end
+
+local function ShortcutThrowKnife()
+    local Knife =
+        ShortcutGetKnife()
+
+    if not Knife then
+        return false
+    end
+
+    local Events =
+        Knife:FindFirstChild("Events")
+
+    local Remote =
+        Events
+        and Events:FindFirstChild(
+            "KnifeThrown"
+        )
+
+    if not Remote
+    or not Remote:IsA("RemoteEvent") then
+        ShortcutNotify(
+            "Throw Failed",
+            "KnifeThrown remote was not found."
+        )
+
+        return false
+    end
+
+    local Handle =
+        Knife:FindFirstChild("Handle")
+        or Knife:FindFirstChildWhichIsA(
+            "BasePart"
+        )
+
+    if not Handle then
+        ShortcutNotify(
+            "Throw Failed",
+            "Knife Handle was not found."
+        )
+
+        return false
+    end
+
+    ShortcutRefreshRoles(true)
+
+    local Target =
+        ShortcutGetSheriff(false)
+
+    if not Target then
+        local Character =
+            LP.Character
+
+        local Root =
+            Character
+            and Character:FindFirstChild(
+                "HumanoidRootPart"
+            )
+
+        if Root then
+            local BestDistance =
+                math.huge
+
+            for _, Player in ipairs(
+                Players:GetPlayers()
+            ) do
+                if Player ~= LP
+                and ShortcutAlive(Player) then
+
+                    local Part =
+                        ShortcutGetTargetPart(
+                            Player
+                        )
+
+                    if Part then
+                        local Distance =
+                            (
+                                Root.Position
+                                - Part.Position
+                            ).Magnitude
+
+                        if Distance
+                        < BestDistance then
+
+                            BestDistance =
+                                Distance
+
+                            Target =
+                                Player
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local TargetPart =
+        Target
+        and ShortcutGetTargetPart(
+            Target
+        )
+
+    if not TargetPart then
+        ShortcutNotify(
+            "No Target",
+            "No valid Knife target was found."
+        )
+
+        return false
+    end
+
+    local TargetPosition =
+        TargetPart.Position
+        + TargetPart.AssemblyLinearVelocity
+        * SHORTCUT_PREDICTION
+
+    local ThrowCFrame =
+        CFrame.lookAt(
+            Handle.Position,
+            TargetPosition
+        )
+
+    local Success =
+        pcall(function()
+            Remote:FireServer(
+                ThrowCFrame,
+                CFrame.new(
+                    TargetPosition
+                )
+            )
+        end)
+
+    if not Success then
+        ShortcutNotify(
+            "Throw Failed",
+            "Could not throw the Knife."
+        )
+
+        return false
+    end
+
+    return true
+end
+
+local function ShortcutGetKnifeTouchRemote()
+    local Knife =
+        ShortcutGetKnife()
+
+    if not Knife then
+        return
+    end
+
+    local Events =
+        Knife:FindFirstChild("Events")
+
+    local Remote =
+        Events
+        and Events:FindFirstChild(
+            "HandleTouched"
+        )
+
+    if not Remote
+    or not Remote:IsA("RemoteEvent") then
+        ShortcutNotify(
+            "Knife Failed",
+            "HandleTouched remote was not found."
+        )
+
+        return
+    end
+
+    return Remote
+end
+
+local function ShortcutKillSheriff()
+    local Sheriff =
+        ShortcutGetSheriff(true)
+
+    if not Sheriff then
+        ShortcutNotify(
+            "No Sheriff",
+            "No Sheriff or Hero was found."
+        )
+
+        return
+    end
+
+    local Remote =
+        ShortcutGetKnifeTouchRemote()
+
+    if not Remote then
+        return
+    end
+
+    local TargetPart =
+        ShortcutGetTargetPart(
+            Sheriff
+        )
+
+    if not TargetPart then
+        ShortcutNotify(
+            "Kill Failed",
+            "Sheriff is not a valid target."
+        )
+
+        return
+    end
+
+    pcall(function()
+        Remote:FireServer(
+            TargetPart
+        )
+    end)
+end
+
+local function ShortcutKillAll()
+    local Targets =
+        ShortcutGetAlivePlayers()
+
+    if #Targets == 0 then
+        ShortcutNotify(
+            "No Targets",
+            "No alive players were found."
+        )
+
+        return
+    end
+
+    local Remote =
+        ShortcutGetKnifeTouchRemote()
+
+    if not Remote then
+        return
+    end
+
+    task.spawn(function()
+        for _, Player in ipairs(Targets) do
+            if ShortcutAlive(Player) then
+                local Part =
+                    ShortcutGetTargetPart(
+                        Player
+                    )
+
+                if Part then
+                    pcall(function()
+                        Remote:FireServer(
+                            Part
+                        )
+                    end)
+
+                    task.wait(0.04)
+                end
+            end
+        end
+    end)
+end
+
+local function ShortcutStopFlingEngine()
+    FollowActive = false
+    FollowSession += 1
+
+    if FollowConnection then
+        FollowConnection:Disconnect()
+        FollowConnection = nil
+    end
+
+    TouchFlingEnabled = false
+    TouchFlingSession += 1
+
+    FlingAllActive = false
+    FlingAllSession += 1
+
+    local Character =
+        LP.Character
+
+    local Root =
+        Character
+        and Character:FindFirstChild(
+            "HumanoidRootPart"
+        )
+
+    if Root then
+        ResetRootPhysics(
+            Root
+        )
+    end
+end
+
+local function ShortcutUpdateFlingVisuals()
+    local Map = {
+        FlingMurder = "MURDER",
+        FlingSheriff = "SHERIFF",
+        FlingAll = "ALL"
+    }
+
+    for Name, Mode in pairs(Map) do
+        local Object =
+            ShortcutButtons[Name]
+
+        if Object then
+            if ShortcutFlingMode == Mode then
+                Object:SetStatus(
+                    "ON",
+                    Color3.fromRGB(
+                        220,
+                        145,
+                        255
+                    )
+                )
+            else
+                Object:SetStatus(
+                    "OFF",
+                    Color3.fromRGB(
+                        165,
+                        150,
+                        175
+                    )
+                )
+            end
+        end
+    end
+end
+
+local function ShortcutStopCurrentFling()
+    ShortcutFlingSession += 1
+    ShortcutFlingMode = nil
+
+    ShortcutStopFlingEngine()
+    ShortcutUpdateFlingVisuals()
+end
+
+local function ShortcutStartRoleFling(
+    Mode,
+    InitialTarget
+)
+    ShortcutFlingSession += 1
+
+    local Session =
+        ShortcutFlingSession
+
+    ShortcutFlingMode =
+        Mode
+
+    ShortcutUpdateFlingVisuals()
+
+    task.spawn(function()
+        local CurrentTarget =
+            nil
+
+        while not ShortcutDestroyed
+        and ShortcutFlingMode == Mode
+        and ShortcutFlingSession == Session do
+
+            ShortcutRefreshRoles(false)
+
+            local Target
+
+            if Mode == "MURDER" then
+                Target =
+                    ShortcutGetMurderer(false)
+            else
+                Target =
+                    ShortcutGetSheriff(false)
+            end
+
+            if Target ~= CurrentTarget then
+                ShortcutStopFlingEngine()
+
+                CurrentTarget =
+                    Target
+
+                if Target then
+                    FollowAndFlingPlayer(
+                        Target
+                    )
+                end
+            end
+
+            task.wait(0.25)
+        end
+
+        if ShortcutFlingSession == Session then
+            ShortcutStopFlingEngine()
+        end
+    end)
+end
+
+local function ShortcutStartFlingAll()
+    ShortcutFlingSession += 1
+
+    local Session =
+        ShortcutFlingSession
+
+    ShortcutFlingMode =
+        "ALL"
+
+    ShortcutUpdateFlingVisuals()
+
+    task.spawn(function()
+        while not ShortcutDestroyed
+        and ShortcutFlingMode == "ALL"
+        and ShortcutFlingSession == Session do
+
+            local Targets =
+                ShortcutGetAlivePlayers()
+
+            if #Targets == 0 then
+                task.wait(0.5)
+                continue
+            end
+
+            for _, Player in ipairs(Targets) do
+                if ShortcutDestroyed
+                or ShortcutFlingMode ~= "ALL"
+                or ShortcutFlingSession ~= Session then
+                    break
+                end
+
+                if ShortcutAlive(Player) then
+                    ShortcutStopFlingEngine()
+
+                    FollowAndFlingPlayer(
+                        Player
+                    )
+
+                    local Finish =
+                        os.clock() + 1.35
+
+                    repeat
+                        task.wait(0.08)
+
+                    until os.clock() >= Finish
+                    or ShortcutDestroyed
+                    or ShortcutFlingMode ~= "ALL"
+                    or ShortcutFlingSession ~= Session
+                    or not ShortcutAlive(Player)
+                end
+            end
+
+            task.wait(0.1)
+        end
+
+        if ShortcutFlingSession == Session then
+            ShortcutStopFlingEngine()
+        end
+    end)
+end
+
+local function ShortcutToggleFling(Mode)
+    if ShortcutFlingMode == Mode then
+        ShortcutStopCurrentFling()
+        return
+    end
+
+    if Mode == "MURDER" then
+        local Murderer =
+            ShortcutGetMurderer(true)
+
+        if not Murderer then
+            ShortcutNotify(
+                "No Murderer",
+                "No Murderer was found."
+            )
+
+            return
+        end
+
+        ShortcutStopCurrentFling()
+
+        ShortcutStartRoleFling(
+            "MURDER",
+            Murderer
+        )
+
+        return
+    end
+
+    if Mode == "SHERIFF" then
+        local Sheriff =
+            ShortcutGetSheriff(true)
+
+        if not Sheriff then
+            ShortcutNotify(
+                "No Sheriff",
+                "No Sheriff or Hero was found."
+            )
+
+            return
+        end
+
+        ShortcutStopCurrentFling()
+
+        ShortcutStartRoleFling(
+            "SHERIFF",
+            Sheriff
+        )
+
+        return
+    end
+
+    if Mode == "ALL" then
+        local Targets =
+            ShortcutGetAlivePlayers()
+
+        if #Targets == 0 then
+            ShortcutNotify(
+                "No Targets",
+                "No alive players were found."
+            )
+
+            return
+        end
+
+        ShortcutStopCurrentFling()
+        ShortcutStartFlingAll()
+    end
+end
+
+local PlayerGui =
+    LP:WaitForChild("PlayerGui")
+
+local OldGui =
+    PlayerGui:FindFirstChild(
+        "MirrorsShortcutsGUI"
+    )
+
+if OldGui then
+    OldGui:Destroy()
+end
+
+local ShortcutsGui =
+    Instance.new("ScreenGui")
+
+ShortcutsGui.Name =
+    "MirrorsShortcutsGUI"
+
+ShortcutsGui.ResetOnSpawn =
+    false
+
+ShortcutsGui.IgnoreGuiInset =
+    true
+
+ShortcutsGui.ZIndexBehavior =
+    Enum.ZIndexBehavior.Sibling
+
+ShortcutsGui.Parent =
+    PlayerGui
+
+local ShortcutPositions = {
+    UDim2.fromOffset(60, 160),
+    UDim2.fromOffset(152, 160),
+    UDim2.fromOffset(244, 160),
+
+    UDim2.fromOffset(60, 252),
+    UDim2.fromOffset(152, 252),
+    UDim2.fromOffset(244, 252),
+
+    UDim2.fromOffset(60, 344),
+    UDim2.fromOffset(152, 344),
+    UDim2.fromOffset(244, 344),
+
+    UDim2.fromOffset(60, 436)
+}
+
+local function CreateShortcut(
+    Name,
+    Text,
+    Index,
+    Callback
+)
+    local Button =
+        Instance.new("TextButton")
+
+    Button.Name =
+        Name
+
+    Button.AnchorPoint =
+        Vector2.new(
+            0.5,
+            0.5
+        )
+
+    Button.Size =
+        UDim2.fromOffset(
+            84,
+            84
+        )
+
+    Button.Position =
+        ShortcutPositions[Index]
+
+    Button.BackgroundColor3 =
+        Color3.fromRGB(
+            72,
+            27,
+            112
+        )
+
+    Button.BorderSizePixel =
+        0
+
+    Button.Text =
+        ""
+
+    Button.AutoButtonColor =
+        false
+
+    Button.Active =
+        true
+
+    Button.ClipsDescendants =
+        true
+
+    Button.Visible =
+        false
+
+    Button.ZIndex =
+        20
+
+    Button.Parent =
+        ShortcutsGui
+
+    local Corner =
+        Instance.new("UICorner")
+
+    Corner.CornerRadius =
+        UDim.new(
+            0,
+            25
+        )
+
+    Corner.Parent =
+        Button
+
+    local Gradient =
+        Instance.new("UIGradient")
+
+    Gradient.Rotation =
+        135
+
+    Gradient.Color =
+        ColorSequence.new({
+            ColorSequenceKeypoint.new(
+                0,
+                Color3.fromRGB(
+                    120,
+                    47,
+                    182
+                )
+            ),
+
+            ColorSequenceKeypoint.new(
+                0.42,
+                Color3.fromRGB(
+                    88,
+                    32,
+                    139
+                )
+            ),
+
+            ColorSequenceKeypoint.new(
+                0.72,
+                Color3.fromRGB(
+                    67,
+                    24,
+                    108
+                )
+            ),
+
+            ColorSequenceKeypoint.new(
+                1,
+                Color3.fromRGB(
+                    52,
+                    19,
+                    85
+                )
+            )
+        })
+
+    Gradient.Parent =
+        Button
+
+    local Stroke =
+        Instance.new("UIStroke")
+
+    Stroke.ApplyStrokeMode =
+        Enum.ApplyStrokeMode.Border
+
+    Stroke.Thickness =
+        2
+
+    Stroke.Transparency =
+        0.06
+
+    Stroke.Color =
+        Color3.fromRGB(
+            165,
+            78,
+            235
+        )
+
+    Stroke.Parent =
+        Button
+
+    local StrokeGradient =
+        Instance.new("UIGradient")
+
+    StrokeGradient.Rotation =
+        135
+
+    StrokeGradient.Color =
+        ColorSequence.new({
+            ColorSequenceKeypoint.new(
+                0,
+                Color3.fromRGB(
+                    211,
+                    133,
+                    255
+                )
+            ),
+
+            ColorSequenceKeypoint.new(
+                0.45,
+                Color3.fromRGB(
+                    166,
+                    82,
+                    237
+                )
+            ),
+
+            ColorSequenceKeypoint.new(
+                1,
+                Color3.fromRGB(
+                    112,
+                    46,
+                    173
+                )
+            )
+        })
+
+    StrokeGradient.Parent =
+        Stroke
+
+    local InnerShade =
+        Instance.new("Frame")
+
+    InnerShade.Name =
+        "InnerShade"
+
+    InnerShade.AnchorPoint =
+        Vector2.new(
+            0.5,
+            0.5
+        )
+
+    InnerShade.Position =
+        UDim2.fromScale(
+            0.5,
+            0.5
+        )
+
+    InnerShade.Size =
+        UDim2.new(
+            1,
+            -10,
+            1,
+            -10
+        )
+
+    InnerShade.BackgroundColor3 =
+        Color3.fromRGB(
+            255,
+            255,
+            255
+        )
+
+    InnerShade.BackgroundTransparency =
+        0.972
+
+    InnerShade.BorderSizePixel =
+        0
+
+    InnerShade.ZIndex =
+        21
+
+    InnerShade.Parent =
+        Button
+
+    local InnerCorner =
+        Instance.new("UICorner")
+
+    InnerCorner.CornerRadius =
+        UDim.new(
+            0,
+            21
+        )
+
+    InnerCorner.Parent =
+        InnerShade
+
+    local Label =
+        Instance.new("TextLabel")
+
+    Label.Name =
+        "Label"
+
+    Label.AnchorPoint =
+        Vector2.new(
+            0.5,
+            0.5
+        )
+
+    Label.Position =
+        UDim2.new(
+            0.5,
+            0,
+            0.42,
+            0
+        )
+
+    Label.Size =
+        UDim2.new(
+            1,
+            -14,
+            0,
+            43
+        )
+
+    Label.BackgroundTransparency =
+        1
+
+    Label.Text =
+        Text
+
+    Label.TextColor3 =
+        Color3.fromRGB(
+            245,
+            240,
+            250
+        )
+
+    Label.TextSize =
+        12
+
+    Label.TextWrapped =
+        true
+
+    Label.Font =
+        Enum.Font.GothamBold
+
+    Label.ZIndex =
+        24
+
+    Label.Parent =
+        Button
+
+    local Status =
+        Instance.new("TextLabel")
+
+    Status.Name =
+        "Status"
+
+    Status.AnchorPoint =
+        Vector2.new(
+            0.5,
+            0.5
+        )
+
+    Status.Position =
+        UDim2.new(
+            0.5,
+            0,
+            0.69,
+            0
+        )
+
+    Status.Size =
+        UDim2.fromOffset(
+            55,
+            15
+        )
+
+    Status.BackgroundTransparency =
+        1
+
+    Status.Text =
+        ""
+
+    Status.TextColor3 =
+        Color3.fromRGB(
+            255,
+            80,
+            80
+        )
+
+    Status.TextSize =
+        11
+
+    Status.Font =
+        Enum.Font.GothamBold
+
+    Status.Visible =
+        false
+
+    Status.ZIndex =
+        25
+
+    Status.Parent =
+        Button
+
+    local BottomGlow =
+        Instance.new("Frame")
+
+    BottomGlow.Name =
+        "BottomGlow"
+
+    BottomGlow.AnchorPoint =
+        Vector2.new(
+            0.5,
+            1
+        )
+
+    BottomGlow.Position =
+        UDim2.new(
+            0.5,
+            0,
+            1,
+            -7
+        )
+
+    BottomGlow.Size =
+        UDim2.fromOffset(
+            44,
+            9
+        )
+
+    BottomGlow.BackgroundColor3 =
+        Color3.fromRGB(
+            176,
+            68,
+            255
+        )
+
+    BottomGlow.BackgroundTransparency =
+        0.79
+
+    BottomGlow.BorderSizePixel =
+        0
+
+    BottomGlow.ZIndex =
+        22
+
+    BottomGlow.Parent =
+        Button
+
+    local BottomGlowCorner =
+        Instance.new("UICorner")
+
+    BottomGlowCorner.CornerRadius =
+        UDim.new(
+            1,
+            0
+        )
+
+    BottomGlowCorner.Parent =
+        BottomGlow
+
+    local BottomGlowGradient =
+        Instance.new("UIGradient")
+
+    BottomGlowGradient.Transparency =
+        NumberSequence.new({
+            NumberSequenceKeypoint.new(
+                0,
+                1
+            ),
+
+            NumberSequenceKeypoint.new(
+                0.16,
+                0.62
+            ),
+
+            NumberSequenceKeypoint.new(
+                0.5,
+                0.1
+            ),
+
+            NumberSequenceKeypoint.new(
+                0.84,
+                0.62
+            ),
+
+            NumberSequenceKeypoint.new(
+                1,
+                1
+            )
+        })
+
+    BottomGlowGradient.Parent =
+        BottomGlow
+
+    local BottomLine =
+        Instance.new("Frame")
+
+    BottomLine.Name =
+        "BottomLine"
+
+    BottomLine.AnchorPoint =
+        Vector2.new(
+            0.5,
+            1
+        )
+
+    BottomLine.Position =
+        UDim2.new(
+            0.5,
+            0,
+            1,
+            -10
+        )
+
+    BottomLine.Size =
+        UDim2.fromOffset(
+            35,
+            3
+        )
+
+    BottomLine.BackgroundColor3 =
+        Color3.fromRGB(
+            210,
+            126,
+            255
+        )
+
+    BottomLine.BorderSizePixel =
+        0
+
+    BottomLine.ZIndex =
+        23
+
+    BottomLine.Parent =
+        Button
+
+    local BottomLineCorner =
+        Instance.new("UICorner")
+
+    BottomLineCorner.CornerRadius =
+        UDim.new(
+            1,
+            0
+        )
+
+    BottomLineCorner.Parent =
+        BottomLine
+
+    local BottomLineGradient =
+        Instance.new("UIGradient")
+
+    BottomLineGradient.Color =
+        ColorSequence.new({
+            ColorSequenceKeypoint.new(
+                0,
+                Color3.fromRGB(
+                    137,
+                    50,
+                    217
+                )
+            ),
+
+            ColorSequenceKeypoint.new(
+                0.5,
+                Color3.fromRGB(
+                    231,
+                    166,
+                    255
+                )
+            ),
+
+            ColorSequenceKeypoint.new(
+                1,
+                Color3.fromRGB(
+                    137,
+                    50,
+                    217
+                )
+            )
+        })
+
+    BottomLineGradient.Parent =
+        BottomLine
+
+    local Scale =
+        Instance.new("UIScale")
+
+    Scale.Scale =
+        1
+
+    Scale.Parent =
+        Button
+
+    local Object = {
+        Button = Button,
+        Label = Label,
+        Status = Status,
+        Scale = Scale,
+        BottomLine = BottomLine,
+        BottomGlow = BottomGlow,
+        Cooling = false
+    }
+
+    function Object:SetStatus(
+        Value,
+        Color
+    )
+        if not Value
+        or Value == "" then
+            Status.Text = ""
+            Status.Visible = false
+            return
+        end
+
+        Status.Text =
+            tostring(Value)
+
+        Status.TextColor3 =
+            Color
+            or Color3.fromRGB(
+                255,
+                80,
+                80
+            )
+
+        Status.Visible =
+            true
+    end
+
+    local Dragging = false
+    local DragInput
+    local DragStart
+    local StartPosition
+    local WasDragged = false
+
+    local function TweenScale(
+        Value,
+        Time
+    )
+        TweenService:Create(
+            Scale,
+            TweenInfo.new(
+                Time,
+                Enum.EasingStyle.Quint,
+                Enum.EasingDirection.Out
+            ),
+            {
+                Scale = Value
+            }
+        ):Play()
+    end
+
+    ShortcutConnect(
+        Button.InputBegan,
+        function(Input)
+            if Input.UserInputType
+            == Enum.UserInputType.MouseButton1
+            or Input.UserInputType
+            == Enum.UserInputType.Touch then
+
+                Dragging = true
+                WasDragged = false
+
+                DragStart =
+                    Input.Position
+
+                StartPosition =
+                    Button.Position
+
+                TweenScale(
+                    0.96,
+                    0.08
+                )
+
+                Input.Changed:Connect(function()
+                    if Input.UserInputState
+                    == Enum.UserInputState.End then
+
+                        Dragging = false
+
+                        TweenScale(
+                            1,
+                            0.17
+                        )
+                    end
+                end)
+            end
+        end
+    )
+
+    ShortcutConnect(
+        Button.InputChanged,
+        function(Input)
+            if Input.UserInputType
+            == Enum.UserInputType.MouseMovement
+            or Input.UserInputType
+            == Enum.UserInputType.Touch then
+
+                DragInput =
+                    Input
+            end
+        end
+    )
+
+    ShortcutConnect(
+        UserInputService.InputChanged,
+        function(Input)
+            if Dragging
+            and Input == DragInput then
+
+                local Delta =
+                    Input.Position
+                    - DragStart
+
+                if Delta.Magnitude > 6 then
+                    WasDragged = true
+                end
+
+                Button.Position =
+                    UDim2.new(
+                        StartPosition.X.Scale,
+                        StartPosition.X.Offset
+                        + Delta.X,
+                        StartPosition.Y.Scale,
+                        StartPosition.Y.Offset
+                        + Delta.Y
+                    )
+            end
+        end
+    )
+
+    ShortcutConnect(
+        Button.Activated,
+        function()
+            if WasDragged
+            or ShortcutDestroyed then
+                return
+            end
+
+            TweenScale(
+                0.92,
+                0.065
+            )
+
+            TweenService:Create(
+                BottomGlow,
+                TweenInfo.new(
+                    0.065
+                ),
+                {
+                    BackgroundTransparency =
+                        0.56,
+
+                    Size =
+                        UDim2.fromOffset(
+                            52,
+                            9
+                        )
+                }
+            ):Play()
+
+            TweenService:Create(
+                BottomLine,
+                TweenInfo.new(
+                    0.065
+                ),
+                {
+                    Size =
+                        UDim2.fromOffset(
+                            42,
+                            3
+                        )
+                }
+            ):Play()
+
+            task.delay(
+                0.075,
+                function()
+                    if ShortcutDestroyed
+                    or not Button.Parent then
+                        return
+                    end
+
+                    TweenScale(
+                        1,
+                        0.18
+                    )
+
+                    if not Object.Cooling then
+                        TweenService:Create(
+                            BottomGlow,
+                            TweenInfo.new(
+                                0.18
+                            ),
+                            {
+                                BackgroundTransparency =
+                                    0.79,
+
+                                Size =
+                                    UDim2.fromOffset(
+                                        44,
+                                        9
+                                    )
+                            }
+                        ):Play()
+
+                        TweenService:Create(
+                            BottomLine,
+                            TweenInfo.new(
+                                0.18
+                            ),
+                            {
+                                Size =
+                                    UDim2.fromOffset(
+                                        35,
+                                        3
+                                    )
+                            }
+                        ):Play()
+                    end
+                end
+            )
+
+            Callback(
+                Object
+            )
+        end
+    )
+
+    ShortcutButtons[Name] =
+        Object
+
+    return Object
+end
+
+local function ShortcutRunCooldown(
+    Object,
+    Duration,
+    Action
+)
+    if Object.Cooling then
+        return
+    end
+
+    local Success =
+        Action()
+
+    if not Success then
+        return
+    end
+
+    Object.Cooling =
+        true
+
+    task.spawn(function()
+        local Started =
+            os.clock()
+
+        while not ShortcutDestroyed
+        and Object.Button.Parent do
+
+            local Elapsed =
+                os.clock()
+                - Started
+
+            local Remaining =
+                math.max(
+                    0,
+                    Duration
+                    - Elapsed
+                )
+
+            local Ratio =
+                math.clamp(
+                    Remaining
+                    / Duration,
+                    0,
+                    1
+                )
+
+            Object:SetStatus(
+                string.format(
+                    "%.1fs",
+                    Remaining
+                ),
+                Color3.fromRGB(
+                    255,
+                    78,
+                    78
+                )
+            )
+
+            Object.BottomLine.Size =
+                UDim2.fromOffset(
+                    math.max(
+                        2,
+                        35 * Ratio
+                    ),
+                    3
+                )
+
+            if Remaining <= 0 then
+                break
+            end
+
+            task.wait(0.035)
+        end
+
+        Object.Cooling =
+            false
+
+        Object:SetStatus()
+
+        if Object.BottomLine.Parent then
+            TweenService:Create(
+                Object.BottomLine,
+                TweenInfo.new(
+                    0.16,
+                    Enum.EasingStyle.Quint,
+                    Enum.EasingDirection.Out
+                ),
+                {
+                    Size =
+                        UDim2.fromOffset(
+                            35,
+                            3
+                        )
+                }
+            ):Play()
+        end
+    end)
+end
+
+CreateShortcut(
+    "ShootMurder",
+    "SHOOT MURDER",
+    1,
+    function(Object)
+        ShortcutRunCooldown(
+            Object,
+            SHORTCUT_COOLDOWN,
+            ShortcutShootMurder
+        )
+    end
+)
+
+CreateShortcut(
+    "TPGun",
+    "TP GUN",
+    2,
+    function()
+        ShortcutTPGun()
+    end
+)
+
+CreateShortcut(
+    "TPMurder",
+    "TP MURDER",
+    3,
+    function()
+        ShortcutTPMurder()
+    end
+)
+
+CreateShortcut(
+    "TPSheriff",
+    "TP SHERIFF",
+    4,
+    function()
+        ShortcutTPSheriff()
+    end
+)
+
+CreateShortcut(
+    "FlingMurder",
+    "FLING MURDER",
+    5,
+    function()
+        ShortcutToggleFling(
+            "MURDER"
+        )
+    end
+)
+
+CreateShortcut(
+    "FlingSheriff",
+    "FLING SHERIFF",
+    6,
+    function()
+        ShortcutToggleFling(
+            "SHERIFF"
+        )
+    end
+)
+
+CreateShortcut(
+    "FlingAll",
+    "FLING ALL",
+    7,
+    function()
+        ShortcutToggleFling(
+            "ALL"
+        )
+    end
+)
+
+CreateShortcut(
+    "ThrowKnife",
+    "THROW KNIFE",
+    8,
+    function(Object)
+        ShortcutRunCooldown(
+            Object,
+            SHORTCUT_COOLDOWN,
+            ShortcutThrowKnife
+        )
+    end
+)
+
+CreateShortcut(
+    "KillSheriff",
+    "KILL SHERIFF",
+    9,
+    function()
+        ShortcutKillSheriff()
+    end
+)
+
+CreateShortcut(
+    "KillAll",
+    "KILL ALL",
+    10,
+    function()
+        ShortcutKillAll()
+    end
+)
+
+ShortcutUpdateFlingVisuals()
+
+local function SetShortcutVisible(
+    Name,
+    Value
+)
+    local Object =
+        ShortcutButtons[Name]
+
+    if not Object then
+        return
+    end
+
+    Object.Button.Visible =
+        Value
+
+    if not Value then
+        if Name == "FlingMurder"
+        and ShortcutFlingMode == "MURDER" then
+            ShortcutStopCurrentFling()
+
+        elseif Name == "FlingSheriff"
+        and ShortcutFlingMode == "SHERIFF" then
+            ShortcutStopCurrentFling()
+
+        elseif Name == "FlingAll"
+        and ShortcutFlingMode == "ALL" then
+            ShortcutStopCurrentFling()
+        end
+    end
+end
+
+ShortcutsTab:Toggle({
+    Title = "Shoot Murder",
+    Desc = "Show the Shoot Murder shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "ShootMurder",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "TP Gun",
+    Desc = "Show the TP Gun shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "TPGun",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "TP Murder",
+    Desc = "Show the TP Murder shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "TPMurder",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "TP Sheriff",
+    Desc = "Show the TP Sheriff shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "TPSheriff",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "Fling Murder",
+    Desc = "Show the Fling Murder shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "FlingMurder",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "Fling Sheriff",
+    Desc = "Show the Fling Sheriff shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "FlingSheriff",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "Fling All",
+    Desc = "Show the Fling All shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "FlingAll",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "Throw Knife",
+    Desc = "Show the Throw Knife shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "ThrowKnife",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "Kill Sheriff",
+    Desc = "Show the Kill Sheriff shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "KillSheriff",
+            Value
+        )
+    end
+})
+
+ShortcutsTab:Toggle({
+    Title = "Kill All",
+    Desc = "Show the Kill All shortcut",
+    Value = false,
+
+    Callback = function(Value)
+        SetShortcutVisible(
+            "KillAll",
+            Value
+        )
+    end
+})
+
+ShortcutConnect(
+    LP.CharacterRemoving,
+    function()
+        ShortcutStopCurrentFling()
+    end
+)
+
+GlobalEnv.MirrorsMM2ShortcutsCleanup =
+    function()
+        ShortcutDestroyed =
+            true
+
+        ShortcutStopCurrentFling()
+
+        for _, Connection in ipairs(
+            ShortcutConnections
+        ) do
+            pcall(function()
+                Connection:Disconnect()
+            end)
+        end
+
+        table.clear(
+            ShortcutConnections
+        )
+
+        if ShortcutsGui
+        and ShortcutsGui.Parent then
+            ShortcutsGui:Destroy()
+        end
+    end
