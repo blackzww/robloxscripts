@@ -5357,10 +5357,12 @@ InnocentTab:Button({
     end
 })
 
+task.spawn(function()
+
 local UserInputService = game:GetService("UserInputService")
 
 local GlobalEnv = getgenv and getgenv() or _G
-
+        
 if GlobalEnv.MirrorsMM2ShortcutsCleanup then
     pcall(GlobalEnv.MirrorsMM2ShortcutsCleanup)
 end
@@ -7586,3 +7588,4 @@ GlobalEnv.MirrorsMM2ShortcutsCleanup =
             ShortcutsGui:Destroy()
         end
     end
+    end)
