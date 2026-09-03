@@ -8871,3 +8871,1246 @@ Env.MirrorsMM2MiscCleanup =
     end
 
 end)
+
+task.spawn(function()
+
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local ConfigManager = Window.ConfigManager
+
+local ConfigName = "default"
+local ImportText = ""
+local CurrentConfig = nil
+local AutoLoadEnabled = false
+
+local DefaultElements = {}
+local DefaultShortcuts = {}
+
+local ConfigPath
+local AutoLoadPath
+
+local function Notify(Title, Content)
+    pcall(function()
+        WindUI:Notify({
+            Title = Title,
+            Content = Content,
+            Duration = 3
+        })
+    end)
+end
+
+local function SanitizeName(Name)
+    Name = tostring(Name or "")
+    Name = Name:gsub("^%s+", "")
+    Name = Name:gsub("%s+$", "")
+    Name = Name:gsub("[\\/:*?\"<>|]", "_")
+    Name = Name:gsub("%.%.", "_")
+
+    if Name == "" then
+        Name = "default"
+    end
+
+    if #Name > 32 then
+        Name = Name:sub(1, 32)
+    end
+
+    return Name
+end
+
+local function ConfigSupported()
+    return
+        ConfigManager
+        and writefile
+        and readfile
+        and isfile
+        and makefolder
+        and isfolder
+end
+
+if ConfigManager then
+    pcall(function()
+        ConfigManager:Init(Window)
+    end)
+
+    ConfigPath = ConfigManager.Path
+
+    if ConfigPath then
+        AutoLoadPath =
+            ConfigPath .. "autoload.txt"
+    end
+end
+
+local function GetConfigPath(Name)
+    if not ConfigPath then
+        return
+    end
+
+    return
+        ConfigPath
+        .. SanitizeName(Name)
+        .. ".json"
+end
+
+local function ReadAutoLoad()
+    if not AutoLoadPath
+    or not isfile
+    or not readfile then
+        return
+    end
+
+    if not isfile(AutoLoadPath) then
+        return
+    end
+
+    local Success, Result =
+        pcall(function()
+            return readfile(
+                AutoLoadPath
+            )
+        end)
+
+    if Success
+    and Result
+    and Result ~= "" then
+        return SanitizeName(Result)
+    end
+end
+
+local function WriteAutoLoad(Name)
+    if not AutoLoadPath
+    or not writefile then
+        return false
+    end
+
+    return pcall(function()
+        writefile(
+            AutoLoadPath,
+            SanitizeName(Name)
+        )
+    end)
+end
+
+local function ClearAutoLoad()
+    if not AutoLoadPath then
+        return
+    end
+
+    if delfile
+    and isfile
+    and isfile(AutoLoadPath) then
+        pcall(function()
+            delfile(
+                AutoLoadPath
+            )
+        end)
+    elseif writefile then
+        pcall(function()
+            writefile(
+                AutoLoadPath,
+                ""
+            )
+        end)
+    end
+end
+
+local function EncodeUDim2(Value)
+    return {
+        XS = Value.X.Scale,
+        XO = Value.X.Offset,
+        YS = Value.Y.Scale,
+        YO = Value.Y.Offset
+    }
+end
+
+local function DecodeUDim2(Data)
+    if typeof(Data) ~= "table" then
+        return
+    end
+
+    return UDim2.new(
+        tonumber(Data.XS) or 0,
+        tonumber(Data.XO) or 0,
+        tonumber(Data.YS) or 0,
+        tonumber(Data.YO) or 0
+    )
+end
+
+local function GetShortcutGui()
+    return PlayerGui:FindFirstChild(
+        "MirrorsShortcutsGUI"
+    )
+end
+
+local function CaptureShortcutLayout()
+    local Data = {}
+
+    local Gui =
+        GetShortcutGui()
+
+    if not Gui then
+        return Data
+    end
+
+    for _, Object in ipairs(
+        Gui:GetChildren()
+    ) do
+        if Object:IsA("GuiButton") then
+            Data[Object.Name] = {
+                Position =
+                    EncodeUDim2(
+                        Object.Position
+                    ),
+
+                Visible =
+                    Object.Visible
+            }
+        end
+    end
+
+    return Data
+end
+
+local function ApplyShortcutLayout(Data)
+    if typeof(Data) ~= "table" then
+        return
+    end
+
+    local Gui =
+        GetShortcutGui()
+
+    if not Gui then
+        return
+    end
+
+    for Name, State in pairs(
+        Data
+    ) do
+        local Button =
+            Gui:FindFirstChild(Name)
+
+        if Button
+        and Button:IsA("GuiButton")
+        and typeof(State) == "table" then
+
+            local Position =
+                DecodeUDim2(
+                    State.Position
+                )
+
+            if Position then
+                Button.Position =
+                    Position
+            end
+
+            if typeof(State.Visible)
+            == "boolean" then
+                Button.Visible =
+                    State.Visible
+            end
+        end
+    end
+end
+
+local function GetElementValue(Element)
+    if not Element then
+        return
+    end
+
+    local Type =
+        Element.__type
+
+    if Type == "Toggle" then
+        return {
+            Type = Type,
+            Value = Element.Value
+        }
+
+    elseif Type == "Slider" then
+        return {
+            Type = Type,
+            Value =
+                Element.Value
+                and Element.Value.Default
+        }
+
+    elseif Type == "Dropdown" then
+        return {
+            Type = Type,
+            Value = Element.Value
+        }
+
+    elseif Type == "Input" then
+        return {
+            Type = Type,
+            Value = Element.Value
+        }
+
+    elseif Type == "Keybind" then
+        return {
+            Type = Type,
+            Value = Element.Value
+        }
+
+    elseif Type == "Colorpicker" then
+        local Color =
+            Element.Default
+
+        return {
+            Type = Type,
+
+            Value =
+                Color
+                and Color:ToHex(),
+
+            Transparency =
+                Element.Transparency
+        }
+    end
+end
+
+local function ApplyElementValue(
+    Element,
+    Data
+)
+    if not Element
+    or typeof(Data) ~= "table" then
+        return
+    end
+
+    local Type =
+        Data.Type
+
+    pcall(function()
+        if Type == "Toggle"
+        and Element.Set then
+
+            Element:Set(
+                Data.Value == true
+            )
+
+        elseif Type == "Slider"
+        and Element.Set then
+
+            Element:Set(
+                tonumber(Data.Value)
+            )
+
+        elseif Type == "Dropdown"
+        and Element.Select then
+
+            Element:Select(
+                Data.Value
+            )
+
+        elseif Type == "Input"
+        and Element.Set then
+
+            Element:Set(
+                Data.Value
+            )
+
+        elseif Type == "Keybind"
+        and Element.Set then
+
+            Element:Set(
+                Data.Value
+            )
+
+        elseif Type == "Colorpicker"
+        and Element.Update
+        and Data.Value then
+
+            Element:Update(
+                Color3.fromHex(
+                    Data.Value
+                ),
+
+                Data.Transparency
+            )
+        end
+    end)
+end
+
+local function CaptureDefaults()
+    table.clear(
+        DefaultElements
+    )
+
+    if Window.PendingFlags then
+        for Flag, Element in pairs(
+            Window.PendingFlags
+        ) do
+            local Value =
+                GetElementValue(
+                    Element
+                )
+
+            if Value then
+                DefaultElements[Flag] =
+                    Value
+            end
+        end
+    end
+
+    DefaultShortcuts =
+        CaptureShortcutLayout()
+end
+
+local function ResetLiveConfig()
+    for Flag, Data in pairs(
+        DefaultElements
+    ) do
+        local Element =
+            Window.PendingFlags
+            and Window.PendingFlags[Flag]
+
+        if Element then
+            ApplyElementValue(
+                Element,
+                Data
+            )
+        end
+    end
+
+    ApplyShortcutLayout(
+        DefaultShortcuts
+    )
+end
+
+local function GetConfigs()
+    if not ConfigManager then
+        return {}
+    end
+
+    local Success, Result =
+        pcall(function()
+            return
+                ConfigManager:AllConfigs()
+        end)
+
+    if not Success
+    or typeof(Result) ~= "table" then
+        return {}
+    end
+
+    table.sort(Result)
+
+    return Result
+end
+
+local ConfigInput
+local ConfigDropdown
+local AutoLoadToggle
+
+local function RefreshConfigs()
+    if not ConfigDropdown then
+        return
+    end
+
+    local Configs =
+        GetConfigs()
+
+    if #Configs == 0 then
+        Configs = {
+            "default"
+        }
+    end
+
+    pcall(function()
+        ConfigDropdown:Refresh(
+            Configs
+        )
+    end)
+end
+
+local function UpdateAutoLoadToggle()
+    if not AutoLoadToggle then
+        return
+    end
+
+    local AutoName =
+        ReadAutoLoad()
+
+    AutoLoadEnabled =
+        AutoName ~= nil
+        and AutoName == ConfigName
+
+    pcall(function()
+        AutoLoadToggle:Set(
+            AutoLoadEnabled
+        )
+    end)
+end
+
+local function GetOrCreateConfig(Name)
+    if not ConfigManager then
+        return
+    end
+
+    Name =
+        SanitizeName(Name)
+
+    local Existing =
+        ConfigManager:GetConfig(
+            Name
+        )
+
+    if Existing
+    and typeof(Existing) == "table"
+    and Existing.Save then
+        return Existing
+    end
+
+    local Success, Result =
+        pcall(function()
+            return
+                ConfigManager:CreateConfig(
+                    Name,
+                    false
+                )
+        end)
+
+    if Success then
+        return Result
+    end
+end
+
+local function SaveConfig(Silent)
+    if not ConfigSupported() then
+        if not Silent then
+            Notify(
+                "Config Error",
+                "Your executor does not support file configs."
+            )
+        end
+
+        return false
+    end
+
+    ConfigName =
+        SanitizeName(
+            ConfigName
+        )
+
+    local Config =
+        GetOrCreateConfig(
+            ConfigName
+        )
+
+    if not Config then
+        if not Silent then
+            Notify(
+                "Save Failed",
+                "Could not create the config."
+            )
+        end
+
+        return false
+    end
+
+    Config:SetAutoLoad(false)
+
+    Config:Set(
+        "shortcutLayout",
+        CaptureShortcutLayout()
+    )
+
+    Config:Set(
+        "lastSave",
+        os.date(
+            "%Y-%m-%d %H:%M:%S"
+        )
+    )
+
+    Config:Set(
+        "version",
+        "MM2"
+    )
+
+    local Success =
+        pcall(function()
+            Config:Save()
+        end)
+
+    if not Success then
+        if not Silent then
+            Notify(
+                "Save Failed",
+                "Could not save the config."
+            )
+        end
+
+        return false
+    end
+
+    CurrentConfig =
+        Config
+
+    if AutoLoadEnabled then
+        WriteAutoLoad(
+            ConfigName
+        )
+    end
+
+    RefreshConfigs()
+
+    if not Silent then
+        Notify(
+            "Config Saved",
+            "Saved as: "
+            .. ConfigName
+        )
+    end
+
+    return true
+end
+
+local function LoadConfig(
+    Name,
+    Silent
+)
+    if not ConfigSupported() then
+        if not Silent then
+            Notify(
+                "Config Error",
+                "Your executor does not support file configs."
+            )
+        end
+
+        return false
+    end
+
+    Name =
+        SanitizeName(
+            Name or ConfigName
+        )
+
+    local Path =
+        GetConfigPath(
+            Name
+        )
+
+    if not Path
+    or not isfile(Path) then
+        if not Silent then
+            Notify(
+                "Load Failed",
+                "Config does not exist: "
+                .. Name
+            )
+        end
+
+        return false
+    end
+
+    local Config =
+        GetOrCreateConfig(
+            Name
+        )
+
+    if not Config then
+        if not Silent then
+            Notify(
+                "Load Failed",
+                "Could not open the config."
+            )
+        end
+
+        return false
+    end
+
+    local Success, CustomData =
+        pcall(function()
+            return Config:Load()
+        end)
+
+    if not Success then
+        if not Silent then
+            Notify(
+                "Load Failed",
+                "Could not load the config."
+            )
+        end
+
+        return false
+    end
+
+    CurrentConfig =
+        Config
+
+    ConfigName =
+        Name
+
+    if ConfigInput then
+        pcall(function()
+            ConfigInput:Set(
+                ConfigName
+            )
+        end)
+    end
+
+    task.delay(
+        0.15,
+        function()
+            if typeof(CustomData)
+            == "table"
+            and CustomData.shortcutLayout then
+
+                ApplyShortcutLayout(
+                    CustomData.shortcutLayout
+                )
+            end
+        end
+    )
+
+    UpdateAutoLoadToggle()
+
+    if not Silent then
+        local LastSave =
+            typeof(CustomData)
+            == "table"
+            and CustomData.lastSave
+            or nil
+
+        Notify(
+            "Config Loaded",
+            LastSave
+            and (
+                ConfigName
+                .. "\nSaved: "
+                .. tostring(
+                    LastSave
+                )
+            )
+            or ConfigName
+        )
+    end
+
+    return true
+end
+
+local function DeleteConfig()
+    if not ConfigSupported() then
+        Notify(
+            "Config Error",
+            "Your executor does not support file configs."
+        )
+
+        return
+    end
+
+    ConfigName =
+        SanitizeName(
+            ConfigName
+        )
+
+    local Path =
+        GetConfigPath(
+            ConfigName
+        )
+
+    if not Path
+    or not isfile(Path) then
+        Notify(
+            "Delete Failed",
+            "Config does not exist."
+        )
+
+        return
+    end
+
+    local Success, Result =
+        pcall(function()
+            return
+                ConfigManager:DeleteConfig(
+                    ConfigName
+                )
+        end)
+
+    if not Success
+    or Result == false then
+
+        if delfile then
+            Success =
+                pcall(function()
+                    delfile(
+                        Path
+                    )
+                end)
+        end
+    end
+
+    if not Success then
+        Notify(
+            "Delete Failed",
+            "Could not delete the config."
+        )
+
+        return
+    end
+
+    if ReadAutoLoad()
+    == ConfigName then
+        ClearAutoLoad()
+
+        AutoLoadEnabled =
+            false
+
+        if AutoLoadToggle then
+            pcall(function()
+                AutoLoadToggle:Set(
+                    false
+                )
+            end)
+        end
+    end
+
+    CurrentConfig =
+        nil
+
+    RefreshConfigs()
+
+    Notify(
+        "Config Deleted",
+        "Deleted: "
+        .. ConfigName
+    )
+end
+
+local function ExportConfig()
+    if not ConfigSupported() then
+        Notify(
+            "Export Error",
+            "File configs are not supported."
+        )
+
+        return
+    end
+
+    if not SaveConfig(true) then
+        Notify(
+            "Export Error",
+            "Could not prepare the config."
+        )
+
+        return
+    end
+
+    local Path =
+        GetConfigPath(
+            ConfigName
+        )
+
+    if not Path
+    or not isfile(Path) then
+        Notify(
+            "Export Error",
+            "Config file was not found."
+        )
+
+        return
+    end
+
+    local Success, Data =
+        pcall(function()
+            return readfile(
+                Path
+            )
+        end)
+
+    if not Success
+    or not Data then
+        Notify(
+            "Export Error",
+            "Could not read the config."
+        )
+
+        return
+    end
+
+    local Clipboard =
+        setclipboard
+        or toclipboard
+
+    if not Clipboard then
+        Notify(
+            "Clipboard Error",
+            "Clipboard is not supported."
+        )
+
+        return
+    end
+
+    local Copied =
+        pcall(function()
+            Clipboard(
+                Data
+            )
+        end)
+
+    if Copied then
+        Notify(
+            "Config Exported",
+            "JSON copied to clipboard."
+        )
+    else
+        Notify(
+            "Export Error",
+            "Could not copy the JSON."
+        )
+    end
+end
+
+local function ImportConfig()
+    if not ConfigSupported() then
+        Notify(
+            "Import Error",
+            "File configs are not supported."
+        )
+
+        return
+    end
+
+    if ImportText == "" then
+        Notify(
+            "Import Error",
+            "Paste a config JSON first."
+        )
+
+        return
+    end
+
+    local Success, Decoded =
+        pcall(function()
+            return HttpService:JSONDecode(
+                ImportText
+            )
+        end)
+
+    if not Success
+    or typeof(Decoded) ~= "table" then
+        Notify(
+            "Import Error",
+            "Invalid JSON."
+        )
+
+        return
+    end
+
+    if not Decoded.__elements
+    and not Decoded.__custom then
+        Notify(
+            "Import Error",
+            "This is not a Mirrors/WindUI config."
+        )
+
+        return
+    end
+
+    ConfigName =
+        SanitizeName(
+            ConfigName
+        )
+
+    local Path =
+        GetConfigPath(
+            ConfigName
+        )
+
+    local Normalized =
+        HttpService:JSONEncode(
+            Decoded
+        )
+
+    local Written =
+        pcall(function()
+            writefile(
+                Path,
+                Normalized
+            )
+        end)
+
+    if not Written then
+        Notify(
+            "Import Error",
+            "Could not write the config."
+        )
+
+        return
+    end
+
+    CurrentConfig =
+        nil
+
+    RefreshConfigs()
+
+    Notify(
+        "Config Imported",
+        "Imported as: "
+        .. ConfigName
+    )
+end
+
+ConfigTab:Paragraph({
+    Title = "Configuration Manager",
+    Desc = "Save, load and manage your Mirrors Hub MM2 settings."
+})
+
+ConfigInput =
+    ConfigTab:Input({
+        Title = "Config Name",
+        Desc = "Name used to save or create a configuration.",
+        Value = "default",
+        Placeholder = "default",
+
+        Callback = function(Value)
+            ConfigName =
+                SanitizeName(
+                    Value
+                )
+
+            UpdateAutoLoadToggle()
+        end
+    })
+
+ConfigDropdown =
+    ConfigTab:Dropdown({
+        Title = "Saved Configs",
+        Desc = "Select an existing configuration.",
+        Values = GetConfigs(),
+        Value = nil,
+        AllowNone = true,
+
+        Callback = function(Value)
+            if typeof(Value)
+            == "table" then
+                Value =
+                    Value.Title
+            end
+
+            if not Value
+            or Value == "" then
+                return
+            end
+
+            ConfigName =
+                SanitizeName(
+                    Value
+                )
+
+            pcall(function()
+                ConfigInput:Set(
+                    ConfigName
+                )
+            end)
+
+            UpdateAutoLoadToggle()
+        end
+    })
+
+ConfigTab:Button({
+    Title = "Refresh Config List",
+    Desc = "Refresh saved configuration files.",
+
+    Callback = function()
+        RefreshConfigs()
+
+        Notify(
+            "Configs",
+            "Config list refreshed."
+        )
+    end
+})
+
+ConfigTab:Paragraph({
+    Title = "Save & Load",
+    Desc = "Manage the currently selected configuration."
+})
+
+ConfigTab:Button({
+    Title = "Save Config",
+    Desc = "Save all registered settings and shortcut positions.",
+
+    Callback = function()
+        SaveConfig(false)
+    end
+})
+
+ConfigTab:Button({
+    Title = "Load Config",
+    Desc = "Load the selected configuration.",
+
+    Callback = function()
+        LoadConfig(
+            ConfigName,
+            false
+        )
+    end
+})
+
+AutoLoadToggle =
+    ConfigTab:Toggle({
+        Title = "Auto Load Config",
+        Desc = "Automatically load this config when Mirrors Hub starts.",
+        Value = false,
+
+        Callback = function(Value)
+            AutoLoadEnabled =
+                Value
+
+            if Value then
+                ConfigName =
+                    SanitizeName(
+                        ConfigName
+                    )
+
+                if not isfile
+                or not GetConfigPath(
+                    ConfigName
+                )
+                or not isfile(
+                    GetConfigPath(
+                        ConfigName
+                    )
+                ) then
+
+                    if not SaveConfig(true) then
+                        AutoLoadEnabled =
+                            false
+
+                        task.defer(function()
+                            pcall(function()
+                                AutoLoadToggle:Set(
+                                    false
+                                )
+                            end)
+                        end)
+
+                        return
+                    end
+                end
+
+                WriteAutoLoad(
+                    ConfigName
+                )
+
+                Notify(
+                    "Auto Load",
+                    "Auto load enabled for: "
+                    .. ConfigName
+                )
+            else
+                if ReadAutoLoad()
+                == ConfigName then
+                    ClearAutoLoad()
+                end
+
+                Notify(
+                    "Auto Load",
+                    "Auto load disabled."
+                )
+            end
+        end
+    })
+
+ConfigTab:Button({
+    Title = "Reset Config",
+    Desc = "Restore all settings and shortcut positions to their defaults.",
+
+    Callback = function()
+        ResetLiveConfig()
+
+        Notify(
+            "Config Reset",
+            "Settings restored to defaults."
+        )
+    end
+})
+
+ConfigTab:Button({
+    Title = "Delete Config",
+    Desc = "Permanently delete the selected configuration.",
+
+    Callback = function()
+        DeleteConfig()
+    end
+})
+
+ConfigTab:Paragraph({
+    Title = "Export & Import",
+    Desc = "Copy or restore configurations using JSON."
+})
+
+ConfigTab:Button({
+    Title = "Export Config",
+    Desc = "Copy the current configuration JSON to clipboard.",
+
+    Callback = function()
+        ExportConfig()
+    end
+})
+
+ConfigTab:Input({
+    Title = "Import JSON",
+    Desc = "Paste an exported Mirrors Hub config.",
+    Type = "Textarea",
+    Placeholder = "{\"__version\":1.2,...}",
+
+    Callback = function(Value)
+        ImportText =
+            tostring(
+                Value or ""
+            )
+    end
+})
+
+ConfigTab:Button({
+    Title = "Import Config",
+    Desc = "Save the JSON above using the current Config Name.",
+
+    Callback = function()
+        ImportConfig()
+    end
+})
+
+task.wait(0.15)
+
+CaptureDefaults()
+RefreshConfigs()
+
+local SavedAutoLoad =
+    ReadAutoLoad()
+
+if SavedAutoLoad then
+    ConfigName =
+        SavedAutoLoad
+
+    AutoLoadEnabled =
+        true
+
+    pcall(function()
+        ConfigInput:Set(
+            ConfigName
+        )
+    end)
+
+    pcall(function()
+        AutoLoadToggle:Set(
+            true
+        )
+    end)
+
+    task.delay(
+        0.8,
+        function()
+            LoadConfig(
+                SavedAutoLoad,
+                true
+            )
+        end
+    )
+end
+
+end)
