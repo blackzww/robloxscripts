@@ -7589,3 +7589,1285 @@ GlobalEnv.MirrorsMM2ShortcutsCleanup =
         end
     end
     end)
+
+task.spawn(function()
+
+local LocalPlayer = Players.LocalPlayer
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
+
+local Env = getgenv and getgenv() or _G
+
+if Env.MirrorsMM2MiscCleanup then
+    pcall(Env.MirrorsMM2MiscCleanup)
+end
+
+local MiscConnections = {}
+
+local Settings = {
+    AntiAFK = false,
+    AntiVoid = false,
+    FPSBoost = false,
+    RemoveFog = false,
+    Fullbright = false,
+    Noclip = false,
+
+    WalkSpeedEnabled = false,
+    WalkSpeed = 32,
+
+    JumpPowerEnabled = false,
+    JumpPower = 75
+}
+
+local AntiAFKConnection
+local NoclipConnection
+local AntiVoidConnection
+local MovementConnection
+local VisualConnection
+local FPSDescendantConnection
+
+local LastSafeCFrame
+local LastSafeTime = 0
+
+local CollisionStates = setmetatable({}, {
+    __mode = "k"
+})
+
+local FPSStates = setmetatable({}, {
+    __mode = "k"
+})
+
+local AtmosphereStates = setmetatable({}, {
+    __mode = "k"
+})
+
+local EffectStates = setmetatable({}, {
+    __mode = "k"
+})
+
+local OriginalLighting = {
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogStart = Lighting.FogStart,
+    FogEnd = Lighting.FogEnd,
+    GlobalShadows = Lighting.GlobalShadows,
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    ExposureCompensation = Lighting.ExposureCompensation,
+    EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+    EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
+}
+
+local function Track(Connection)
+    table.insert(
+        MiscConnections,
+        Connection
+    )
+
+    return Connection
+end
+
+local function Notify(Title, Content)
+    pcall(function()
+        WindUI:Notify({
+            Title = Title,
+            Content = Content,
+            Duration = 3
+        })
+    end)
+end
+
+local function GetCharacter()
+    local Character =
+        LocalPlayer.Character
+
+    if not Character then
+        return
+    end
+
+    local Humanoid =
+        Character:FindFirstChildOfClass(
+            "Humanoid"
+        )
+
+    local Root =
+        Character:FindFirstChild(
+            "HumanoidRootPart"
+        )
+
+    if not Humanoid
+    or not Root
+    or Humanoid.Health <= 0 then
+        return
+    end
+
+    return Character, Humanoid, Root
+end
+
+local function ResetVelocity(Root)
+    if not Root then
+        return
+    end
+
+    Root.AssemblyLinearVelocity =
+        Vector3.zero
+
+    Root.AssemblyAngularVelocity =
+        Vector3.zero
+end
+
+local function EnableAntiAFK()
+    if AntiAFKConnection then
+        return
+    end
+
+    AntiAFKConnection =
+        LocalPlayer.Idled:Connect(function()
+            if not Settings.AntiAFK then
+                return
+            end
+
+            pcall(function()
+                VirtualUser:CaptureController()
+
+                VirtualUser:ClickButton2(
+                    Vector2.new(
+                        0,
+                        0
+                    )
+                )
+            end)
+        end)
+end
+
+local function DisableAntiAFK()
+    if AntiAFKConnection then
+        AntiAFKConnection:Disconnect()
+        AntiAFKConnection = nil
+    end
+end
+
+local function RejoinServer()
+    Notify(
+        "Rejoin",
+        "Rejoining current server..."
+    )
+
+    task.spawn(function()
+        local Success =
+            pcall(function()
+                if game.JobId ~= "" then
+                    TeleportService:TeleportToPlaceInstance(
+                        game.PlaceId,
+                        game.JobId,
+                        LocalPlayer
+                    )
+                else
+                    TeleportService:Teleport(
+                        game.PlaceId,
+                        LocalPlayer
+                    )
+                end
+            end)
+
+        if not Success then
+            Notify(
+                "Rejoin Failed",
+                "Could not rejoin the server."
+            )
+        end
+    end)
+end
+
+local function FetchServers(MaxPages)
+    local Servers = {}
+    local Cursor = nil
+
+    for _ = 1, MaxPages do
+        local URL =
+            "https://games.roblox.com/v1/games/"
+            .. tostring(game.PlaceId)
+            .. "/servers/Public?sortOrder=Asc&limit=100"
+
+        if Cursor then
+            URL =
+                URL
+                .. "&cursor="
+                .. HttpService:UrlEncode(
+                    Cursor
+                )
+        end
+
+        local Success, Response =
+            pcall(function()
+                return game:HttpGet(URL)
+            end)
+
+        if not Success then
+            break
+        end
+
+        local DecodeSuccess, Data =
+            pcall(function()
+                return HttpService:JSONDecode(
+                    Response
+                )
+            end)
+
+        if not DecodeSuccess
+        or typeof(Data) ~= "table" then
+            break
+        end
+
+        for _, Server in ipairs(
+            Data.data or {}
+        ) do
+            if Server.id
+            and Server.id ~= game.JobId
+            and tonumber(Server.playing)
+            and tonumber(Server.maxPlayers)
+            and Server.playing < Server.maxPlayers then
+
+                table.insert(
+                    Servers,
+                    Server
+                )
+            end
+        end
+
+        Cursor =
+            Data.nextPageCursor
+
+        if not Cursor then
+            break
+        end
+    end
+
+    return Servers
+end
+
+local function ServerHop()
+    Notify(
+        "Server Hop",
+        "Searching for another server..."
+    )
+
+    task.spawn(function()
+        local Servers =
+            FetchServers(3)
+
+        if #Servers == 0 then
+            Notify(
+                "Server Hop",
+                "No available server was found."
+            )
+
+            return
+        end
+
+        local Server =
+            Servers[
+                math.random(
+                    1,
+                    #Servers
+                )
+            ]
+
+        local Success =
+            pcall(function()
+                TeleportService:TeleportToPlaceInstance(
+                    game.PlaceId,
+                    Server.id,
+                    LocalPlayer
+                )
+            end)
+
+        if not Success then
+            Notify(
+                "Server Hop Failed",
+                "Could not teleport to the server."
+            )
+        end
+    end)
+end
+
+local function SmallServer()
+    Notify(
+        "Small Server",
+        "Searching for a small server..."
+    )
+
+    task.spawn(function()
+        local Servers =
+            FetchServers(5)
+
+        if #Servers == 0 then
+            Notify(
+                "Small Server",
+                "No available server was found."
+            )
+
+            return
+        end
+
+        table.sort(
+            Servers,
+            function(A, B)
+                return
+                    (A.playing or math.huge)
+                    <
+                    (B.playing or math.huge)
+            end
+        )
+
+        local Server =
+            Servers[1]
+
+        Notify(
+            "Small Server",
+            "Found a server with "
+            .. tostring(Server.playing)
+            .. " player(s)."
+        )
+
+        task.wait(0.3)
+
+        local Success =
+            pcall(function()
+                TeleportService:TeleportToPlaceInstance(
+                    game.PlaceId,
+                    Server.id,
+                    LocalPlayer
+                )
+            end)
+
+        if not Success then
+            Notify(
+                "Small Server Failed",
+                "Could not teleport to the server."
+            )
+        end
+    end)
+end
+
+local function IsSafeGround(
+    Character,
+    Root
+)
+    local Params =
+        RaycastParams.new()
+
+    Params.FilterType =
+        Enum.RaycastFilterType.Exclude
+
+    Params.FilterDescendantsInstances = {
+        Character
+    }
+
+    local Result =
+        Workspace:Raycast(
+            Root.Position,
+            Vector3.new(
+                0,
+                -8,
+                0
+            ),
+            Params
+        )
+
+    return Result ~= nil
+end
+
+local function EnableAntiVoid()
+    if AntiVoidConnection then
+        return
+    end
+
+    local Character, _, Root =
+        GetCharacter()
+
+    if Character
+    and Root
+    and IsSafeGround(
+        Character,
+        Root
+    ) then
+        LastSafeCFrame =
+            Root.CFrame
+    end
+
+    AntiVoidConnection =
+        RunService.Heartbeat:Connect(function()
+            if not Settings.AntiVoid then
+                return
+            end
+
+            local CurrentCharacter,
+                Humanoid,
+                CurrentRoot =
+                GetCharacter()
+
+            if not CurrentCharacter
+            or not Humanoid
+            or not CurrentRoot then
+                return
+            end
+
+            local Grounded =
+                IsSafeGround(
+                    CurrentCharacter,
+                    CurrentRoot
+                )
+
+            if Grounded
+            and Humanoid.FloorMaterial
+            ~= Enum.Material.Air then
+
+                LastSafeCFrame =
+                    CurrentRoot.CFrame
+
+                LastSafeTime =
+                    os.clock()
+
+                return
+            end
+
+            if not LastSafeCFrame then
+                return
+            end
+
+            local Drop =
+                LastSafeCFrame.Position.Y
+                - CurrentRoot.Position.Y
+
+            local VoidLimit =
+                Workspace.FallenPartsDestroyHeight
+                + 20
+
+            if Drop >= 24
+            or CurrentRoot.Position.Y <= VoidLimit then
+
+                CurrentRoot.CFrame =
+                    LastSafeCFrame
+                    + Vector3.new(
+                        0,
+                        3,
+                        0
+                    )
+
+                ResetVelocity(
+                    CurrentRoot
+                )
+
+                LastSafeTime =
+                    os.clock()
+            end
+        end)
+end
+
+local function DisableAntiVoid()
+    if AntiVoidConnection then
+        AntiVoidConnection:Disconnect()
+        AntiVoidConnection = nil
+    end
+end
+
+local function ApplyNoclip()
+    local Character =
+        LocalPlayer.Character
+
+    if not Character then
+        return
+    end
+
+    for _, Object in ipairs(
+        Character:GetDescendants()
+    ) do
+        if Object:IsA("BasePart") then
+
+            if CollisionStates[Object] == nil then
+                CollisionStates[Object] =
+                    Object.CanCollide
+            end
+
+            Object.CanCollide =
+                false
+        end
+    end
+end
+
+local function RestoreCollisions()
+    for Part, State in pairs(
+        CollisionStates
+    ) do
+        if Part
+        and Part.Parent then
+            pcall(function()
+                Part.CanCollide =
+                    State
+            end)
+        end
+    end
+
+    table.clear(
+        CollisionStates
+    )
+end
+
+local function EnableNoclip()
+    if NoclipConnection then
+        return
+    end
+
+    NoclipConnection =
+        RunService.Stepped:Connect(function()
+            if Settings.Noclip then
+                ApplyNoclip()
+            end
+        end)
+end
+
+local function DisableNoclip()
+    if NoclipConnection then
+        NoclipConnection:Disconnect()
+        NoclipConnection = nil
+    end
+
+    RestoreCollisions()
+end
+
+local function ApplyMovement()
+    local _, Humanoid =
+        GetCharacter()
+
+    if not Humanoid then
+        return
+    end
+
+    if Settings.WalkSpeedEnabled then
+        Humanoid.WalkSpeed =
+            Settings.WalkSpeed
+    end
+
+    if Settings.JumpPowerEnabled then
+        pcall(function()
+            Humanoid.UseJumpPower =
+                true
+        end)
+
+        Humanoid.JumpPower =
+            Settings.JumpPower
+    end
+end
+
+local function EnableMovementLoop()
+    if MovementConnection then
+        return
+    end
+
+    local LastUpdate = 0
+
+    MovementConnection =
+        RunService.Heartbeat:Connect(function()
+            if not Settings.WalkSpeedEnabled
+            and not Settings.JumpPowerEnabled then
+                return
+            end
+
+            if os.clock()
+            - LastUpdate < 0.12 then
+                return
+            end
+
+            LastUpdate =
+                os.clock()
+
+            ApplyMovement()
+        end)
+end
+
+local function DisableMovementLoopIfUnused()
+    if Settings.WalkSpeedEnabled
+    or Settings.JumpPowerEnabled then
+        return
+    end
+
+    if MovementConnection then
+        MovementConnection:Disconnect()
+        MovementConnection = nil
+    end
+end
+
+local function ApplyFPSObject(Object)
+    if Object:IsA("BasePart") then
+
+        if not FPSStates[Object] then
+            FPSStates[Object] = {
+                Type = "Part",
+                Material = Object.Material,
+                Reflectance = Object.Reflectance,
+                CastShadow = Object.CastShadow
+            }
+        end
+
+        Object.Material =
+            Enum.Material.SmoothPlastic
+
+        Object.Reflectance =
+            0
+
+        Object.CastShadow =
+            false
+
+    elseif Object:IsA("ParticleEmitter")
+    or Object:IsA("Trail")
+    or Object:IsA("Beam")
+    or Object:IsA("Smoke")
+    or Object:IsA("Fire")
+    or Object:IsA("Sparkles") then
+
+        if not FPSStates[Object] then
+            FPSStates[Object] = {
+                Type = "Enabled",
+                Enabled = Object.Enabled
+            }
+        end
+
+        Object.Enabled =
+            false
+    end
+end
+
+local function EnableFPSBoost()
+    for _, Object in ipairs(
+        Workspace:GetDescendants()
+    ) do
+        ApplyFPSObject(
+            Object
+        )
+    end
+
+    if not FPSDescendantConnection then
+        FPSDescendantConnection =
+            Workspace.DescendantAdded:Connect(function(Object)
+                if not Settings.FPSBoost then
+                    return
+                end
+
+                task.defer(function()
+                    if Object
+                    and Object.Parent then
+                        ApplyFPSObject(
+                            Object
+                        )
+                    end
+                end)
+            end)
+    end
+end
+
+local function DisableFPSBoost()
+    if FPSDescendantConnection then
+        FPSDescendantConnection:Disconnect()
+        FPSDescendantConnection = nil
+    end
+
+    for Object, State in pairs(
+        FPSStates
+    ) do
+        if Object
+        and Object.Parent then
+
+            pcall(function()
+                if State.Type == "Part" then
+                    Object.Material =
+                        State.Material
+
+                    Object.Reflectance =
+                        State.Reflectance
+
+                    Object.CastShadow =
+                        State.CastShadow
+
+                elseif State.Type == "Enabled" then
+                    Object.Enabled =
+                        State.Enabled
+                end
+            end)
+        end
+    end
+
+    table.clear(
+        FPSStates
+    )
+end
+
+local function SaveVisualObjects()
+    for _, Object in ipairs(
+        Lighting:GetChildren()
+    ) do
+
+        if Object:IsA("Atmosphere") then
+
+            if not AtmosphereStates[Object] then
+                AtmosphereStates[Object] = {
+                    Density = Object.Density,
+                    Haze = Object.Haze,
+                    Glare = Object.Glare,
+                    Offset = Object.Offset
+                }
+            end
+
+        elseif Object:IsA("BloomEffect")
+        or Object:IsA("BlurEffect")
+        or Object:IsA("SunRaysEffect")
+        or Object:IsA("ColorCorrectionEffect")
+        or Object:IsA("DepthOfFieldEffect") then
+
+            if not EffectStates[Object] then
+                EffectStates[Object] = {
+                    Enabled = Object.Enabled
+                }
+            end
+        end
+    end
+end
+
+local function RestoreVisualObjects()
+    for Object, State in pairs(
+        AtmosphereStates
+    ) do
+        if Object
+        and Object.Parent then
+            pcall(function()
+                Object.Density =
+                    State.Density
+
+                Object.Haze =
+                    State.Haze
+
+                Object.Glare =
+                    State.Glare
+
+                Object.Offset =
+                    State.Offset
+            end)
+        end
+    end
+
+    for Object, State in pairs(
+        EffectStates
+    ) do
+        if Object
+        and Object.Parent then
+            pcall(function()
+                Object.Enabled =
+                    State.Enabled
+            end)
+        end
+    end
+end
+
+local function ApplyVisualSettings()
+    SaveVisualObjects()
+
+    Lighting.Brightness =
+        OriginalLighting.Brightness
+
+    Lighting.ClockTime =
+        OriginalLighting.ClockTime
+
+    Lighting.FogStart =
+        OriginalLighting.FogStart
+
+    Lighting.FogEnd =
+        OriginalLighting.FogEnd
+
+    Lighting.GlobalShadows =
+        OriginalLighting.GlobalShadows
+
+    Lighting.Ambient =
+        OriginalLighting.Ambient
+
+    Lighting.OutdoorAmbient =
+        OriginalLighting.OutdoorAmbient
+
+    Lighting.ExposureCompensation =
+        OriginalLighting.ExposureCompensation
+
+    Lighting.EnvironmentDiffuseScale =
+        OriginalLighting.EnvironmentDiffuseScale
+
+    Lighting.EnvironmentSpecularScale =
+        OriginalLighting.EnvironmentSpecularScale
+
+    RestoreVisualObjects()
+
+    if Settings.RemoveFog then
+        Lighting.FogStart =
+            0
+
+        Lighting.FogEnd =
+            1000000
+
+        for Atmosphere in pairs(
+            AtmosphereStates
+        ) do
+            if Atmosphere
+            and Atmosphere.Parent then
+                Atmosphere.Density =
+                    0
+
+                Atmosphere.Haze =
+                    0
+
+                Atmosphere.Glare =
+                    0
+            end
+        end
+    end
+
+    if Settings.Fullbright then
+        Lighting.Brightness =
+            3
+
+        Lighting.ClockTime =
+            14
+
+        Lighting.GlobalShadows =
+            false
+
+        Lighting.Ambient =
+            Color3.fromRGB(
+                255,
+                255,
+                255
+            )
+
+        Lighting.OutdoorAmbient =
+            Color3.fromRGB(
+                255,
+                255,
+                255
+            )
+
+        Lighting.ExposureCompensation =
+            0
+    end
+
+    if Settings.FPSBoost then
+        Lighting.GlobalShadows =
+            false
+
+        Lighting.EnvironmentDiffuseScale =
+            0
+
+        Lighting.EnvironmentSpecularScale =
+            0
+
+        for Effect in pairs(
+            EffectStates
+        ) do
+            if Effect
+            and Effect.Parent then
+                Effect.Enabled =
+                    false
+            end
+        end
+    end
+end
+
+local function RestoreLighting()
+    Lighting.Brightness =
+        OriginalLighting.Brightness
+
+    Lighting.ClockTime =
+        OriginalLighting.ClockTime
+
+    Lighting.FogStart =
+        OriginalLighting.FogStart
+
+    Lighting.FogEnd =
+        OriginalLighting.FogEnd
+
+    Lighting.GlobalShadows =
+        OriginalLighting.GlobalShadows
+
+    Lighting.Ambient =
+        OriginalLighting.Ambient
+
+    Lighting.OutdoorAmbient =
+        OriginalLighting.OutdoorAmbient
+
+    Lighting.ExposureCompensation =
+        OriginalLighting.ExposureCompensation
+
+    Lighting.EnvironmentDiffuseScale =
+        OriginalLighting.EnvironmentDiffuseScale
+
+    Lighting.EnvironmentSpecularScale =
+        OriginalLighting.EnvironmentSpecularScale
+
+    RestoreVisualObjects()
+end
+
+local function UpdateVisualLoop()
+    local Enabled =
+        Settings.RemoveFog
+        or Settings.Fullbright
+        or Settings.FPSBoost
+
+    if Enabled then
+        ApplyVisualSettings()
+
+        if not VisualConnection then
+            local LastUpdate = 0
+
+            VisualConnection =
+                RunService.Heartbeat:Connect(function()
+                    if os.clock()
+                    - LastUpdate < 0.4 then
+                        return
+                    end
+
+                    LastUpdate =
+                        os.clock()
+
+                    if Settings.RemoveFog
+                    or Settings.Fullbright
+                    or Settings.FPSBoost then
+                        ApplyVisualSettings()
+                    end
+                end)
+        end
+    else
+        if VisualConnection then
+            VisualConnection:Disconnect()
+            VisualConnection = nil
+        end
+
+        RestoreLighting()
+    end
+end
+
+Track(
+    LocalPlayer.CharacterAdded:Connect(function(Character)
+        LastSafeCFrame =
+            nil
+
+        table.clear(
+            CollisionStates
+        )
+
+        task.wait(0.6)
+
+        local Humanoid =
+            Character:FindFirstChildOfClass(
+                "Humanoid"
+            )
+
+        local Root =
+            Character:FindFirstChild(
+                "HumanoidRootPart"
+            )
+
+        if Settings.AntiVoid
+        and Humanoid
+        and Root then
+            LastSafeCFrame =
+                Root.CFrame
+        end
+
+        if Settings.WalkSpeedEnabled
+        or Settings.JumpPowerEnabled then
+            ApplyMovement()
+        end
+    end)
+)
+
+MiscTab:Paragraph({
+    Title = "Server",
+    Desc = "Server utilities and connection tools."
+})
+
+MiscTab:Toggle({
+    Title = "Anti-AFK",
+    Desc = "Prevents Roblox idle kick.",
+    Value = false,
+
+    Callback = function(Value)
+        Settings.AntiAFK =
+            Value
+
+        if Value then
+            EnableAntiAFK()
+
+            Notify(
+                "Anti-AFK",
+                "Anti-AFK enabled."
+            )
+        else
+            DisableAntiAFK()
+
+            Notify(
+                "Anti-AFK",
+                "Anti-AFK disabled."
+            )
+        end
+    end
+})
+
+MiscTab:Button({
+    Title = "Rejoin",
+    Desc = "Rejoin the current server.",
+
+    Callback = function()
+        RejoinServer()
+    end
+})
+
+MiscTab:Button({
+    Title = "Server Hop",
+    Desc = "Join another available server.",
+
+    Callback = function()
+        ServerHop()
+    end
+})
+
+MiscTab:Button({
+    Title = "Small Server",
+    Desc = "Find a server with fewer players.",
+
+    Callback = function()
+        SmallServer()
+    end
+})
+
+MiscTab:Paragraph({
+    Title = "Player",
+    Desc = "Character and movement utilities."
+})
+
+MiscTab:Toggle({
+    Title = "Anti-Void",
+    Desc = "Returns you to your last safe position when falling under the map.",
+    Value = false,
+
+    Callback = function(Value)
+        Settings.AntiVoid =
+            Value
+
+        if Value then
+            EnableAntiVoid()
+        else
+            DisableAntiVoid()
+        end
+    end
+})
+
+MiscTab:Toggle({
+    Title = "No Clip",
+    Desc = "Walk through collidable objects.",
+    Value = false,
+
+    Callback = function(Value)
+        Settings.Noclip =
+            Value
+
+        if Value then
+            EnableNoclip()
+        else
+            DisableNoclip()
+        end
+    end
+})
+
+MiscTab:Toggle({
+    Title = "WalkSpeed",
+    Desc = "Enable custom WalkSpeed.",
+    Value = false,
+
+    Callback = function(Value)
+        Settings.WalkSpeedEnabled =
+            Value
+
+        if Value then
+            EnableMovementLoop()
+            ApplyMovement()
+        else
+            local _, Humanoid =
+                GetCharacter()
+
+            if Humanoid then
+                Humanoid.WalkSpeed =
+                    16
+            end
+
+            DisableMovementLoopIfUnused()
+        end
+    end
+})
+
+MiscTab:Slider({
+    Title = "WalkSpeed Value",
+    Desc = "Change your movement speed.",
+    Step = 1,
+
+    Value = {
+        Min = 16,
+        Max = 100,
+        Default = 32
+    },
+
+    Callback = function(Value)
+        Settings.WalkSpeed =
+            Value
+
+        if Settings.WalkSpeedEnabled then
+            ApplyMovement()
+        end
+    end
+})
+
+MiscTab:Toggle({
+    Title = "JumpPower",
+    Desc = "Enable custom JumpPower.",
+    Value = false,
+
+    Callback = function(Value)
+        Settings.JumpPowerEnabled =
+            Value
+
+        if Value then
+            EnableMovementLoop()
+            ApplyMovement()
+        else
+            local _, Humanoid =
+                GetCharacter()
+
+            if Humanoid then
+                Humanoid.JumpPower =
+                    50
+            end
+
+            DisableMovementLoopIfUnused()
+        end
+    end
+})
+
+MiscTab:Slider({
+    Title = "JumpPower Value",
+    Desc = "Change your jump power.",
+    Step = 1,
+
+    Value = {
+        Min = 50,
+        Max = 150,
+        Default = 75
+    },
+
+    Callback = function(Value)
+        Settings.JumpPower =
+            Value
+
+        if Settings.JumpPowerEnabled then
+            ApplyMovement()
+        end
+    end
+})
+
+MiscTab:Paragraph({
+    Title = "Visual & Performance",
+    Desc = "Lighting and performance utilities."
+})
+
+MiscTab:Toggle({
+    Title = "FPS Boost",
+    Desc = "Reduces effects, shadows and expensive materials.",
+    Value = false,
+
+    Callback = function(Value)
+        Settings.FPSBoost =
+            Value
+
+        if Value then
+            EnableFPSBoost()
+        else
+            DisableFPSBoost()
+        end
+
+        UpdateVisualLoop()
+    end
+})
+
+MiscTab:Toggle({
+    Title = "Remove Fog",
+    Desc = "Removes fog and atmosphere haze.",
+    Value = false,
+
+    Callback = function(Value)
+        Settings.RemoveFog =
+            Value
+
+        UpdateVisualLoop()
+    end
+})
+
+MiscTab:Toggle({
+    Title = "Fullbright",
+    Desc = "Keeps the map bright and visible.",
+    Value = false,
+
+    Callback = function(Value)
+        Settings.Fullbright =
+            Value
+
+        UpdateVisualLoop()
+    end
+})
+
+Env.MirrorsMM2MiscCleanup =
+    function()
+        Settings.AntiAFK = false
+        Settings.AntiVoid = false
+        Settings.Noclip = false
+        Settings.WalkSpeedEnabled = false
+        Settings.JumpPowerEnabled = false
+        Settings.FPSBoost = false
+        Settings.RemoveFog = false
+        Settings.Fullbright = false
+
+        DisableAntiAFK()
+        DisableAntiVoid()
+        DisableNoclip()
+
+        if MovementConnection then
+            MovementConnection:Disconnect()
+            MovementConnection = nil
+        end
+
+        if VisualConnection then
+            VisualConnection:Disconnect()
+            VisualConnection = nil
+        end
+
+        DisableFPSBoost()
+        RestoreLighting()
+
+        for _, Connection in ipairs(
+            MiscConnections
+        ) do
+            pcall(function()
+                Connection:Disconnect()
+            end)
+        end
+
+        table.clear(
+            MiscConnections
+        )
+    end
+
+end)
